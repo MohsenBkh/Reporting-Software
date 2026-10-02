@@ -1,0 +1,10 @@
+PySide6>=6.6
+python-docx>=1.1
+openpyxl>=3.1
+pandas>=2.0
+matplotlib>=3.8
+numpy>=1.26
+jdatetime>=4.1
+arabic-reshaper>=3.0
+python-bidi>=0.4
+pytest>=8.0
