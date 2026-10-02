@@ -1,0 +1,120 @@
+{
+  "texts": [
+    {
+      "id": "T-CAP-PEAK-TABLE",
+      "title": "عنوان جدول پیک بار",
+      "template": "جدول {N}: وضعیت بارگذاری فیدر{S} {SUB} (در پیک سال {YEAR})",
+      "vars": [
+        "N",
+        "S",
+        "SUB",
+        "YEAR"
+      ]
+    },
+    {
+      "id": "T-CAP-RESULT-TABLE",
+      "title": "عنوان جدول نتایج",
+      "template": "جدول {N}: نتایج مربوط به {TITLE}",
+      "vars": [
+        "N",
+        "TITLE"
+      ]
+    },
+    {
+      "id": "T-CAP-FIG-PROFILE",
+      "title": "عنوان شکل پروفیل بار",
+      "template": "شکل {N}: تغییرات پیک توان اکتیو و توان راکتیو {NAME} (MW) در طول یک سال",
+      "vars": [
+        "N",
+        "NAME"
+      ]
+    },
+    {
+      "id": "T-CAP-FIG-FORECAST",
+      "title": "عنوان شکل پیش‌بینی",
+      "template": "شکل {N}: منحنی پیش‌بینی پیک بار در افق {YEARS} ساله برای {NAME}",
+      "vars": [
+        "N",
+        "YEARS",
+        "NAME"
+      ]
+    },
+    {
+      "id": "T-CAP-FIG-LOCATION",
+      "title": "عنوان شکل موقعیت",
+      "template": "شکل {N}: موقعیت محل درخواست متقاضی نسبت به فیدرهای پست فوق توزیع",
+      "vars": [
+        "N"
+      ]
+    },
+    {
+      "id": "T-CAP-FIG-USER",
+      "title": "عنوان شکل عمومی",
+      "template": "شکل {N}: {TITLE}",
+      "vars": [
+        "N",
+        "TITLE"
+      ]
+    },
+    {
+      "id": "T-HDR-CURRENT",
+      "title": "سرستون جریان",
+      "template": "جریان (آمپر)",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-LOSS",
+      "title": "سرستون تلفات",
+      "template": "تلفات (KW)",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-VMIN",
+      "title": "سرستون حداقل ولتاژ",
+      "template": "حداقل ولتاژ فیدر (P.U.)",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-VBUS",
+      "title": "سرستون ولتاژ باس متقاضی",
+      "template": "ولتاژ باس بار متقاضی (P.U.)",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-CASE-NOW",
+      "title": "سطر وضعیت فعلی",
+      "template": "وضعیت فعلی",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-CASE-NEW",
+      "title": "سطر اثر افزایش قدرت",
+      "template": "اثر افزایش قدرت",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-CASE-NEW-SUPPLY",
+      "title": "سطر اثر اعمال بار جدید",
+      "template": "اثر اعمال بار جدید",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-PEAK-A",
+      "title": "سرستون پیک آمپر",
+      "template": "پیک بار تابستان (آمپر)",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-PEAK-MW",
+      "title": "سرستون پیک مگاوات",
+      "template": "پیک بار تابستان (مگاوات)",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-PF",
+      "title": "سرستون ضریب توان",
+      "template": "ضریب توان در پیک",
+      "vars": []
+    }
+  ]
+}

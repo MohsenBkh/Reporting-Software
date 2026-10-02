@@ -1,0 +1,54 @@
+{
+  "domain": "forecast",
+  "description": "تحلیل روند رشد و پیش‌بینی بار (بخش ۱۹ سند: متن بر اساس وضعیت واقعی)",
+  "rules": [
+    {
+      "id": "FC-REVIEW",
+      "name": "کیفیت داده پیش‌بینی ناکافی — نیازمند بررسی مهندس",
+      "condition": "fc_review",
+      "text_id": "T-FORECAST-REVIEW",
+      "priority": 90,
+      "severity": "review"
+    },
+    {
+      "id": "FC-MANUAL",
+      "name": "پیش‌بینی دستی کارشناس",
+      "condition": "fc_method == 'manual'",
+      "text_id": "T-FORECAST-MANUAL",
+      "priority": 60,
+      "severity": "normal"
+    },
+    {
+      "id": "FC-REG-HIGH",
+      "name": "رشد زیاد بار",
+      "condition": "fc_method == 'regression' and fc_growth_pct >= growth_high_pct",
+      "text_id": "T-FORECAST-REG-HIGH",
+      "priority": 50,
+      "severity": "warning"
+    },
+    {
+      "id": "FC-REG-LOW",
+      "name": "رشد کم / پایدار",
+      "condition": "fc_method == 'regression' and fc_growth_pct < growth_low_pct",
+      "text_id": "T-FORECAST-REG-LOW",
+      "priority": 30,
+      "severity": "normal"
+    },
+    {
+      "id": "FC-REG-MID",
+      "name": "رشد متوسط",
+      "condition": "fc_method == 'regression'",
+      "text_id": "T-FORECAST-REG-MID",
+      "priority": 20,
+      "severity": "normal"
+    },
+    {
+      "id": "FC-NONE",
+      "name": "داده کافی برای پیش‌بینی وجود ندارد",
+      "condition": "fc_method == 'none'",
+      "text_id": "T-FORECAST-NO-DATA",
+      "priority": 10,
+      "severity": "review"
+    }
+  ]
+}
