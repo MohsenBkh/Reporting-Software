@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (QFileDialog, QFrame, QGridLayout, QHBoxLayout, QL
 
 from app.ui.icons import icon
 from app.ui.theme import tokens
+from app.ui.excel_table import enable_excel_table
 from app.ui.widgets import StatusBadge, page_header, section_title
 
 
@@ -137,9 +138,11 @@ class HomePage(QWidget):
     def _table(t: QTableWidget) -> None:
         t.setEditTriggers(QTableWidget.NoEditTriggers)
         t.setAlternatingRowColors(True)
-        t.setSelectionBehavior(QTableWidget.SelectRows)
+        t.setSelectionBehavior(QTableWidget.SelectItems)
         t.verticalHeader().setVisible(False)
         t.horizontalHeader().setStretchLastSection(True)
+        # v1.2.0: کپی/انتخاب اکسل‌گونه (Ctrl+C، Ctrl+A، منوی راست‌کلیک)
+        enable_excel_table(t, editable=False, auto_add_row=False)
 
     def apply_icons(self, theme: str) -> None:
         self.theme = theme

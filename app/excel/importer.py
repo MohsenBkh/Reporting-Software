@@ -149,13 +149,27 @@ def build_project_from_excel(path: str | Path, settings: AppSettings) -> tuple[O
         manual_rows = [r for r in data.forecast_rows if r["feeder"] == feeder.name]
         if manual_rows:
             pts = [(int(r["year"]), float(r["value"])) for r in manual_rows]
+            feeder.manual_forecast = [ForecastPoint(year=y, value_mw=v, source="EXCEL")
+                                      for y, v in pts]
             feeder.forecast = fc_mod.manual_forecast(pts)
         else:
-            df = getattr(feeder, "_profile_df", None)
-            if df is not None and not df.empty:
-                years, values = lp.annual_peaks(df)
+            # پیک سالانه از ستون «پیک سالانه» فایل (اگر باشد) و در نبود آن از پروفیل همان فایل
+            rows = [(int(y), float(v)) for y, v in
+                    ((r["year"], r["value"]) for r in data.peak_rows
+                     if r["feeder"] == feeder.name)]
+            source = "EXCEL"
+            if not rows:
+                df = getattr(feeder, "_profile_df", None)
+                if df is not None and not df.empty:
+                    years, values = lp.annual_peaks(df)
+                    rows = list(zip(years, values))
+                    source = "PROFILE"
+            if rows:
+                feeder.annual_peaks = [ForecastPoint(year=y, value_mw=v, source=source)
+                                       for y, v in rows]
                 feeder.forecast = fc_mod.linear_forecast(
-                    years, values, horizon=th.forecast_years,
+                    [y for y, _v in rows], [v for _y, v in rows],
+                    horizon=th.forecast_years,
                     min_points=th.forecast_min_history, th=th)
 
     # --- شماره گزارش پیش‌فرض از پیشوند تنظیمات ---

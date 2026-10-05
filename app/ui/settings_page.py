@@ -5,10 +5,21 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QFontComboBox, QFormLayout,
-                               QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QScrollArea, QSpinBox, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFontComboBox,
+                               QFormLayout, QGridLayout, QGroupBox, QHBoxLayout,
+                               QLabel, QLineEdit, QPushButton, QScrollArea,
+                               QSpinBox, QVBoxLayout, QWidget)
+
+from app.ui.widgets import OptionalSpin
+
+
+def make_spin_opt(value, minimum: float, maximum: float, decimals: int, suffix: str = ""):
+    """ورودی عددی الزامی با مقدار پیش‌فرض (برای دامنه شمول مصرف سنگین)."""
+    from app.ui.widgets import make_spin
+    w = make_spin(minimum, maximum, decimals,
+                  float(value) if value is not None else minimum)
+    w.setSuffix(suffix)
+    return w
 
 
 class SettingsPage(QWidget):
@@ -133,6 +144,89 @@ class SettingsPage(QWidget):
         f3.addRow("رشد زیاد بالای (٪/سال):", self.sp_growth_hi)
         root.addWidget(grp3)
 
+        # ------------------------------------------------------------------
+        # «تغییرات آرنا» — آستانه‌های مطالعه مصارف سنگین (بخش study)
+        # ------------------------------------------------------------------
+        study = settings.study
+        grp4 = QGroupBox("حدآستانه‌های مطالعه مصارف سنگین (TAV111-10/00)")
+        f4 = QFormLayout(grp4)
+        self.sp_heavy = make_spin_opt(study.heavy_consumer_min_kw, 0, 1e7, 0, " kW")
+        self.opt_ss_tol = OptionalSpin(study.substation_loading_tolerance_pct, 0, 100, 2, " ٪")
+        self.opt_line_tol = OptionalSpin(study.line_current_tolerance_pct, 0, 100, 2, " ٪")
+        self.opt_ss_warn = OptionalSpin(study.study_substation_loading_warn_pct, 0, 200, 2, " ٪")
+        self.opt_sc_limit = OptionalSpin(study.study_sc_limit_ka, 0, 200, 3, " kA")
+        self.opt_sum_tol = OptionalSpin(study.load_sum_tolerance_kw, 0, 1e6, 1, " kW")
+        # v1.2.0 — آستانه‌های بارگذاری کل فیدر (سیاست بهره‌برداری/دستور کارفرما)
+        self.opt_ld_crit = OptionalSpin(study.feeder_loading_critical_mw, 0, 100, 2, " MW")
+        self.opt_ld_sev = OptionalSpin(study.feeder_loading_severe_mw, 0, 100, 2, " MW")
+        f4.addRow("دامنه شمول مصرف سنگین (مگاوات و بالاتر):", self.sp_heavy)
+        f4.addRow("تلورانس کنترل بارگیری ایستگاه:", self.opt_ss_tol)
+        f4.addRow("تلورانس کنترل سازگاری جریان خط:", self.opt_line_tol)
+        f4.addRow("حد هشدار بارگیری ترانس ایستگاه نزدیک:", self.opt_ss_warn)
+        f4.addRow("حد مجاز جریان اتصال کوتاه تجهیزات:", self.opt_sc_limit)
+        f4.addRow("تلورانس کنترل مجموع بار متقاضیان:", self.opt_sum_tol)
+        f4.addRow("آستانهٔ بارگذاری بحرانی فیدر (پیک فیدر + بار جدید):", self.opt_ld_crit)
+        f4.addRow("آستانهٔ بارگذاری شدیداً بحرانی فیدر:", self.opt_ld_sev)
+        note_ld = QLabel(
+            "این دو آستانه از «سیاست بهره‌برداری / دستور کارفرما» می‌آیند (پیش‌فرض ۷ و ۸ مگاوات) "
+            "و در سند TAV111-10/00 عددی برای آن‌ها ارائه نشده است. اگر خالی شوند، Ruleهای "
+            "بارگذاری با وضعیت MISSING_RULE ثبت می‌شوند و هیچ داوری‌ای انجام نمی‌شود.")
+        note_ld.setObjectName("Muted")
+        note_ld.setWordWrap(True)
+        f4.addRow("", note_ld)
+        note4 = QLabel("هر موردی که «تعریف‌شده» نباشد، Rule وابسته به آن با وضعیت "
+                       "MISSING_RULE ثبت می‌شود و هیچ مقدار پیش‌فرضی فرض نمی‌گردد.")
+        note4.setObjectName("Muted")
+        note4.setWordWrap(True)
+        f4.addRow("", note4)
+        root.addWidget(grp4)
+
+        # ------------------------------------------------------------------
+        # پارامترهای هزینه بررسی اقتصادی (بخش costs)
+        # ------------------------------------------------------------------
+        costs = settings.costs
+        grp5 = QGroupBox("پارامترهای هزینه بررسی اقتصادی (میلیون تومان)")
+        f5 = QFormLayout(grp5)
+        self.opt_cost_oh = OptionalSpin(costs.overhead_per_km_million, 0, 1e6, 1, " /km")
+        self.opt_cost_ug = OptionalSpin(costs.underground_per_km_million, 0, 1e6, 1, " /km")
+        self.opt_cost_ground = OptionalSpin(costs.ground_substation_million, 0, 1e8, 1, " M")
+        self.opt_cost_switch = OptionalSpin(costs.switchgear_million, 0, 1e8, 1, " M")
+        self.opt_cost_prot = OptionalSpin(costs.protection_million, 0, 1e8, 1, " M")
+        self.opt_cost_other = OptionalSpin(costs.other_equipment_million, 0, 1e8, 1, " M")
+        f5.addRow("احداث شبکه هوایی (هر کیلومتر):", self.opt_cost_oh)
+        f5.addRow("احداث شبکه زمینی (هر کیلومتر):", self.opt_cost_ug)
+        f5.addRow("احداث پست زمینی:", self.opt_cost_ground)
+        f5.addRow("تجهیزات کلیدزنی:", self.opt_cost_switch)
+        f5.addRow("تجهیزات حفاظتی:", self.opt_cost_prot)
+        f5.addRow("سایر تجهیزات کلیدی:", self.opt_cost_other)
+        note5 = QLabel("در نبود این پارامترها، برآورد هزینه ساخته نمی‌شود و وضعیت "
+                       "MISSING_DATA ثبت می‌گردد (هیچ عددی هارد‌کد نشده است).")
+        note5.setObjectName("Muted")
+        note5.setWordWrap(True)
+        f5.addRow("", note5)
+        root.addWidget(grp5)
+
+        # ------------------------------------------------------------------
+        # v1.2.0 — بخش‌های گزارش (On/Off)
+        # ------------------------------------------------------------------
+        from app.core.report_sections import REPORT_SECTIONS
+        grp6 = QGroupBox("بخش‌های گزارش — کدام بخش‌ها در گزارش بیایند؟ (On/Off)")
+        g6 = QGridLayout(grp6)
+        self.chk_sections: dict[str, QCheckBox] = {}
+        for i, (key, label) in enumerate(REPORT_SECTIONS):
+            chk = QCheckBox(label)
+            chk.setChecked(settings.section_enabled(key))
+            self.chk_sections[key] = chk
+            g6.addWidget(chk, i // 2, i % 2)
+        note6 = QLabel("بخش خاموش، در گزارش و در پیوست ردیابی نمی‌آید؛ داده‌های آن حذف "
+                       "نمی‌شود و با روشن‌کردن دوباره بازمی‌گردد. (On/Off تک‌تک ردیف‌های "
+                       "ورودی در جدول‌های همان صفحه قابل تنظیم است.)")
+        note6.setObjectName("Muted")
+        note6.setWordWrap(True)
+        g6.addWidget(note6, (len(REPORT_SECTIONS) + 1) // 2, 0, 1, 2)
+        root.addWidget(grp6)
+
+
         # --- کیفیت داده پیش‌بینی ---
         grp4 = QGroupBox("کنترل کیفیت داده پیش‌بینی (در صورت عدم رعایت: REQUIRES_ENGINEER_REVIEW)")
         f4 = QFormLayout(grp4)
@@ -207,6 +301,25 @@ class SettingsPage(QWidget):
         th.forecast_outlier_sigma = self.sp_sigma.value()
         th.forecast_jump_pct = self.sp_jump.value()
         th.forecast_max_gap_years = self.sp_gap.value()
+        # --- مطالعه مصارف سنگین («تغییرات آرنا») ---
+        st = s.study
+        st.heavy_consumer_min_kw = self.sp_heavy.value()
+        st.substation_loading_tolerance_pct = self.opt_ss_tol.value()
+        st.line_current_tolerance_pct = self.opt_line_tol.value()
+        st.study_substation_loading_warn_pct = self.opt_ss_warn.value()
+        st.study_sc_limit_ka = self.opt_sc_limit.value()
+        st.load_sum_tolerance_kw = self.opt_sum_tol.value()
+        st.feeder_loading_critical_mw = self.opt_ld_crit.value()
+        st.feeder_loading_severe_mw = self.opt_ld_sev.value()
+        c = s.costs
+        c.overhead_per_km_million = self.opt_cost_oh.value()
+        c.underground_per_km_million = self.opt_cost_ug.value()
+        c.ground_substation_million = self.opt_cost_ground.value()
+        c.switchgear_million = self.opt_cost_switch.value()
+        c.protection_million = self.opt_cost_prot.value()
+        c.other_equipment_million = self.opt_cost_other.value()
+        for key, chk in getattr(self, "chk_sections", {}).items():
+            setattr(s.report_sections, key, chk.isChecked())
         s.save()
         self.changed.emit()
 
@@ -215,6 +328,11 @@ class SettingsPage(QWidget):
         fresh = AppSettings()
         self.settings.thresholds = fresh.thresholds
         self.settings.fonts = fresh.fonts
+        self.settings.study = fresh.study
+        self.settings.costs = fresh.costs
+        self.settings.report_sections = fresh.report_sections
+        for key, chk in getattr(self, "chk_sections", {}).items():
+            chk.setChecked(True)
         th, f = self.settings.thresholds, self.settings.fonts
         self.sp_vmin.setValue(th.voltage_min_pu)
         self.sp_vmax.setValue(th.voltage_max_pu)
@@ -234,6 +352,19 @@ class SettingsPage(QWidget):
         self.cb_body.setCurrentText(f.body_font)
         self.sp_body.setValue(f.body_size)
         self.cb_heading.setCurrentText(f.heading_font)
+        st2, c2 = self.settings.study, self.settings.costs
+        self.sp_heavy.setValue(st2.heavy_consumer_min_kw or 0.0)
+        self.opt_ss_tol.setValue(st2.substation_loading_tolerance_pct)
+        self.opt_line_tol.setValue(st2.line_current_tolerance_pct)
+        self.opt_ss_warn.setValue(st2.study_substation_loading_warn_pct)
+        self.opt_sc_limit.setValue(st2.study_sc_limit_ka)
+        self.opt_sum_tol.setValue(st2.load_sum_tolerance_kw)
+        self.opt_cost_oh.setValue(c2.overhead_per_km_million)
+        self.opt_cost_ug.setValue(c2.underground_per_km_million)
+        self.opt_cost_ground.setValue(c2.ground_substation_million)
+        self.opt_cost_switch.setValue(c2.switchgear_million)
+        self.opt_cost_prot.setValue(c2.protection_million)
+        self.opt_cost_other.setValue(c2.other_equipment_million)
         self.changed.emit()
 
     def _pick_output(self) -> None:

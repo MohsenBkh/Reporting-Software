@@ -11,12 +11,15 @@ from pathlib import Path
 # ترتیب این importها را تغییر ندهید (تست test_import_order_before_pyside آن را قفل می‌کند).
 # ----------------------------------------------------------------------------
 from app import pyside_compat as _pyside_compat  # noqa: F401  isort:skip
+from app.utils.import_guard import apply_frozen_guards as _apply_frozen_guards  # noqa: F401  isort:skip
+
+_frozen = _apply_frozen_guards()  # محافظ exe: inspect + six + shiboken
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon, QPixmap
 from PySide6.QtWidgets import QApplication
 
-_pyside_compat.patch_six_import_hook()
+_pyside_compat.patch_six_import_hook()  # پس از PySide6: هوک shiboken را بی‌اثر می‌کند
 
 
 def _setup_app_icon(app: QApplication) -> None:
@@ -47,6 +50,10 @@ def _show_splash(app: QApplication):
 
 
 def main() -> int:
+    if "--smoke-test" in sys.argv[1:] or "--self-check" in sys.argv[1:]:
+        from app.utils.selfcheck import run_smoke_test
+        return run_smoke_test()
+
     from app.utils.errors import install_excepthook, setup_logging
     setup_logging()
     app = QApplication(sys.argv)

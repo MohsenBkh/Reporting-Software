@@ -1,0 +1,82 @@
+{
+  "domain": "study_scenario",
+  "kind": "scenario",
+  "description": "تولید سناریوهای تأمین (Scenario 1: احداث فیدر جدید / Scenario 2: استفاده از فیدر موجود یا جایگزین). موتور سناریوها را تولید می‌کند ولی هیچ‌سناریویی را انتخاب یا توصیه نمی‌کند مگر معیار انتخاب صریحاً در Rule Set تعریف شده باشد (در نسخه فعلی تعریف نشده است). | v1.2.0: سناریوی «بازآرایی فیدر (انتقال بار)» بر پایهٔ فیدر همجوار نزدیک ثبت‌شده در ورودی‌ها اضافه شد.",
+  "rules": [
+    {
+      "id": "SC-GEN-NEW-FEEDER",
+      "name": "سناریو ۱ — احداث فیدر جدید",
+      "scenario_kind": "new_feeder",
+      "condition": "has_demand_for_analysis",
+      "priority": 60,
+      "title": "احداث حداقل یک فیدر جدید در محدوده مطالعاتی",
+      "technical_basis": "با توجه به داده‌های مطالعاتی (تعداد نقاط تقاضا: {n_demand_points}، بارگذاری فیدرهای نزدیک: {ln_loading_summary}) احداث فیدر جدید به‌عنوان یکی از سناریوهای تأمین قابل بررسی است. مسیر فیدر بایستی به‌صورت میدانی مشخص شود؛ درباره ضرورت احداث، فقط داده‌های همین مطالعه داوری می‌کنند.",
+      "required_network_changes": "احداث فیدر جدید از پست مبدأ (باید تعیین شود) و اتصال آن به شبکه موجود در محدوده تقاضا؛ تعیین مسیر، آرایش و کنترل ظرفیت انتقال بر عهده مهندس است.",
+      "candidate_feeder": "فیدر جدید — منبع، مسیر و آرایش باید میدانی مشخص شود",
+      "required_equipment": [
+        "سکسیونر موتوردار (در صورت نیاز مسیر هوایی/زمینی)",
+        "تجهیزات حفاظتی و کلیدزنی فیدر جدید"
+      ],
+      "evidence": "مبنای تولید سناریو: وجود تقاضای قابل تأمین ({demand_for_analysis_kw} کیلووات) و ثبت {n_demand_points} نقطه تقاضا در محدوده. شاهد مسیر/آرایش شبکه توسط مهندس تکمیل می‌شود.",
+      "review_status": "REQUIRES_ENGINEER_REVIEW",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — سناریوهای پیشنهادی"
+    },
+    {
+      "id": "SC-GEN-EXISTING-FEEDER",
+      "name": "سناریو ۲ — تأمین از فیدر موجود",
+      "scenario_kind": "existing_feeder",
+      "condition": "has_nearby_lines",
+      "priority": 50,
+      "title": "تأمین تقاضا از طریق فیدر موجود شبکه",
+      "technical_basis": "در صورت عدم امکان احداث فیدر جدید، تأمین تقاضا از طریق فیدرهای موجود نزدیک به محل تقاضا بررسی می‌شود. فیدر(های) نامزد: {ln_names}. کفایت ظرفیت و محدوده مجاز بارگذاری فیدر نامزد باید توسط مهندس تأیید شود.",
+      "required_network_changes": "اصلاح/تقویت شبکه موجود در صورت نیاز (بر اساس نتایج پخش بار)، و اتصال تقاضا به فیدر موجود انتخاب‌شده.",
+      "candidate_feeder": "{ln_names}",
+      "required_equipment": [
+        "تجهیزات حفاظتی/کلیدزنی مطابق فیدر نامزد",
+        "تجهیزات اندازه‌گیری و کنترل بار فیدر"
+      ],
+      "evidence": "فیدرهای نامزد از جدول «خطوط نزدیک به محل تقاضا» استخراج شده‌اند: {ln_summary}.",
+      "review_status": "REQUIRES_ENGINEER_REVIEW",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — سناریوهای پیشنهادی"
+    },
+    {
+      "id": "SC-GEN-ALTERNATIVE-FEEDER",
+      "name": "سناریو ۳ — تأمین از فیدر جایگزین",
+      "scenario_kind": "alternative_feeder",
+      "condition": "line_candidates_ge_2",
+      "priority": 40,
+      "title": "تأمین از فیدر جایگزین (مسیر دوم)",
+      "technical_basis": "با توجه به وجود {line_candidates_count} فیدر نامزد در محدوده، تأمین از فیدر جایگزین به‌عنوان مسیر دوم بررسی می‌شود؛ انتخاب بین نامزدها نیازمند بررسی توپولوژیکی و بارگذاری است.",
+      "required_network_changes": "مطالعه مانور/جابجایی بار میان فیدرهای نامزد و کنترل بارگذاری پس از تأمین.",
+      "candidate_feeder": "{ln_names}",
+      "required_equipment": [
+        "تجهیزات کلیدزنی برای مانور میان فیدرها"
+      ],
+      "evidence": "تعداد فیدرهای نامزد: {line_candidates_count}؛ مشخصات هر یک در جدول خطوط نزدیک ثبت شده است.",
+      "review_status": "REQUIRES_ENGINEER_REVIEW",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — سناریوهای پیشنهادی"
+    },
+    {
+      "id": "SC-GEN-REARRANGE",
+      "name": "سناریوی بازآرایی فیدر (انتقال بار به فیدر همجوار نزدیک)",
+      "scenario_kind": "rearrangement",
+      "condition": "has_rearrange_candidate and (feeder_total_ge_critical or feeder_total_ge_severe)",
+      "title": "بازآرایی فیدر و انتقال بار به فیدر همجوار {rearrange_feeder_name}",
+      "technical_basis": "بارگذاری کل فیدر «{feeder_name}» برابر {feeder_total_load_mw} مگاوات است و از آستانهٔ بحرانی عبور کرده؛ فیدر همجوار «{rearrange_feeder_name}» با فاصلهٔ {rearrange_distance_km} کیلومتر در ورودی‌ها ثبت شده است.",
+      "required_network_changes": "انتقال حدود {transfer_proposed_mw} مگاوات بار از فیدر {feeder_name} به فیدر {rearrange_feeder_name} و ثبت نتیجهٔ پخش بار پس از بازآرایی (عامل محدودکننده: {transfer_limiting_factor}).",
+      "candidate_feeder": "{rearrange_feeder_name}",
+      "required_equipment": [
+        "کلید جداکننده/سکسیونر برای مانور",
+        "تجهیزات اندازهگیری و حفاظت مطابق نتایج پخش بار"
+      ],
+      "evidence": "محاسبهٔ صریح Total = پیک فیدر + بار اضافه‌شده و مقایسه با آستانهٔ پیکربندی‌شده؛ کاندید بازآرایی از جدول «فیدرهای همجوار» ورودی‌ها انتخاب شده است.",
+      "review_status": "REQUIRES_ENGINEER_REVIEW",
+      "priority": 45,
+      "source": "سیاست بهره‌برداری (دستور کارفرما)",
+      "source_page": "تنظیمات → مطالعه و هزینه — آستانه‌های بارگذاری فیدر و بازآرایی"
+    }
+  ]
+}

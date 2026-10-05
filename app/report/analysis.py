@@ -48,6 +48,10 @@ class AnalysisService:
         project = self.manager.project
         if project is None:
             return None
+        # سناریوهای تأمین (در صورت نبود) از Rule Engine تولید و در پروژه ثبت می‌شوند؛
+        # این کار پیش از محاسبه اثر انگشت انجام می‌شود تا کش ناپایدار نشود.
+        from app.core import scenarios as scenario_mod
+        scenario_mod.ensure_scenarios(project, self.settings, self.engine)
         fp = project_fingerprint(project, self.settings)
         if force or self._report is None or fp != self._fp:
             charts = Path(self.manager.charts_dir())

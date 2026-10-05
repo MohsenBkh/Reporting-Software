@@ -20,7 +20,7 @@ from app.core.validation import has_errors, summary_counts, validate_project
 from app.report import pipeline
 from app.report.template_manager import TemplateManager
 from app.rules.rule_engine import RuleEngine
-from app.ui.widgets import StatusBadge, page_header
+from app.ui.widgets import StatusBadge, page_header, scrollable
 from app.utils.errors import friendly_error, log_exception
 
 TEMPLATES = {"standard": "قالب استاندارد دفترچه مطالعات (TAV111-10/00 — اردبیل)"}
@@ -74,7 +74,11 @@ class GeneratePage(QWidget):
         self._worker: GenerateWorker | None = None
         self.last_path: Path | None = None
 
-        root = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        inner = QWidget()
+        outer.addWidget(scrollable(inner))
+        root = QVBoxLayout(inner)
         root.setContentsMargins(24, 16, 24, 16)
         root.setSpacing(10)
         root.addWidget(page_header("تولید گزارش",
@@ -102,6 +106,7 @@ class GeneratePage(QWidget):
             row.addWidget(btn)
             gl.addLayout(row)
             self.ready_rows[key] = (badge, msg)
+        self.grp_ready.setMinimumHeight(150)
         root.addWidget(self.grp_ready)
 
         # --- تنظیمات خروجی ---
@@ -187,6 +192,7 @@ class GeneratePage(QWidget):
         self.res_text.setTextInteractionFlags(Qt.TextSelectableByMouse)
         rl.addWidget(self.res_text)
         self.result.setVisible(False)
+        self.result.setMinimumHeight(96)
         root.addWidget(self.result)
         root.addStretch(1)
 

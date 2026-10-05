@@ -17,6 +17,7 @@ from docx.shared import Cm, Pt, RGBColor
 
 from app.core.models import Project, REQUEST_INCREASE
 from app import APP_VERSION
+from app.core.report_types import booklet_title
 from app.core.settings import AppSettings
 from app.report.sections import FigureBlock, GeneratedReport, Paragraph, ReportSection, TableSpec
 from app.utils.jalali import jalali_month_year
@@ -137,14 +138,21 @@ def shade_cell(cell, hex_color: str) -> None:
 def cell_text(cell, text: str, *, font_fa: str, size: int, bold=False,
               align=WD_ALIGN_PARAGRAPH.CENTER, color: RGBColor | None = None,
               font_latin: str = "Times New Roman") -> None:
+    """نوشتن متن در یک خانه جدول — با پشتیبانی از چند خط (\n).
+
+    جدول‌های دفترچه مطالعات (مثل «پیک بار خط») چند مقدار را در یک خانه دارند
+    (MVA / MW / A)؛ این تابع هر خط را در یک پاراگراف جداگانه می‌نویسد.
+    """
     cell.text = ""
-    p = cell.paragraphs[0]
-    p.alignment = align
-    set_rtl(p)
-    p.paragraph_format.space_after = Pt(2)
-    p.paragraph_format.space_before = Pt(2)
-    run = p.add_run(str(text))
-    style_run(run, font_fa, size, bold=bold, color=color, font_latin=font_latin)
+    lines = [ln for ln in str(text).split("\n")] or [""]
+    for idx, line in enumerate(lines):
+        p = cell.paragraphs[0] if idx == 0 else cell.add_paragraph()
+        p.alignment = align
+        set_rtl(p)
+        p.paragraph_format.space_after = Pt(1)
+        p.paragraph_format.space_before = Pt(1)
+        run = p.add_run(line)
+        style_run(run, font_fa, size, bold=bold, color=color, font_latin=font_latin)
 
 
 def _field(paragraph, instr: str) -> None:
@@ -225,7 +233,7 @@ class WordGenerator:
     def _set_properties(self, doc: Document) -> None:
         cp = doc.core_properties
         cp.title = self.project.title_text()
-        cp.subject = "دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر"
+        cp.subject = booklet_title(getattr(self.project, "report_type", ""))
         cp.author = self.project.expert_name or self.settings.company_name
         cp.language = "fa-IR"
         cp.keywords = f"ReportForge {APP_VERSION}"
@@ -273,7 +281,7 @@ class WordGenerator:
         cp = right_cell.paragraphs[0]
         cp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         set_rtl(cp)
-        r = cp.add_run("دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر")
+        r = cp.add_run(booklet_title(getattr(self.project, "report_type", "")))
         style_run(r, f.body_font, 10, bold=True)
         cp2 = left_cell.paragraphs[0]
         cp2.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -353,7 +361,7 @@ class WordGenerator:
         add_par(doc, self.settings.office_name, font_fa=f.body_font,
                 size=12, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=24)
 
-        add_par(doc, "دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر",
+        add_par(doc, booklet_title(getattr(self.project, "report_type", "")),
                 font_fa=f.heading_font, size=22, bold=True,
                 align=WD_ALIGN_PARAGRAPH.CENTER, space_after=30,
                 color=RGBColor(0x1F, 0x4E, 0x79))
@@ -413,9 +421,12 @@ class WordGenerator:
         for block in sec.blocks:
             if isinstance(block, Paragraph):
                 style = ("item" if block.style == "item" else "body")
-                add_par(doc, block.text, font_fa=f.body_font, size=f.body_size,
-                        bold=(style == "item"),
-                        align=WD_ALIGN_PARAGRAPH.JUSTIFY)
+                for line in str(block.text).split("\n"):
+                    if not line.strip():
+                        continue
+                    add_par(doc, line, font_fa=f.body_font, size=f.body_size,
+                            bold=(style == "item"),
+                            align=WD_ALIGN_PARAGRAPH.JUSTIFY)
             elif isinstance(block, TableSpec):
                 self._table(doc, block)
             elif isinstance(block, FigureBlock):
@@ -424,12 +435,13 @@ class WordGenerator:
     # ------------------------------------------------------------------
     def _table(self, doc: Document, spec: TableSpec) -> None:
         f = self.f
-        # عنوان جدول — بالای جدول (مطابق نمونه‌ها)
-        cap = add_par(doc, spec.caption, font_fa=f.body_font, size=f.body_size - 1,
-                      bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4,
-                      color=RGBColor(0, 0, 0))
-        cap.style = doc.styles["Caption"]
-        cap.paragraph_format.keep_with_next = True
+        # عنوان جدول — بالای جدول (مطابق نمونه‌ها)؛ خالی = جدول بدون عنوان
+        if spec.caption:
+            cap = add_par(doc, spec.caption, font_fa=f.body_font, size=f.body_size - 1,
+                          bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4,
+                          color=RGBColor(0, 0, 0))
+            cap.style = doc.styles["Caption"]
+            cap.paragraph_format.keep_with_next = True
 
         n_cols = max((len(r) for r in spec.header_rows + spec.body_rows), default=1)
         n_head = len(spec.header_rows)

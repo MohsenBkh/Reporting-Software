@@ -101,6 +101,16 @@ def create_template(path: str | Path) -> Path:
         ws4.column_dimensions[get_column_letter(i)].width = 14
     ws4.append(["1404/05/02", "فیدر 1 اردبیل", 2.5, 0.9])
 
+    # --- شیت پیک سالانه (داده واقعی — مبنای پیش‌بینی، مستقل از پروفیل) ---
+    ws6 = wb.create_sheet("پیک سالانه (داده واقعی)")
+    ws6.sheet_view.rightToLeft = True
+    ws6.append(PEAK_HEADERS)
+    _style_header_row(ws6, 1, len(PEAK_HEADERS))
+    for i, h in enumerate(PEAK_HEADERS, 1):
+        ws6.column_dimensions[get_column_letter(i)].width = max(16, len(h) + 4)
+    ws6.append(["فیدر 1 اردبیل", 1402, 2.4])
+    ws6.append(["فیدر 1 اردبیل", 1403, 2.75])
+
     # --- شیت پیش‌بینی (اختیاری/دستی) ---
     ws5 = wb.create_sheet("پیش‌بینی")
     ws5.sheet_view.rightToLeft = True
@@ -111,6 +121,9 @@ def create_template(path: str | Path) -> Path:
 
     wb.save(path)
     return Path(path)
+
+
+PEAK_HEADERS = ["نام فیدر", "سال", "پیک واقعی (MW)", "منبع"]
 
 
 def _norm_header(value) -> str:
@@ -128,6 +141,7 @@ class ExcelData:
         self.powerflow: list[dict] = []
         self.profile_rows: list[dict] = []
         self.forecast_rows: list[dict] = []
+        self.peak_rows: list[dict] = []      # پیک سالانه واقعی (مبنای پیش‌بینی)
 
 
 def read_workbook(path: str | Path) -> tuple[ExcelData, list[str]]:
@@ -211,6 +225,27 @@ def read_workbook(path: str | Path) -> tuple[ExcelData, list[str]]:
                         break
             if rec.get("date") is not None and rec.get("p_mw") is not None:
                 data.profile_rows.append(rec)
+
+    # --- پیک سالانه واقعی (اختیاری — مبنای پیش‌بینی) ---
+    for sheet_name in ("پیک سالانه (داده واقعی)", "پیک سالانه", "داده واقعی"):
+        if sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            headers = [_norm_header(h) for h in next(ws.iter_rows(min_row=1, max_row=1, values_only=True))]
+            col = {h: i for i, h in enumerate(headers)}
+            k_name = _norm_header("نام فیدر")
+            k_year = _norm_header("سال")
+            k_val = next((c for c in (_norm_header("پیک واقعی (MW)"), _norm_header("پیک (MW)"),
+                                      _norm_header("پیک")) if c in col), None)
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row:
+                    continue
+                name = row[col[k_name]] if k_name in col and col[k_name] < len(row) else None
+                year = row[col[k_year]] if k_year in col and col[k_year] < len(row) else None
+                val = row[col[k_val]] if k_val and col[k_val] < len(row) else None
+                if name and year is not None and val is not None:
+                    data.peak_rows.append({"feeder": str(name).strip(),
+                                           "year": year, "value": val})
+            break
 
     # --- پیش‌بینی دستی (اختیاری) ---
     if "پیش‌بینی" in wb.sheetnames:

@@ -1,0 +1,225 @@
+{
+  "domain": "study_substation",
+  "kind": "analysis",
+  "description": "ایستگاه‌های نزدیک به محل تقاضا — فاصله، ظرفیت، درصد بارگیری ترانس‌ها و تعداد فیدر (مرجع: جدول «ایستگاه‌های نزدیک به محل تقاضا»، صفحه ۲ دفترچه / صفحه ۱۰ از ۱۵)",
+  "rules": [
+    {
+      "id": "SS-DESCRIBE",
+      "name": "شرح وضعیت ایستگاه نزدیک",
+      "domain": "study_substation",
+      "condition": "ss_complete",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 50,
+      "requires": [
+        "ss_name",
+        "ss_distance_km"
+      ],
+      "inputs": [
+        "ss_name",
+        "ss_distance_km",
+        "ss_transformer_capacity_mva",
+        "ss_t1_loading_pct",
+        "ss_t2_loading_pct",
+        "ss_t1_peak_mva",
+        "ss_t2_peak_mva",
+        "ss_feeder_count"
+      ],
+      "calculated": [
+        "ss_max_loading_pct",
+        "ss_computed_t1_pct",
+        "ss_computed_t2_pct"
+      ],
+      "finding": "ایستگاه «{ss_name}» در فاصله {ss_distance_km:.2f} کیلومتری محل تقاضا با ظرفیت {ss_transformer_capacity_mva:.2f} مگاولت‌آمپر؛ درصد بارگیری T1 برابر {ss_t1_loading_pct:.2f}٪ (پیک {ss_t1_peak_mva:.2f} مگاولت‌آمپر) و T2 برابر {ss_t2_loading_pct:.2f}٪ (پیک {ss_t2_peak_mva:.2f} مگاولت‌آمپر) در سال {ss_peak_year} و تعداد فیدر {ss_feeder_count:.0f}.",
+      "evidence": "همه مقادیر جدول «ایستگاه‌های نزدیک به محل تقاضا» به‌صورت داده ورودی ثبت شده‌اند؛ هیچ درصد بارگذاری‌ای محاسبه یا فرض نشده است.",
+      "recommended_text": "در جدول ایستگاه‌های نزدیک به محل تقاضا، ایستگاه «{ss_name}» با فاصله تقریبی {ss_distance_km:.2f} کیلومتر، ظرفیت {ss_transformer_capacity_mva:.2f} مگاولت‌آمپر و تعداد {ss_feeder_count:.0f} فیدر برقرار است.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول ایستگاه‌های نزدیک به محل تقاضا",
+      "engineer_review_required": false
+    },
+    {
+      "id": "SS-DATA-INCOMPLETE",
+      "name": "داده ایستگاه ناقص",
+      "domain": "study_substation",
+      "condition": "has_substations and not ss_complete",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 55,
+      "inputs": [
+        "ss_name",
+        "ss_distance_km",
+        "ss_transformer_capacity_mva"
+      ],
+      "calculated": [
+        "ss_missing_fields"
+      ],
+      "finding": "اطلاعات ایستگاه «{ss_name}» ناقص است؛ فیلدهای ناموجود: {ss_missing_fields}.",
+      "evidence": "صف متناظر جدول ایستگاه‌های نزدیک به محل تقاضا در ورودی ناقص است.",
+      "recommended_text": "",
+      "engineer_review_required": true,
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول ایستگاه‌های نزدیک به محل تقاضا",
+      "source": "TAV111-10/00"
+    },
+    {
+      "id": "SS-LOADING-CHECK-NO-THRESHOLD",
+      "name": "کنترل سازگاری درصد بارگیری با پیک و ظرفیت — آستانه تلورانس تعریف‌نشده",
+      "domain": "study_substation",
+      "condition": "ss_loading_check_data_ok and not has_substation_loading_tolerance_pct",
+      "status": "MISSING_RULE",
+      "severity": "review",
+      "priority": 52,
+      "requires": [
+        "ss_t1_loading_pct",
+        "ss_t1_peak_mva",
+        "ss_transformer_capacity_mva"
+      ],
+      "thresholds": [
+        {
+          "key": "substation_loading_tolerance_pct",
+          "label": "تلورانس کنترل سازگاری درصد بارگیری ایستگاه",
+          "basis": "config",
+          "note": "این تلورانس در سند مرجع ارائه نشده و در پیکربندی نرم‌افزار نیز تعریف نشده است؛ کنترل ناسازگاری تا تعیین آن معطل می‌ماند. مقادیر محاسبه‌شده در calculated_values ثبت شده است."
+        }
+      ],
+      "inputs": [
+        "ss_name",
+        "ss_t1_loading_pct",
+        "ss_t1_peak_mva",
+        "ss_transformer_capacity_mva"
+      ],
+      "calculated": [
+        "ss_computed_t1_pct",
+        "ss_loading_diff_t1_pct"
+      ],
+      "finding": "برای کنترل سازگاری بین پیک بار ({ss_t1_peak_mva:.2f} مگاولت‌آمپر) و درصد بارگیری ثبت‌شده ({ss_t1_loading_pct:.2f}٪) در ایستگاه «{ss_name}»، تلورانس لازم است و تعریف نشده است. مقدار محاسبه‌شده از نسبت پیک به ظرفیت {ss_computed_t1_pct:.2f}٪ است؛ داوری درباره سازگاری تا تعیین آستانه انجام نمی‌شود.",
+      "evidence": "هیچ تلورانسی از سوی موتور فرض نشده است؛ اختلاف محاسبه‌شده {ss_loading_diff_t1_pct:.2f} واحد درصد است.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول ایستگاه‌های نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "SS-LOADING-MISMATCH",
+      "name": "ناسازگاری درصد بارگیری ترانس با پیک/ظرفیت ثبت‌شده",
+      "domain": "study_substation",
+      "condition": "ss_loading_check_data_ok and has_substation_loading_tolerance_pct and ss_loading_mismatch",
+      "status": "REQUIRES_ENGINEER_REVIEW",
+      "severity": "review",
+      "priority": 58,
+      "requires": [
+        "ss_t1_loading_pct",
+        "ss_t1_peak_mva",
+        "ss_transformer_capacity_mva"
+      ],
+      "thresholds": [
+        {
+          "key": "substation_loading_tolerance_pct",
+          "label": "تلورانس کنترل سازگاری درصد بارگیری ایستگاه",
+          "basis": "config",
+          "note": "تلورانس صرفاً برای کنترل سازگاری داده است و معیار فنی تصمیم‌گیری نیست."
+        }
+      ],
+      "inputs": [
+        "ss_name",
+        "ss_t1_loading_pct",
+        "ss_t1_peak_mva",
+        "ss_transformer_capacity_mva"
+      ],
+      "calculated": [
+        "ss_computed_t1_pct",
+        "ss_loading_diff_t1_pct"
+      ],
+      "finding": "در ایستگاه «{ss_name}» درصد بارگیری ثبت‌شده T1 برابر {ss_t1_loading_pct:.2f}٪ است، در حالی که نسبت پیک به ظرفیت ({ss_t1_peak_mva:.2f} از {ss_transformer_capacity_mva:.2f} مگاولت‌آمپر) مقدار {ss_computed_t1_pct:.2f}٪ می‌دهد؛ اختلاف {ss_loading_diff_t1_pct:.2f} واحد درصد و بیش از تلورانس کنترل است.",
+      "evidence": "محاسبه مستقل از داده‌های ثبت‌شده انجام شده؛ موتور هیچ‌کدام از دو مقدار را جایگزین نمی‌کند و تصمیم به مهندس واگذار می‌شود.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول ایستگاه‌های نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "SS-LOADING-LEVEL",
+      "name": "سطح بارگیری ایستگاه نزدیک",
+      "domain": "study_substation",
+      "condition": "ss_complete and has_study_substation_loading_warn_pct and ss_max_loading_pct > study_substation_loading_warn_pct",
+      "status": "WARNING",
+      "severity": "warning",
+      "priority": 45,
+      "requires": [
+        "ss_max_loading_pct"
+      ],
+      "thresholds": [
+        {
+          "key": "study_substation_loading_warn_pct",
+          "label": "حد هشدار بارگیری ترانس‌های ایستگاه نزدیک",
+          "basis": "config",
+          "note": "این حد در صفحات مرجع ارائه نشده است؛ تا تعریف‌نشدن آن، هیچ داوری‌ای درباره کفایت ظرفیت ایستگاه انجام نمی‌شود."
+        }
+      ],
+      "inputs": [
+        "ss_name",
+        "ss_t1_loading_pct",
+        "ss_t2_loading_pct"
+      ],
+      "calculated": [
+        "ss_max_loading_pct"
+      ],
+      "finding": "حداکثر بارگیری ترانس‌های ایستگاه «{ss_name}» برابر {ss_max_loading_pct:.2f}٪ و بیش از حد هشدار {study_substation_loading_warn_pct:.2f}٪ است.",
+      "evidence": "حد هشدار از پیکربندی خوانده می‌شود و مبنای آن در سند مرجع صریح نیست.",
+      "recommended_text": "بارگیری ترانس‌های ایستگاه «{ss_name}» در پیک بار سال {ss_peak_year} به {ss_max_loading_pct:.2f}٪ رسیده است و پیش از تأمین بار جدید باید ظرفیت ایستگاه بررسی شود.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول ایستگاه‌های نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "SS-NO-DATA",
+      "name": "نبود داده ایستگاه‌های نزدیک",
+      "domain": "study_substation",
+      "condition": "not has_substations",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 30,
+      "inputs": [],
+      "calculated": [],
+      "finding": "هیچ ایستگاه نزدیکی به محل تقاضا ثبت نشده است؛ جدول «ایستگاه‌های نزدیک به محل تقاضا» (فاصله، ظرفیت، بارگیری ترانس‌ها، تعداد فیدر) باید تکمیل شود.",
+      "evidence": "مرجع ساختار جدول: صفحه ۲ دفترچه مطالعات (صفحه ۱۰ از ۱۵ سند).",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول ایستگاه‌های نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "SS-LOADING-LEVEL-NO-THRESHOLD",
+      "name": "سطح بارگیری ایستگاه نزدیک — حد هشدار تعریف‌نشده",
+      "domain": "study_substation",
+      "condition": "ss_complete and not has_study_substation_loading_warn_pct",
+      "status": "MISSING_RULE",
+      "severity": "review",
+      "priority": 44,
+      "requires": [
+        "ss_max_loading_pct"
+      ],
+      "thresholds": [
+        {
+          "key": "study_substation_loading_warn_pct",
+          "label": "حد هشدار بارگیری ترانس‌های ایستگاه نزدیک",
+          "basis": "config",
+          "note": "این حد در صفحات مرجع ارائه نشده است؛ تا تعریف‌نشدن آن، درباره کفایت ظرفیت ایستگاه هیچ داوری‌ای انجام نمی‌شود."
+        }
+      ],
+      "inputs": [
+        "ss_name",
+        "ss_t1_loading_pct",
+        "ss_t2_loading_pct"
+      ],
+      "calculated": [
+        "ss_max_loading_pct"
+      ],
+      "finding": "حداکثر بارگیری ثبت‌شده ترانس‌های ایستگاه «{ss_name}» برابر {ss_max_loading_pct:.2f}٪ است، اما حد هشدار بارگیری تعریف نشده و داوری درباره کفایت ظرفیت انجام نمی‌شود.",
+      "evidence": "حد هشدار باید توسط کاربر/مهندس تعیین شود؛ مقدار جایگزین فرض نمی‌شود.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول ایستگاه‌های نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    }
+  ]
+}

@@ -1,0 +1,489 @@
+{
+  "domain": "study_line",
+  "kind": "analysis",
+  "description": "خطوط نزدیک به محل تقاضا — مقایسه صریح قبل/بعد: پیک بار، جریان، افت ولتاژ و جریان اتصال کوتاه (مرجع: جدول «خطوط نزدیک به محل تقاضا»، صفحه ۳ دفترچه / صفحه ۱۱ از ۱۵)",
+  "rules": [
+    {
+      "id": "LN-PEAK-DESCRIBE",
+      "name": "شرح پیک بار خط نزدیک",
+      "domain": "study_line",
+      "condition": "has_line_peak",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 50,
+      "requires": [
+        "line_name",
+        "line_peak_mva"
+      ],
+      "inputs": [
+        "line_name",
+        "line_distance_m",
+        "line_peak_mva",
+        "line_peak_mw",
+        "line_peak_current_a"
+      ],
+      "calculated": [],
+      "finding": "خط «{line_name}» در فاصله {line_distance_m:.0f} متری محل تقاضا؛ پیک بار خط در سال {line_peak_year} برابر {line_peak_mva:.2f} مگاولت‌آمپر معادل {line_peak_mw:.2f} مگاوات و پیک جریان {line_peak_current_a:.1f} آمپر.",
+      "evidence": "مقادیر جدول «خطوط نزدیک به محل تقاضا» به‌صورت داده ورودی ثبت شده‌اند.",
+      "recommended_text": "نزدیک‌ترین خط به محل تقاضا «{line_name}» با فاصله تقریبی {line_distance_m:.0f} متر است؛ پیک بار خط در سال {line_peak_year} برابر {line_peak_mva:.2f} مگاولت‌آمپر و {line_peak_mw:.2f} مگاوات (جریان {line_peak_current_a:.1f} آمپر) گزارش شده است.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": false
+    },
+    {
+      "id": "LN-DELTA-CALC",
+      "name": "محاسبه صریح تغییر قبل/بعد (Delta = After − Before)",
+      "domain": "study_line",
+      "condition": "has_line_before_after",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 60,
+      "requires": [
+        "line_v_before_pct",
+        "line_v_after_pct"
+      ],
+      "inputs": [
+        "line_name",
+        "line_v_before_pct",
+        "line_v_after_pct",
+        "line_peak_current_a"
+      ],
+      "calculated": [
+        "line_delta_v_pp",
+        "line_delta_v_rel_pct"
+      ],
+      "finding": "تغییر افت ولتاژ انتهای خط «{line_name}» ناشی از اتصال بار جدید: از {line_v_before_pct:.2f}٪ به {line_v_after_pct:.2f}٪؛ Delta = After − Before = {line_delta_v_pp:+.2f} واحد درصد ({line_delta_v_rel_pct:+.1f}٪ نسبت به قبل).",
+      "evidence": "هر دو مقدار «افت ولتاژ انتهای خط قبل/بعد از اتصال بار جدید بر اساس پیک بار {line_peak_year}» از ورودی خوانده و تفاضل آن‌ها محاسبه شده است.",
+      "recommended_text": "افزایش بار متقاضی باعث افزایش افت ولتاژ انتهای خط {line_name} از {line_v_before_pct:.2f} به {line_v_after_pct:.2f} درصد شده است.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": false
+    },
+    {
+      "id": "LN-ABSOLUTE-VS-DELTA",
+      "name": "تفکیک افت ولتاژ مطلق از تغییر ناشی از متقاضی",
+      "domain": "study_line",
+      "condition": "has_line_before_after",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 45,
+      "requires": [
+        "line_v_before_pct",
+        "line_v_after_pct"
+      ],
+      "inputs": [
+        "line_v_before_pct",
+        "line_v_after_pct"
+      ],
+      "calculated": [
+        "line_delta_v_pp"
+      ],
+      "finding": "افت ولتاژ مطلق انتهای خط پس از اتصال بار جدید {line_v_after_pct:.2f}٪ است؛ این مقدار با تغییر ناشی از متقاضی ({line_delta_v_pp:+.2f} واحد درصد) یکی نیست و در ارزیابی، سهم موجود و سهم متقاضی تفکیک می‌شود.",
+      "evidence": "قاعده صریح صورت‌مسئله: مقدار مطلق After هرگز با تغییر ناشی از متقاضی اشتباه گرفته نمی‌شود.",
+      "recommended_text": "بر اساس پیک بار سال {line_peak_year}، افت ولتاژ انتهای خط پیش از اتصال بار {line_v_before_pct:.2f} درصد و پس از اتصال بار {line_v_after_pct:.2f} درصد است که نشان‌دهنده تغییر {line_delta_v_pp:+.2f} واحد درصدی ناشی از بار جدید است.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": false
+    },
+    {
+      "id": "LN-DELTA-EXCEEDS-LIMIT",
+      "name": "حد تغییر مجاز ولتاژ پس از اتصال بار جدید",
+      "domain": "study_line",
+      "condition": "has_line_before_after and has_voltage_change_max_pct and line_delta_v_pp > voltage_change_max_pct",
+      "status": "WARNING",
+      "severity": "warning",
+      "priority": 65,
+      "requires": [
+        "line_delta_v_pp"
+      ],
+      "thresholds": [
+        {
+          "key": "voltage_change_max_pct",
+          "label": "حد مجاز تغییر ولتاژ پس از اتصال بار",
+          "basis": "document",
+          "note": "سقف تغییر ولتاژ طبق دستورالعمل اتصال مصارف سنگین (TAV111-10/00)."
+        }
+      ],
+      "inputs": [
+        "line_name",
+        "line_v_before_pct",
+        "line_v_after_pct"
+      ],
+      "calculated": [
+        "line_delta_v_pp"
+      ],
+      "finding": "تغییر افت ولتاژ انتهای خط «{line_name}» ناشی از بار جدید ({line_delta_v_pp:.2f} واحد درصد) از حد مجاز {voltage_change_max_pct:.2f}٪ بیشتر است.",
+      "evidence": "حد مجاز از پیکربندی/دستورالعمل خوانده شده و در context ثبت است.",
+      "recommended_text": "تغییر افت ولتاژ انتهای خط {line_name} ناشی از اتصال بار جدید ({line_delta_v_pp:.2f} واحد درصد) از حد مجاز {voltage_change_max_pct:.2f} درصد دستورالعمل بیشتر است و اقدام اصلاحی لازم است.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-PREEXISTING-DROP",
+      "name": "افت ولتاژ موجود، بزرگ‌تر از سهم متقاضی",
+      "domain": "study_line",
+      "condition": "has_line_before_after and line_delta_v_pp >= 0 and line_v_before_pct > line_delta_v_pp",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 40,
+      "requires": [
+        "line_v_before_pct",
+        "line_delta_v_pp"
+      ],
+      "inputs": [
+        "line_v_before_pct",
+        "line_v_after_pct"
+      ],
+      "calculated": [
+        "line_delta_v_pp"
+      ],
+      "finding": "افت ولتاژ موجود در ابتدای بررسی ({line_v_before_pct:.2f}٪) بزرگ‌تر از سهم ناشی از متقاضی ({line_delta_v_pp:.2f} واحد درصد) است؛ بخش عمده افت ولتاژ ناشی از بار جدید نیست.",
+      "evidence": "مقایسه سهم قبل از اتصال بار و تغییر ناشی از آن؛ مطابق منطق گزارش نمونه (افت ولتاژ موجود ≠ ناشی از بار جدید).",
+      "recommended_text": "توجه: افت ولتاژ موجود در خط {line_name} ناشی از بار متقاضی نبوده و بخشی از افت ولتاژ انتهای خط، پیش از اتصال بار جدید نیز موجود است.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": false
+    },
+    {
+      "id": "LN-VDROP-ORDER-ERROR",
+      "name": "ترتیب نامعتبر افت ولتاژ قبل/بعد — خطای داده",
+      "domain": "study_line",
+      "condition": "has_line_before_after and line_v_after_pct < line_v_before_pct",
+      "status": "DATA_ERROR",
+      "severity": "review",
+      "priority": 68,
+      "requires": [
+        "line_v_before_pct",
+        "line_v_after_pct"
+      ],
+      "inputs": [
+        "line_name",
+        "line_v_before_pct",
+        "line_v_after_pct"
+      ],
+      "calculated": [
+        "line_delta_v_pp"
+      ],
+      "finding": "افت ولتاژ انتهای خط «{line_name}» پس از اتصال بار جدید ({line_v_after_pct:.2f}٪) کمتر از قبل ({line_v_before_pct:.2f}٪) است؛ با فرض افزایش بار این نتیجه ناسازگار است.",
+      "evidence": "ترتیب داده‌های قبل/بعد یا سناریوی پخش بار باید بازبینی شود؛ موتور مقدار را اصلاح نمی‌کند.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-CURRENT-LIMIT-MISSING",
+      "name": "نبود ظرفیت هدایتی خط — مقایسه جریان ممکن نیست",
+      "domain": "study_line",
+      "condition": "has_line_peak and not has_line_current_limit",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 30,
+      "requires": [
+        "line_peak_current_a"
+      ],
+      "inputs": [
+        "line_name",
+        "line_peak_current_a"
+      ],
+      "calculated": [],
+      "finding": "برای خط «{line_name}» (پیک جریان {line_peak_current_a:.1f} آمپر) ظرفیت هدایتی/حداکثر جریان مجاز ثبت نشده است؛ مقایسه جریان با ظرفیت انجام نمی‌شود.",
+      "evidence": "جدول خطوط نزدیک به محل تقاضا در سند مرجع، ستون ظرفیت هدایتی را ارائه نمی‌کند؛ مقدار جایگزین فرض نمی‌شود.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-CURRENT-OVER",
+      "name": "جریان پیک خط بیش از ظرفیت هدایتی",
+      "domain": "study_line",
+      "condition": "has_line_peak and has_line_current_limit and line_peak_current_a > line_max_current_a",
+      "status": "WARNING",
+      "severity": "warning",
+      "priority": 62,
+      "requires": [
+        "line_peak_current_a",
+        "line_max_current_a"
+      ],
+      "inputs": [
+        "line_name",
+        "line_peak_current_a",
+        "line_max_current_a"
+      ],
+      "calculated": [
+        "line_current_loading_pct"
+      ],
+      "finding": "پیک جریان خط «{line_name}» ({line_peak_current_a:.1f} آمپر) از ظرفیت هدایتی ثبت‌شده ({line_max_current_a:.1f} آمپر) بیشتر است (بارگیری {line_current_loading_pct:.1f}٪).",
+      "evidence": "مقایسه مستقیم دو مقدار ورودی؛ افزایش تلفات به‌تنهایی مبنای اقدام اصلاحی نیست و فقط مبنای هشدار جریان است.",
+      "recommended_text": "پیک جریان خط {line_name} ({line_peak_current_a:.1f} آمپر) از ظرفیت هدایتی آن ({line_max_current_a:.1f} آمپر) بیشتر است.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-CURRENT-OK",
+      "name": "جریان پیک خط در محدوده ظرفیت هدایتی",
+      "domain": "study_line",
+      "condition": "has_line_peak and has_line_current_limit and line_peak_current_a <= line_max_current_a",
+      "status": "PASS",
+      "severity": "normal",
+      "priority": 25,
+      "requires": [
+        "line_peak_current_a",
+        "line_max_current_a"
+      ],
+      "inputs": [
+        "line_name",
+        "line_peak_current_a",
+        "line_max_current_a"
+      ],
+      "calculated": [
+        "line_current_loading_pct"
+      ],
+      "finding": "پیک جریان خط «{line_name}» ({line_peak_current_a:.1f} آمپر) در محدوده ظرفیت هدایتی ثبت‌شده ({line_max_current_a:.1f} آمپر) است (بارگیری {line_current_loading_pct:.1f}٪).",
+      "evidence": "مقایسه مستقیم دو مقدار ورودی.",
+      "recommended_text": "پیک جریان خط {line_name} در محدوده ظرفیت هدایتی آن قرار دارد.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": false
+    },
+    {
+      "id": "LN-CURRENT-CHECK-NO-THRESHOLD",
+      "name": "کنترل سازگاری پیک جریان با مگاولت‌آمپر — تلورانس تعریف‌نشده",
+      "domain": "study_line",
+      "condition": "has_line_peak and has_line_peak_mva and has_network_voltage_kv and not has_line_current_tolerance_pct",
+      "status": "MISSING_RULE",
+      "severity": "review",
+      "priority": 35,
+      "requires": [
+        "line_peak_current_a",
+        "line_peak_mva"
+      ],
+      "thresholds": [
+        {
+          "key": "line_current_tolerance_pct",
+          "label": "تلورانس کنترل سازگاری جریان با بار خط",
+          "basis": "config",
+          "note": "کنترل سازگاری (I = S / (√3 · V)) به تلورانس نیاز دارد؛ در سند مرجع و پیکربندی تعریف نشده است."
+        }
+      ],
+      "inputs": [
+        "line_name",
+        "line_peak_mva",
+        "line_peak_current_a",
+        "network_voltage_kv"
+      ],
+      "calculated": [
+        "line_computed_current_a",
+        "line_current_diff_pct"
+      ],
+      "finding": "برای خط «{line_name}» جریان متناظر با {line_peak_mva:.2f} مگاولت‌آمپر در سطح ولتاژ {network_voltage_kv:.1f} کیلوولت برابر {line_computed_current_a:.1f} آمپر محاسبه می‌شود و مقدار ثبت‌شده {line_peak_current_a:.1f} آمپر است (اختلاف {line_current_diff_pct:.2f}٪). داوری درباره سازگاری تا تعیین تلورانس انجام نمی‌شود.",
+      "evidence": "فرمول سه‌فاز استاندارد روی داده‌های ورودی؛ هیچ تلورانسی فرض نشده است.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-CURRENT-MISMATCH",
+      "name": "ناسازگاری پیک جریان با پیک بار خط",
+      "domain": "study_line",
+      "condition": "has_line_peak and has_line_peak_mva and has_network_voltage_kv and has_line_current_tolerance_pct and line_current_mismatch",
+      "status": "REQUIRES_ENGINEER_REVIEW",
+      "severity": "review",
+      "priority": 66,
+      "requires": [
+        "line_peak_current_a",
+        "line_peak_mva"
+      ],
+      "thresholds": [
+        {
+          "key": "line_current_tolerance_pct",
+          "label": "تلورانس کنترل سازگاری جریان با بار خط",
+          "basis": "config",
+          "note": "تلورانس صرفاً برای کنترل سازگاری داده است."
+        }
+      ],
+      "inputs": [
+        "line_name",
+        "line_peak_mva",
+        "line_peak_current_a",
+        "network_voltage_kv"
+      ],
+      "calculated": [
+        "line_computed_current_a",
+        "line_current_diff_pct"
+      ],
+      "finding": "برای خط «{line_name}»، جریان متناظر با {line_peak_mva:.2f} مگاولت‌آمپر در سطح {network_voltage_kv:.1f} کیلوولت برابر {line_computed_current_a:.1f} آمپر است و با مقدار ثبت‌شده {line_peak_current_a:.1f} آمپر اختلاف {line_current_diff_pct:.2f}٪ دارد که بیش از تلورانس است.",
+      "evidence": "محاسبه مستقل از داده‌ها؛ موتور هیچ‌کدام از دو مقدار را جایگزین نمی‌کند.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-SC-INCONSISTENT",
+      "name": "ناسازگاری جریان اتصال کوتاه (حداقل بیش از حداکثر)",
+      "domain": "study_line",
+      "condition": "has_line_sc and line_sc_min_ka > line_sc_max_ka",
+      "status": "DATA_ERROR",
+      "severity": "review",
+      "priority": 64,
+      "requires": [
+        "line_sc_min_ka",
+        "line_sc_max_ka"
+      ],
+      "inputs": [
+        "line_name",
+        "line_sc_max_ka",
+        "line_sc_min_ka"
+      ],
+      "calculated": [],
+      "finding": "در خط «{line_name}» حداقل جریان اتصال کوتاه ({line_sc_min_ka:.3f} کیلوآمپر) از حداکثر آن ({line_sc_max_ka:.3f} کیلوآمپر) بیشتر است؛ این وضعیت ناسازگار است.",
+      "evidence": "دو مقدار از جدول خطوط نزدیک خوانده شده و بدون اصلاح گزارش می‌شود.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-SC-LIMIT-MISSING",
+      "name": "نبود حد مجاز اتصال کوتاه تجهیزات",
+      "domain": "study_line",
+      "condition": "has_line_sc and not has_study_sc_limit_ka",
+      "status": "MISSING_RULE",
+      "severity": "review",
+      "priority": 32,
+      "requires": [
+        "line_sc_max_ka"
+      ],
+      "thresholds": [
+        {
+          "key": "study_sc_limit_ka",
+          "label": "حد مجاز جریان اتصال کوتاه تجهیزات شبکه",
+          "basis": "config",
+          "note": "حد مجاز اتصال کوتاه در صفحات مرجع ارائه نشده است؛ بنابراین درباره کفایت تحمل تجهیزات هیچ داوری‌ای انجام نمی‌شود و مقدار صرفاً ثبت می‌گردد."
+        }
+      ],
+      "inputs": [
+        "line_name",
+        "line_sc_max_ka",
+        "line_sc_min_ka"
+      ],
+      "calculated": [],
+      "finding": "حداکثر جریان اتصال کوتاه خط «{line_name}» برابر {line_sc_max_ka:.3f} کیلوآمپر و حداقل آن {line_sc_min_ka:.3f} کیلوآمپر ثبت شده است؛ حد مجاز اتصال کوتاه تجهیزات تعریف نشده و داوری درباره کفایت آن انجام نمی‌شود.",
+      "evidence": "داده اتصال کوتاه از جدول خطوط نزدیک؛ آستانه داوری موجود نیست.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-SC-OVER",
+      "name": "جریان اتصال کوتاه بیش از حد مجاز تجهیزات",
+      "domain": "study_line",
+      "condition": "has_line_sc and has_study_sc_limit_ka and line_sc_max_ka > study_sc_limit_ka",
+      "status": "WARNING",
+      "severity": "warning",
+      "priority": 63,
+      "requires": [
+        "line_sc_max_ka"
+      ],
+      "thresholds": [
+        {
+          "key": "study_sc_limit_ka",
+          "label": "حد مجاز جریان اتصال کوتاه تجهیزات شبکه",
+          "basis": "config",
+          "note": "حد از پیکربندی خوانده می‌شود."
+        }
+      ],
+      "inputs": [
+        "line_name",
+        "line_sc_max_ka"
+      ],
+      "calculated": [],
+      "finding": "حداکثر جریان اتصال کوتاه خط «{line_name}» ({line_sc_max_ka:.3f} کیلوآمپر) از حد مجاز {study_sc_limit_ka:.3f} کیلوآمپر بیشتر است؛ تجهیزات حفاظتی/کلیدزنی باید بررسی شوند.",
+      "evidence": "مقایسه مقدار ورودی با حد پیکربندی‌شده.",
+      "recommended_text": "با توجه به جریان اتصال کوتاه {line_sc_max_ka:.3f} کیلوآمپر در خط {line_name}، تحمل تجهیزات حفاظتی و کلیدزنی باید کنترل شود.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-DATA-INCOMPLETE",
+      "name": "داده قبل/بعد خط ناقص",
+      "domain": "study_line",
+      "condition": "has_lines and not has_line_before_after",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 36,
+      "inputs": [
+        "line_name",
+        "line_v_before_pct",
+        "line_v_after_pct"
+      ],
+      "calculated": [
+        "line_missing_fields"
+      ],
+      "finding": "برای خط «{line_name}» داده‌های افت ولتاژ قبل/بعد کامل نیست؛ فیلدهای ناموجود: {line_missing_fields}.",
+      "evidence": "نبود داده باعث توقف تحلیل اثر متقاضی برای این خط می‌شود؛ هیچ عددی تولید نمی‌گردد.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-NO-DATA",
+      "name": "نبود داده خطوط نزدیک",
+      "domain": "study_line",
+      "condition": "not has_lines",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 20,
+      "inputs": [],
+      "calculated": [],
+      "finding": "هیچ خط نزدیکی به محل تقاضا ثبت نشده است؛ جدول «خطوط نزدیک به محل تقاضا» باید تکمیل شود.",
+      "evidence": "مرجع ساختار جدول: صفحه ۳ دفترچه مطالعات (صفحه ۱۱ از ۱۵ سند).",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LN-DELTA-LIMIT-NO-THRESHOLD",
+      "name": "حد تغییر مجاز ولتاژ تعریف‌نشده",
+      "domain": "study_line",
+      "condition": "has_line_before_after and not has_voltage_change_max_pct",
+      "status": "MISSING_RULE",
+      "severity": "review",
+      "priority": 64,
+      "requires": [
+        "line_delta_v_pp"
+      ],
+      "thresholds": [
+        {
+          "key": "voltage_change_max_pct",
+          "label": "حد مجاز تغییر ولتاژ پس از اتصال بار",
+          "basis": "document",
+          "note": "حد تغییر مجاز ولتاژ در Rule Set تعریف نشده است؛ داوری درباره انطباق انجام نمی‌شود."
+        }
+      ],
+      "inputs": [
+        "line_name",
+        "line_v_before_pct",
+        "line_v_after_pct"
+      ],
+      "calculated": [
+        "line_delta_v_pp"
+      ],
+      "finding": "تغییر افت ولتاژ انتهای خط «{line_name}» ({line_delta_v_pp:.2f} واحد درصد) محاسبه شد، اما حد مجاز تغییر ولتاژ تعریف نشده و داوری درباره انطباق انجام نمی‌شود.",
+      "evidence": "آستانه باید در پیکربندی/دستورالعمل تعیین شود.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۱ از ۱۵ — جدول خطوط نزدیک به محل تقاضا",
+      "engineer_review_required": true
+    }
+  ]
+}

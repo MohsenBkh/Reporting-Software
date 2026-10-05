@@ -1,3 +1,111 @@
+# گزارش رفع ایرادات و اصلاحات — نسخه ۱.۲.۰ («اصلاحات نسخهٔ بعدی»)
+
+دستور کار این نسخه شامل پنج بند اصلاحی بود که همه اعمال و تست شده‌اند. مستند فنی کامل:
+`docs/INCREMENTAL_FIXES_v1.2.0.md`. خلاصه در برابر هر بند:
+
+| بند دستور کار | وضعیت | محل اثر |
+|---|---|---|
+| ۱. جدول‌های ورود داده شبیه Excel (Delete/کپی/چسباندن/Enter و رفت‌وبرگشت با Excel) در **همهٔ** جدول‌ها | انجام شد | `app/ui/excel_table.py` + جدول‌های صفحهٔ مطالعه/ورود داده/تحلیل/خانه |
+| ۲. آزمون همیشهٔ «پیک فیدر + بار جدید»؛ ۷ MW ⇒ «بارگذاری بحرانی»، ۸ MW ⇒ «بسیار/شدیداً بحرانی»؛ توضیحات فنی با راهکار بازآرایی (فیدر همجوار نزد ورودی‌ها) یا احداث فیدر جدید | انجام شد | ۱۱ Rule فایل `loading_limit_rules.json` + `app/core/study.py` + گزارش «کنترل بارگذاری کل فیدر» |
+| ۳. کلید On/Off به‌ازای هر ورودی (Excel-گونه، پیش‌فرض روشن، قابل حذف/تخصیص) و حذف ردیف‌های خاموش از گزارش | انجام شد | فیلد `enabled` در مدل + ستون «در گزارش (On/Off)» + فیلتر سراسری گزارش/اعتبارسنجی/محاسبات |
+| ۴. بخش تصاویر: تعیین اولویت/ترتیب شکل‌ها در هر بخش گزارش + افزودن شکل جدید با عنوان/محل/کپشن مستقل (چند شکل برای یک آیتم) | انجام شد | `ProjectImage.section_key/order/caption` + بازنویسی صفحهٔ تصاویر |
+| ۵. نگاشت ستون‌ها فقط با **نام ستون** و نه شماره ستون | انجام شد | همان ماژول + بازبینی همهٔ `_row_*`/`_fill_*` جدول‌ها |
+| ۶. نمایش آستانه‌های ۷/۸ مگاوات در جدول مهندسی فیدر (LD/PEAK) | انجام شد | `build_feeder_loading()` + تب «فیدرهای همجوار» |
+
+### نکات مهم اجرایی
+- **آستانه‌ها هارد‌کد نیستند:** ۷ و ۸ مگاوات از «تنظیمات → مطالعه و هزینه» خوانده می‌شوند
+  (`feeder_loading_critical_mw`، `feeder_loading_severe_mw`)، مبنای ثبت‌شده: «سیاست بهره‌برداری/دستور کارفرما».
+- **آستانه‌های سند دست‌نخورده:** `Loading_heavy` = ۱۰ مگاوات و `S2` = ۳۰ مگاوات تنها برای بارگذاری نسبی
+  و طبقه‌بندی فیدر باقی مانده‌اند؛ حذف/ادغام آن‌ها با باندهای جدید نیازمند تأیید صریح کارفرما است
+  و در این نسخه انجام نشده.
+- **هیچ پیشنهادی خودکار انتخاب نمی‌شود:** هر راهکار با وضعیت «نیازمند تأیید مهندس» گزارش می‌شود.
+- **حذف داده وجود ندارد:** «خاموش‌کردن» یک ردیف فقط آن را از گزارش/تحلیل خارج می‌کند و مقدارها حفظ می‌شوند.
+- **پروژه‌های ۱.۱.x** بدون تغییر باز می‌شوند (فیلدهای جدید با مقدار پیش‌فرض؛ شکل‌های بدون محل به بخش
+  پیش‌فرض «نوع» خود می‌روند).
+
+### آزمون‌های انجام‌شده (محیط Linux/offscreen)
+- `python -m pytest tests -q` (بدون `test_v103_ui.py`) ⇒ **۱۸۵ تست موفق**؛ `tests/test_v120_incremental.py`
+  ⇒ **۳۳ تست موفق**؛ `tests/test_v103_ui.py` ⇒ **۱۲ تست موفق** (جداگانه، به دلیل نیاز به نمایشگر).
+- `python tools/ui_check_study.py` ⇒ PASS (۶ تب، ۳۶ Finding، ۱۶ بخش گزارش، پیش‌نمایش HTML و Word سالم).
+- `python tools/build_demo.py` ⇒ پروژهٔ نمونه + Word نمونهٔ ۱.۲.۰ (بخش `study_loading`، جدول بارگذاری
+  فیدر، هشدار ۷٫۷ MW و وضعیت شدیداً بحرانی ۸٫۴ MW).
+- `python -m app.main --smoke-test` ⇒ `RESULT : OK` (نسخهٔ برنامه: ۱.۲.۰).
+
+
+## ایراد: exe ساخته‌شده با `build_exe.bat` هنگام اجرا کرش می‌کرد
+
+### نشانه
+برنامه پس از دوبار کلیک بسته می‌شد و متن خطا این بود:
+
+```
+AttributeError: '_SixMetaPathImporter' object has no attribute '_path'
+```
+
+### زنجیرهٔ کامل خطا
+```
+reportforge.py:7                     → from app.main import main
+app/main.py:13                       → from app import pyside_compat
+app/pyside_compat.py:19              → from six.moves import _thread, range
+shibokensupport/signature/loader.py:72  feature_imported
+shibokensupport/feature.py:148,159      _mod_uses_pyside → inspect.getsource
+pyi_rth_inspect.py:64                 → inspect.getfile
+inspect.py:928 getfile                → ساخت پیام خطا ⇒ repr(module)
+importlib/_bootstrap.py _module_repr_from_spec
+    return f'<module {name!r} (namespace) from {list(spec.loader._path)}>'
+AttributeError: '_SixMetaPathImporter' object has no attribute '_path'
+```
+
+### تحلیل
+- ماژول‌های مجازی `six` (`six.moves`, `six.moves._thread`, …) با `spec_from_loader`
+  ساخته می‌شوند: `origin = None` و بارگذار `_SixMetaPathImporter` که `_path` ندارد.
+- در **Python 3.12.0–3.12.3**، `_module_repr_from_spec` در شعبهٔ `origin is None`
+  بی‌قید‌و‌شرط `spec.loader._path` را می‌خواند (در 3.12.4 و 3.13 اصلاح شده است).
+- در exe، هوک آمادهٔ PyInstaller (`pyi_rth_inspect`) `inspect.getsourcefile` را
+  طوری عوض می‌کند که برای ماژول بی‌فایل به `inspect.getfile` برسد؛ آن هم برای
+  ساختن پیام خطا ماژول را repr می‌کند ⇒ کرش.
+- هوک Shiboken (`feature_imported`) روی **هر** ماژولی که بعد از PySide6 وارد شود
+  `inspect.getsource` صدا می‌زند؛ همین باعث می‌شود `six.moves` به این مسیر بیفتد.
+
+### اصلاح
+| فایل | نقش |
+|---|---|
+| `app/pyi_rth_reportforge.py` **(جدید)** | Runtime Hook؛ پیش از هر کد برنامه: `inspect` امن، `six.moves*` بی‌خطر، هوک Shiboken بی‌اثر |
+| `app/utils/import_guard.py` **(جدید)** | همان محافظ‌ها برای اجرای سورسی (`python -m app.main`) به‌صورت idempotent |
+| `app/__init__.py` | اجرای محافظ پیش از هر import (اولین خط اجرایی برنامه) |
+| `app/pyside_compat.py` | اجرای محافظ پیش از `from six.moves import …` + مقاوم‌سازی هوک shiboken |
+| `app/main.py` | اجرای صریح محافظ‌ها قبل از PySide6 |
+| `ReportForge.spec` | `runtime_hooks` + `hiddenimports` برای `six.moves*` و `app.utils.import_guard` + `excludes` سبک‌سازی |
+| `app/utils/selfcheck.py` **(جدید)** | `--smoke-test` برای اطمینان از بالا آمدن برنامه در حالت exe |
+| `build_exe.bat` | اجرای خودکار `--smoke-test` پس از ساخت و نمایش `ReportForge-smoke.txt` |
+
+سه ضمانت هم‌زمان:
+1. `inspect.getfile/getsource/getsourcefile` برای ماژول‌های مجازی هیچ‌گاه استثنا/`repr` خطرناک نمی‌سازند.
+2. هر ماژول `six.moves*` یک `__file__` واقعی می‌گیرد و اگر `spec.origin` تهی باشد spec حذف می‌شود
+   ⇒ مسیر `loader._path` هرگز اجرا نمی‌شود (روی همهٔ نسخه‌های Python، نه فقط 3.12.x).
+3. `feature_imported` شبیه‌ساز Shiboken برای `six*` و ماژول‌های بی‌فایل بی‌اثر است
+   (چه پیش از PySide6 و چه پس از آن صدا زده شود).
+
+### تأیید (Verification)
+- **بازتولید خطا در آزمون**: با نصب `_module_repr_from_spec` نسخهٔ 3.12.0 در یک exe آزمایشی،
+  خروجی **عیناً** همان traceback کاربر است (کنترل).
+- **همان exe با Runtime Hook جدید**: `SIM OK` (import شش، repr و getsource سالم).
+- **خود برنامه**: `dist/ReportForge --smoke-test` در محیط frozen ⇒ `RESULT: OK`،
+  ساخت پنجرهٔ اصلی و اجرای حلقهٔ رویداد بدون خطا.
+- `tests/test_v112_exe_guard.py` (۱۴ تست) + کل مجموعه **۱۵۲ تست موفق** + `tools/ui_check_study.py`.
+
+### بازسازی exe (ویندوز)
+```bat
+build_exe.bat
+```
+(پیشنهاد: Python 3.12.4+ یا 3.13؛ در پایان، خودآزمون به‌صورت خودکار اجرا و گزارش نمایش داده می‌شود.)
+اگر فقط می‌خواهید آزمون کنید:
+```bat
+dist\ReportForge.exe --smoke-test
+type dist\ReportForge-smoke.txt
+```
+
+---
+
 # گزارش رفع ایرادات — نسخه ۱.۰.۲
 
 ## ایراد نسخه ۱.۰.۲: خرابی اجرای `run.bat` در ویندوز

@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout
                                QVBoxLayout, QWidget)
 
 from app.core.models import REQUEST_INCREASE, REQUEST_NEW, Project
+from app.core.report_types import (REPORT_TYPE_HEAVY, REPORT_TYPE_RECLOSER,
+                                   REPORT_TYPE_SECTIONALIZER)
 from app.utils.jalali import today_jalali
 
 
@@ -59,10 +61,18 @@ class ProjectPage(QWidget):
         self.ed_office = QLineEdit()
         self.ed_expert = QLineEdit()
 
+        # نوع گزارش (v1.3.0): سنگین / سکشنالایزر / ریکلوزر
+        self.cb_report_type = QComboBox()
+        self.cb_report_type.addItem("متقاضیان سنگین (یک مگاوات و بالاتر)",
+                                    REPORT_TYPE_HEAVY)
+        self.cb_report_type.addItem("مطالعه سکشنالایزر", REPORT_TYPE_SECTIONALIZER)
+        self.cb_report_type.addItem("مطالعه ریکلوزر", REPORT_TYPE_RECLOSER)
+
         form.addRow("عنوان پروژه:", self.ed_name)
         form.addRow("شماره گزارش:", self.ed_number)
         form.addRow("تاریخ گزارش:", self.ed_date)
         form.addRow("نام متقاضی:", self.ed_applicant)
+        form.addRow("نوع گزارش:", self.cb_report_type)
         form.addRow("نوع درخواست:", self.cb_type)
         form.addRow("توان فعلی (kW):", self.sp_existing)
         form.addRow("توان جدید (kW):", self.sp_requested)
@@ -106,18 +116,25 @@ class ProjectPage(QWidget):
         f2.addRow("پیشنهاد نوع کابل:", self.ed_cable)
         root.addWidget(grp2)
 
+        # مشخصات فنی سکشنالایزر/ریکلوزر به تب مجزا منتقل شد (v1.4.0):
+        # صفحه «سکشنالایزر و ریکلوزر» — جدا از مطالعه مصارف سنگین.
+
         # --- اتصال سیگنال‌ها ---
         for w in (self.ed_name, self.ed_number, self.ed_date, self.ed_applicant,
                   self.ed_substation, self.ed_office, self.ed_expert,
                   self.cb_man_source, self.cb_man_target, self.ed_man_date,
                   self.ed_man_note, self.ed_location, self.ed_cable):
             w.textChanged.connect(self._on_change)
-        for w in (self.sp_existing, self.sp_requested, self.sp_man_mw, self.sp_distance):
+        for w in (self.sp_existing, self.sp_requested, self.sp_man_mw,
+                  self.sp_distance):
             w.valueChanged.connect(self._on_change)
         self.cb_type.currentIndexChanged.connect(self._on_type_change)
         self.grp_maneuver.toggled.connect(self._on_change)
+        self.cb_report_type.currentIndexChanged.connect(self._on_report_type_change)
 
+        self._loading = False   # جلوگیری از پیام «ریکلوزر» هنگام بارگذاری پروژه
         self._on_type_change()
+        self._on_report_type_change()
 
     # ------------------------------------------------------------------
     def _on_type_change(self, *args) -> None:
@@ -129,6 +146,23 @@ class ProjectPage(QWidget):
         if lbl is not None:
             lbl.setVisible(is_increase)
         self._update_added()
+        self.changed.emit()
+
+    def _on_report_type_change(self, *args) -> None:
+        """نمایش گروه متناسب با نوع گزارش؛ ریکلوزر هنوز پیاده‌سازی نشده است."""
+        rt = self.cb_report_type.currentData()
+        if rt == REPORT_TYPE_RECLOSER and not getattr(self, "_loading", False):
+            QMessageBox.information(
+                self, "قالب ریکلوزر",
+                "قالب گزارش «مطالعه ریکلوزر» در نسخه‌های بعدی اضافه می‌شود. "
+                "جزئیات این قالب پس از دریافت از کارفرما پیاده‌سازی خواهد شد.")
+            self.cb_report_type.blockSignals(True)
+            idx = self.cb_report_type.findData(REPORT_TYPE_HEAVY)
+            if idx >= 0:
+                self.cb_report_type.setCurrentIndex(idx)
+            self.cb_report_type.blockSignals(False)
+        # مشخصات فنی سکشنالایزر/ریکلوزر در صفحهٔ مجزای «سکشنالایزر و ریکلوزر»
+        # وارد می‌شود؛ این فرم فقط قالب گزارش پروژه را تعیین می‌کند.
         self.changed.emit()
 
     def _update_added(self) -> None:
@@ -150,10 +184,15 @@ class ProjectPage(QWidget):
 
     # ------------------------------------------------------------------
     def load_from(self, project: Project) -> None:
+        self._loading = True
         self.ed_name.setText(project.name)
         self.ed_number.setText(project.report_number)
         self.ed_date.setText(project.date_jalali)
         self.ed_applicant.setText(project.applicant_name)
+        rt = getattr(project, "report_type", "") or REPORT_TYPE_HEAVY
+        idx = self.cb_report_type.findData(rt)
+        if idx >= 0:
+            self.cb_report_type.setCurrentIndex(idx)
         idx = self.cb_type.findData(project.request_type)
         if idx >= 0:
             self.cb_type.setCurrentIndex(idx)
@@ -173,12 +212,15 @@ class ProjectPage(QWidget):
         self.sp_distance.setValue(project.location_distance_m or 0)
         self.ed_cable.setText(project.cable_suggestion or "")
         self._update_added()
+        self._on_report_type_change()   # هنوز با _loading = True → پیام ریکلوزر نمی‌آید
+        self._loading = False
 
     def save_to(self, project: Project) -> None:
         project.name = self.ed_name.text().strip()
         project.report_number = self.ed_number.text().strip()
         project.date_jalali = self.ed_date.text().strip()
         project.applicant_name = self.ed_applicant.text().strip()
+        project.report_type = self.cb_report_type.currentData() or REPORT_TYPE_HEAVY
         project.request_type = self.cb_type.currentData()
         project.existing_power_kw = self.sp_existing.value() or None
         project.requested_power_kw = self.sp_requested.value() or None

@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+ReportForge-smoke.txt
+build/
+dist/
+.pytest_cache/
