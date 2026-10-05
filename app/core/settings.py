@@ -13,6 +13,9 @@ if getattr(sys, "frozen", False):
     # حالت exe: پوشه کنار برنامه ممکن است موقت/فقط‌خواندنی باشد؛
     # تنظیمات باید ماندگار بماند → AppData کاربر
     DATA_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "ReportForge" / "data"
+elif os.environ.get("REPORTFORGE_HOME"):
+    # حالت تست/سندباکس: مسیر جدا تا فایل تنظیمات همراه برنامه آلوده نشود
+    DATA_DIR = Path(os.environ["REPORTFORGE_HOME"]) / "data"
 else:
     DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 SETTINGS_FILE = DATA_DIR / "settings.json"

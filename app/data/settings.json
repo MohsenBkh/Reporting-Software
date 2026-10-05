@@ -6,16 +6,10 @@
   "template_file": "",
   "report_prefix": "DM-18-",
   "output_dir": "",
-  "recent_projects": [
-    "/tmp/pytest-of-user/pytest-10/test_analysis_cache_invalidate0/proj/project.json",
-    "/tmp/pytest-of-user/pytest-10/test_reviews_persist_in_projec0/proj/project.json",
-    "/tmp/pytest-of-user/pytest-10/test_decision_marked_stale_whe0/proj/project.json",
-    "/tmp/pytest-of-user/pytest-10/test_reject_removes_paragraph_0/proj/project.json",
-    "/tmp/pytest-of-user/pytest-10/test_edit_replaces_text_in_rep0/proj/project.json"
-  ],
+  "recent_projects": [],
   "theme": "light",
   "template_name": "standard",
-  "include_appendices": true,
+  "include_appendices": false,
   "open_folder_after": true,
   "fonts": {
     "body_font": "B Nazanin",
@@ -33,7 +27,6 @@
     "loading_normal_pct": 70.0,
     "loading_semi_pct": 85.0,
     "loading_heavy_pct": 100.0,
-    "loading_severe_pct": 115.0,
     "loss_change_warn_pct": 15.0,
     "forecast_years": 5,
     "forecast_min_history": 3,
@@ -47,6 +40,7 @@
     "plausible_voltage_max_pu": 1.3,
     "plausible_pf_min": 0.5,
     "plausible_current_max_a": 2000.0,
-    "plausible_peak_max_mw": 40.0
+    "plausible_peak_max_mw": 40.0,
+    "loading_severe_pct": 115.0
   }
 }
