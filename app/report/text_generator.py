@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""مولد متن گزارش — ترکیب Rule Engine و کتابخانه متن (بخش ۱۸ و ۱۹ سند).
+"""مولد متن گزارش متقاضیان سنگین — ترکیب Rule Engine و کتابخانه متن (بخش ۱۸ و ۱۹ سند).
+
+ساختار بخش‌ها مطابق آخرین گزارش مرجع (مهر ۱۴۰۵):
+    ۱ مقدمه ← ۲ تحلیل بارگذاری ← ۳ پیش‌بینی ← ۴ ایستگاه‌های نزدیک ← ۵ خطوط نزدیک
+    ← ۶ پخش بار قبل ← ۷ پخش بار بعد ← ۸ کنترل بارگذاری و تعدیل بار ← ۹ نتیجه‌گیری و پیشنهادات
 
 اصل: متن بر اساس وضعیت واقعی داده‌ها انتخاب می‌شود، نه متن ثابت.
 """
@@ -11,9 +15,9 @@ from app.core import calculations as calc
 from app.core.findings import (DOMAIN_LABELS_FA, SEVERITY_LABELS_FA, STATUS_LABELS_FA,
                                Finding, finding_key, resolve)
 from app.core import traceability as trace
-from app.core.models import REVIEW_PENDING
 from app.core.forecast import FLAG_LABELS_FA
-from app.core.models import (Project, REQUEST_INCREASE, REQUEST_NEW)
+from app.core.models import (REVIEW_PENDING, Feeder, Project,
+                             REQUEST_INCREASE, REQUEST_NEW)
 from app.core.settings import AppSettings
 from app.report.chart_generator import forecast_chart, profile_chart
 from app.report.sections import FigureBlock, Paragraph, ReportSection, TableSpec
@@ -24,8 +28,11 @@ from app.utils.formatting import fmt
 SECTION_INTRO = "intro"
 SECTION_LOADING = "loading"
 SECTION_FORECAST = "forecast"
+SECTION_STATIONS = "stations"
+SECTION_LINES = "lines"
 SECTION_BEFORE = "before"
 SECTION_AFTER = "after"
+SECTION_CONTROL = "control"
 SECTION_CONCLUSION = "conclusion"
 
 
@@ -55,8 +62,8 @@ class TextGenerator:
     # ------------------------------------------------------------------
     # Finding + بازبینی مهندس (v1.0.3)
     # ------------------------------------------------------------------
-    def _emit(self, sec: ReportSection, domain: str, feeder, rule, text: str) -> None:
-        """ثبت Finding و درج متن نهایی (با لحاظ Accept/Edit/Reject/Override مهندس)."""
+    def _resolve_text(self, domain: str, feeder, rule, text: str) -> str:
+        """ثبت Finding و اعمال تصمیم مهندس؛ متن نهایی را برمی‌گرداند (بدون درج)."""
         fuid = feeder.uid if feeder is not None else ""
         key = finding_key(domain, fuid)
         final, dec, stale = resolve(self.project, key, text)
@@ -69,8 +76,14 @@ class TextGenerator:
         if stale:
             self.report_warnings.append(
                 f"داده‌های ورودی پس از بازبینی «{rule.name}» تغییر کرده است؛ تصمیم قبلی مهندس اعمال شد ولی نیاز به بازبینی مجدد دارد.")
+        return final
+
+    def _emit(self, sec: ReportSection, domain: str, feeder, rule, text: str,
+              style: str = "body") -> None:
+        """ثبت Finding و درج متن نهایی (با لحاظ Accept/Edit/Reject/Override مهندس)."""
+        final = self._resolve_text(domain, feeder, rule, text)
         if final:
-            sec.blocks.append(Paragraph(final))
+            sec.blocks.append(Paragraph(final, style=style))
 
     @staticmethod
     def _quality_text(fc) -> str:
@@ -108,6 +121,12 @@ class TextGenerator:
 
     def _v(self, x, digits=3) -> str:
         return fmt(x, digits)
+
+    def _peak_year(self) -> str:
+        """سال پیک مرجع گزارش (بیشترین سال پیک ثبت‌شده فیدرها)."""
+        year = max((f.peak_year for f in self.project.feeders if f.peak_year),
+                   default=None)
+        return str(year) if year else "—"
 
     @staticmethod
     def _fl(name: str) -> str:
@@ -171,17 +190,19 @@ class TextGenerator:
             self.texts.render("T-INTRO-MAIN", {"REQUEST_PHRASE": request_phrase})))
         sec.blocks.append(Paragraph(item, style="item"))
 
-        # بند ب — موقعیت محل (نمونه ۲)
+        # بند ب — موقعیت محل (مطابق گزارش مرجع: مختصات، فاصله، نوع هادی)
         has_location = p.location_note or p.location_distance_m or self._kind_count("location")
         if has_location:
             loc_figs = self._figures_of_kind("location")
             suffix = "" if loc_figs else "-NOFIG"
             fig_no = str(self.fig_no + 1) if loc_figs else ""
             if p.location_note or p.location_distance_m:
-                location_text = self.texts.render("T-LOCATION-DETAIL" + suffix, {
+                conductor = (p.conductor_type or p.cable_suggestion or "").strip()
+                base = "T-LOCATION-DETAIL" if conductor else "T-LOCATION-DETAIL-NOCOND"
+                location_text = self.texts.render(base + suffix, {
                     "LOCATION_NOTE": p.location_note or "",
                     "DISTANCE_M": fmt(p.location_distance_m, 0),
-                    "CABLE_TYPE": p.cable_suggestion or "—",
+                    "CONDUCTOR_TYPE": conductor,
                     "FIG_NO": fig_no})
             else:
                 location_text = self.texts.render("T-LOCATION-DEFAULT" + suffix, {
@@ -219,9 +240,9 @@ class TextGenerator:
         return sum(1 for i in self.project.images if i.kind == kind)
 
     # ------------------------------------------------------------------
-    # بخش ۲ — تحلیل بارگذاری
+    # بخش ۲ — تحلیل وضعیت بارگذاری
     # ------------------------------------------------------------------
-    def build_loading(self) -> tuple[ReportSection, ReportSection]:
+    def build_loading(self) -> ReportSection:
         p, s = self.project, self.settings
         names = " و ".join(self._fl(n) for n in p.feeder_names) or "—"
         multi = len(p.feeders) > 1
@@ -243,11 +264,8 @@ class TextGenerator:
         sec.blocks.append(Paragraph(self.texts.render(intro_id, {
             "NAMES": names, "FIGS": figs, "S_FIG": sfig, "TBL_PEAK": tbl_label})))
 
-        added = p.added_power_mw()
-
+        # شرح پروفیل بار هر فیدر
         for f in p.feeders:
-            ctx = calc.build_feeder_context(f, p, s)
-            # پیک بار
             if f.profile_stats.n_points:
                 st = f.profile_stats
                 sec.blocks.append(Paragraph(self.texts.render("T-LOAD-PROFILE", {
@@ -257,26 +275,14 @@ class TextGenerator:
                 sec.blocks.append(Paragraph(self.texts.render("T-LOAD-PROFILE-NODATA", {
                     "NAME": self._fl(f.name), "PEAK": fmt(f.peak_load_mw, 2)})))
 
-            # طبقه‌بندی بارگذاری (Rule Engine)
+        # طبقه‌بندی بارگذاری (Rule Engine)
+        for f in p.feeders:
+            ctx = calc.build_feeder_context(f, p, s)
             rule = self.engine.first_match("loading", ctx)
             if rule:
                 self._emit(sec, "loading", f, rule, self.texts.render(rule.text_id, {
                     "CAPACITY": fmt(f.capacity_mw, 2),
                     "PEAK": fmt(f.peak_load_mw, 2)}))
-
-            # اثر بار جدید بر طبقه بارگذاری
-            after_pct = ctx.get("loading_after_pct")
-            if after_pct is not None and added is not None and f.capacity_mw:
-                if after_pct > s.thresholds.loading_heavy_pct:
-                    text_id = "T-LOAD-WITH-NEW-CRITICAL"
-                elif ctx.get("loading_after_class") != ctx.get("loading_class"):
-                    text_id = "T-LOAD-WITH-NEW-CHANGE"
-                else:
-                    text_id = "T-LOAD-WITH-NEW-STABLE"
-                sec.blocks.append(Paragraph(self.texts.render(text_id, {
-                    "ADDED": fmt(added, 2),
-                    "CLASS_AFTER": ctx.get("loading_after_class", "—"),
-                    "CAPACITY": fmt(f.capacity_mw, 2)})))
 
         # جدول ۱ — پیک بار
         peak_tbl = self._peak_table()
@@ -294,10 +300,24 @@ class TextGenerator:
                 caption = self.texts.render("T-CAP-FIG-PROFILE", {"N": str(n), "NAME": self._fl(f.name)})
                 sec.blocks.append(FigureBlock(path=str(out), caption=caption))
 
-        # تصاویر کاربر از نوع network که در مقدمه استفاده نشده‌اند
-        sec.blocks.extend(self._figures_of_kind("network"))
+        # اثر بار جدید بر طبقه بارگذاری — مطابق گزارش مرجع پس از شکل پروفیل
+        added = p.added_power_mw()
+        for f in p.feeders:
+            ctx = calc.build_feeder_context(f, p, s)
+            after_pct = ctx.get("loading_after_pct")
+            if after_pct is not None and added is not None and f.capacity_mw:
+                if after_pct > s.thresholds.loading_heavy_pct:
+                    text_id = "T-LOAD-WITH-NEW-CRITICAL"
+                elif ctx.get("loading_after_class") != ctx.get("loading_class"):
+                    text_id = "T-LOAD-WITH-NEW-CHANGE"
+                else:
+                    text_id = "T-LOAD-WITH-NEW-STABLE"
+                sec.blocks.append(Paragraph(self.texts.render(text_id, {
+                    "ADDED": fmt(added, 2),
+                    "CLASS_AFTER": ctx.get("loading_after_class", "—"),
+                    "CAPACITY": fmt(f.capacity_mw, 2)})))
 
-        return sec, self._build_forecast(names)
+        return sec
 
     def _peak_table(self) -> TableSpec | None:
         """جدول ۱ نمونه‌ها: پیک آمپر / پیک مگاوات / ضریب توان — یک ستون به ازای هر فیدر."""
@@ -320,9 +340,9 @@ class TextGenerator:
         return TableSpec(caption=caption, header_rows=[header], body_rows=rows)
 
     # ------------------------------------------------------------------
-    # پیش‌بینی — زیربخش بخش ۲
+    # بخش ۳ — پیش‌بینی پیک بار در افق پنج‌ساله
     # ------------------------------------------------------------------
-    def _build_forecast(self, names: str) -> ReportSection:
+    def build_forecast(self) -> ReportSection:
         p, s = self.project, self.settings
         sec = ReportSection(SECTION_FORECAST, "پیش‌بینی پیک بار در افق پنج‌ساله")
 
@@ -353,6 +373,9 @@ class TextGenerator:
                         "N": str(n), "YEARS": str(s.thresholds.forecast_years),
                         "NAME": self._fl(f.name)})
                     sec.blocks.append(FigureBlock(path=str(fig_path), caption=caption))
+                # یادداشت روش/کیفیت پیش‌بینی (متن کارشناس) — پس از شکل
+                if (fc.note or "").strip():
+                    sec.blocks.append(Paragraph(fc.note.strip()))
 
         if not any_fc and not p.feeders:
             sec.blocks.append(Paragraph(self.texts.render("T-FORECAST-NO-DATA", {})))
@@ -360,7 +383,104 @@ class TextGenerator:
         return sec
 
     # ------------------------------------------------------------------
-    # بخش ۳ — نتایج پخش بار قبل
+    # بخش ۴ — ایستگاه‌های نزدیک به محل تقاضا
+    # ------------------------------------------------------------------
+    def build_stations(self) -> ReportSection | None:
+        p = self.project
+        stations = [st for st in p.nearby_stations if st.has_data()]
+        if not stations:
+            return None
+        sec = ReportSection(SECTION_STATIONS, "ایستگاه‌های نزدیک به محل تقاضا")
+
+        items = []
+        for st in stations:
+            items.append(self.texts.render("T-STATIONS-SUMMARY-ITEM", {
+                "NAME": st.name,
+                "DISTANCE": fmt(st.distance_km, 2),
+                "CAPACITY": fmt(st.capacity_mva, 2),
+                "FEEDERS": str(st.feeder_count) if st.feeder_count is not None else "—"}))
+        summary = " و ".join(items) + "."
+        sec.blocks.append(Paragraph(
+            self.texts.render("T-STATIONS-INTRO", {"SUMMARY": summary})))
+
+        year = self._peak_year()
+        n = self._next_tbl()
+        header = [self.texts.render("T-STN-HDR", {})] + [st.name for st in stations]
+
+        def row(tid: str, values: list[str], **kw) -> list[str]:
+            return [self.texts.render(tid, kw)] + values
+
+        def pct(v) -> str:
+            return "—" if v is None else f"{fmt(v, 1)}٪"
+
+        rows = [
+            row("T-STN-DIST", [fmt(st.distance_km, 2) for st in stations]),
+            row("T-STN-CAP", [fmt(st.capacity_mva, 2) for st in stations]),
+            row("T-STN-T1-PCT", [pct(st.t1_loading_pct) for st in stations], YEAR=year),
+            row("T-STN-T2-PCT", [pct(st.t2_loading_pct) for st in stations], YEAR=year),
+            row("T-STN-T1-MVA", [fmt(st.t1_loading_mva, 2) for st in stations], YEAR=year),
+            row("T-STN-T2-MVA", [fmt(st.t2_loading_mva, 2) for st in stations], YEAR=year),
+            row("T-STN-FEEDERS", [str(st.feeder_count) if st.feeder_count is not None else "—"
+                                  for st in stations]),
+        ]
+        sec.blocks.append(TableSpec(
+            caption=self.texts.render("T-CAP-STATIONS-TABLE", {"N": str(n)}),
+            header_rows=[header], body_rows=rows))
+        return sec
+
+    # ------------------------------------------------------------------
+    # بخش ۵ — خطوط نزدیک به محل تقاضا
+    # ------------------------------------------------------------------
+    def build_lines(self) -> ReportSection | None:
+        p = self.project
+        lines = [ln for ln in p.nearby_lines if ln.has_data()]
+        if not lines:
+            return None
+        sec = ReportSection(SECTION_LINES, "خطوط نزدیک به محل تقاضا")
+        sec.blocks.append(Paragraph(self.texts.render("T-LINES-INTRO", {})))
+
+        year = self._peak_year()
+        n = self._next_tbl()
+        header = [self.texts.render("T-LIN-HDR", {})] + [ln.name for ln in lines]
+
+        def peak_cell(ln) -> str:
+            parts = []
+            if ln.peak_mva is not None:
+                parts.append(f"{fmt(ln.peak_mva, 2)} MVA")
+            if ln.peak_mw is not None:
+                parts.append(f"{fmt(ln.peak_mw, 2)} MW")
+            if ln.peak_a is not None:
+                parts.append(f"{fmt(ln.peak_a, 0)} A")
+            return "\n".join(parts) if parts else "—"
+
+        def pct(v) -> str:
+            return "—" if v is None else f"{fmt(v, 1)}٪"
+
+        def delta(ln) -> str:
+            d = ln.vdrop_delta_pct()
+            return "—" if d is None else f"{d:+.2f}"
+
+        rows = [
+            [self.texts.render("T-LIN-DIST", {})] + [fmt(ln.distance_m, 0) for ln in lines],
+            [self.texts.render("T-LIN-PEAK", {"YEAR": year})] + [peak_cell(ln) for ln in lines],
+            [self.texts.render("T-LIN-VDROP-BEFORE", {"YEAR": year})] + [pct(ln.vdrop_before_pct) for ln in lines],
+            [self.texts.render("T-LIN-VDROP-AFTER", {"YEAR": year})] + [pct(ln.vdrop_after_pct) for ln in lines],
+            [self.texts.render("T-LIN-VDROP-DELTA", {})] + [delta(ln) for ln in lines],
+        ]
+        sec.blocks.append(TableSpec(
+            caption=self.texts.render("T-CAP-LINES-TABLE", {"N": str(n)}),
+            header_rows=[header], body_rows=rows))
+
+        # یادداشت «افت ولتاژ موجود، ناشی از متقاضی نیست»
+        for ln in lines:
+            d = ln.vdrop_delta_pct()
+            if (ln.vdrop_before_pct or 0) > 0 and (d is None or abs(d) < 0.05):
+                sec.blocks.append(Paragraph(
+                    self.texts.render("T-LINES-NOTE", {"NAME": ln.name}), style="note"))
+        return sec
+
+    # ------------------------------------------------------------------
+    # بخش ۶ — نتایج پخش بار قبل
     # ------------------------------------------------------------------
     def build_before(self) -> ReportSection:
         p = self.project
@@ -390,7 +510,7 @@ class TextGenerator:
         return sec
 
     # ------------------------------------------------------------------
-    # بخش ۴ — نتایج پخش بار پس از اعمال بار
+    # بخش ۷ — نتایج پخش بار پس از اعمال بار
     # ------------------------------------------------------------------
     def build_after(self) -> ReportSection:
         p, s = self.project, self.settings
@@ -426,7 +546,8 @@ class TextGenerator:
                 "VA": self._v(f.after.min_voltage_pu),
                 "REQUEST_WORD": request_word,
             }
-            for domain in ("after_voltage", "current", "loss"):
+            for domain, style in (("after_voltage", "body"),
+                                  ("current", "bullet"), ("loss", "bullet")):
                 rule = self.engine.first_match(domain, ctx)
                 if not rule:
                     continue
@@ -440,15 +561,15 @@ class TextGenerator:
                     vals.update({"L1": fmt(f.before.loss_kw, 0),
                                  "L2": fmt(f.after.loss_kw, 0),
                                  "PCT": fmt(abs(ctx["d_loss_pct"] or 0), 0)})
-                self._emit(sec, domain, f, rule, self.texts.render(rule.text_id, vals))
+                self._emit(sec, domain, f, rule, self.texts.render(rule.text_id, vals),
+                           style=style)
             if (f.before.applicant_bus_voltage_pu is not None
                     and f.after.applicant_bus_voltage_pu is not None):
                 sec.blocks.append(Paragraph(self.texts.render("T-VOLT-BUS", {
                     "VB1": self._v(f.before.applicant_bus_voltage_pu),
-                    "VB2": self._v(f.after.applicant_bus_voltage_pu)})))
+                    "VB2": self._v(f.after.applicant_bus_voltage_pu)}), style="bullet"))
 
-
-        # جدول ۲ — نتایج
+        # جدول نتایج قبل/بعد
         result_tbl = self._result_table()
         if result_tbl:
             sec.blocks.append(result_tbl)
@@ -457,7 +578,7 @@ class TextGenerator:
         return sec
 
     def _result_table(self) -> TableSpec | None:
-        """جدول ۲ نمونه‌ها: وضعیت فعلی / اثر افزایش قدرت."""
+        """جدول نتایج نمونه‌ها: وضعیت فعلی / اثر اعمال بار جدید."""
         p = self.project
         feeders = [f for f in p.feeders if f.before.is_complete() or f.after.is_complete()]
         if not feeders:
@@ -491,11 +612,102 @@ class TextGenerator:
                          body_rows=[row_now, row_new], merges=merges)
 
     # ------------------------------------------------------------------
-    # بخش ۵ — جمع‌بندی
+    # بخش ۸ — کنترل بارگذاری فیدر و راهکارهای تعدیل بار
+    # ------------------------------------------------------------------
+    def _control_needed(self) -> bool:
+        """بخش کنترل فقط وقتی می‌آید که تعدیل بار لازم باشد یا داده‌ای ثبت شده باشد."""
+        p, s = self.project, self.settings
+        for f in p.feeders:
+            if (f.control_solution or "").strip() or f.adjacent_feeders:
+                return True
+            ctx = calc.build_feeder_context(f, p, s)
+            pct_after = ctx.get("loading_after_pct")
+            if pct_after is not None and pct_after > s.thresholds.loading_heavy_pct:
+                return True
+        return False
+
+    def build_control(self) -> ReportSection | None:
+        if not self._control_needed():
+            return None
+        p, s = self.project, self.settings
+        sec = ReportSection(SECTION_CONTROL, "کنترل بارگذاری فیدر و راهکارهای تعدیل بار")
+
+        added = p.added_power_mw()
+        names = " و ".join(self._fl(n) for n in p.feeder_names) or "—"
+        # فیدر بحرانی با بیشترین بارگذاری پس از اعمال بار جدید
+        critical = []
+        for f in p.feeders:
+            ctx = calc.build_feeder_context(f, p, s)
+            pct_after = ctx.get("loading_after_pct")
+            if pct_after is not None and pct_after > s.thresholds.loading_heavy_pct:
+                critical.append((f, ctx))
+        if critical:
+            critical.sort(key=lambda t: t[1]["loading_after_pct"], reverse=True)
+            f, ctx = critical[0]
+            sec.blocks.append(Paragraph(self.texts.render("T-CONTROL-INTRO-CRITICAL", {
+                "ADDED": fmt(added, 2), "YEAR": self._peak_year(),
+                "NAME": self._fl(f.name),
+                "CLASS": ctx.get("loading_after_class", "بحرانی"),
+                "TOTAL": fmt(ctx.get("loading_total_mw"), 2)})))
+        else:
+            sec.blocks.append(Paragraph(self.texts.render("T-CONTROL-INTRO-OK", {
+                "ADDED": fmt(added, 2), "NAMES": names})))
+
+        # فیدرهای همجوار کاندید تعدیل بار
+        for f in p.feeders:
+            if not f.adjacent_feeders:
+                continue
+            lst = "، ".join(
+                (f"{self._fl(a.name)} با بار {fmt(a.load_mw, 2)} مگاوات"
+                 if a.load_mw is not None else self._fl(a.name))
+                for a in f.adjacent_feeders if a.name)
+            if lst:
+                sec.blocks.append(Paragraph(self.texts.render("T-CONTROL-ADJACENT", {
+                    "NAME": self._fl(f.name),
+                    "COUNT": str(len(f.adjacent_feeders)), "LIST": lst})))
+
+        # جدول کنترل بارگذاری کل فیدر و راهکار پیشنهادی
+        feeders = [f for f in p.feeders if f.capacity_mw or (f.control_solution or "").strip()
+                   or f.adjacent_feeders]
+        if feeders and added is not None:
+            n = self._next_tbl()
+            header = [self.texts.render("T-CTL-H-FEEDER", {}),
+                      self.texts.render("T-CTL-H-PEAK", {}),
+                      self.texts.render("T-CTL-H-ADDED", {}),
+                      self.texts.render("T-CTL-H-TOTAL", {}),
+                      self.texts.render("T-CTL-H-CLASS", {}),
+                      self.texts.render("T-CTL-H-SOLUTION", {})]
+            body = []
+            for f in feeders:
+                ctx = calc.build_feeder_context(f, p, s)
+                pct_after = ctx.get("loading_after_pct")
+                klass = ctx.get("loading_after_class", "—") if pct_after is not None else "—"
+                solution = (f.control_solution or "").strip()
+                if not solution and f.adjacent_feeders:
+                    lst = "\n".join(
+                        (f"{self._fl(a.name)} با بار {fmt(a.load_mw, 2)} مگاوات"
+                         if a.load_mw is not None else self._fl(a.name))
+                        for a in f.adjacent_feeders if a.name)
+                    if lst:
+                        solution = self.texts.render("T-CTL-SOL-ADJACENT", {"LIST": lst})
+                body.append([self._fl(f.name), fmt(f.peak_load_mw, 2), fmt(added, 2),
+                             fmt(ctx.get("loading_total_mw"), 2), klass, solution or "—"])
+            sec.blocks.append(TableSpec(
+                caption=self.texts.render("T-CAP-CONTROL-TABLE", {"N": str(n)}),
+                header_rows=[header], body_rows=body))
+
+        # شکل‌های فیدرهای همجوار و پخش بار بازآرایی + تصاویر شبکه باقی‌مانده
+        sec.blocks.extend(self._figures_of_kind("adjacent"))
+        sec.blocks.extend(self._figures_of_kind("reconfig"))
+        sec.blocks.extend(self._figures_of_kind("network"))
+        return sec
+
+    # ------------------------------------------------------------------
+    # بخش ۹ — نتیجه‌گیری و پیشنهادات
     # ------------------------------------------------------------------
     def build_conclusion(self) -> ReportSection:
         p, s = self.project, self.settings
-        sec = ReportSection(SECTION_CONCLUSION, "جمع‌بندی")
+        sec = ReportSection(SECTION_CONCLUSION, "نتیجه‌گیری و پیشنهادات")
         ctx = calc.build_project_context(p, s)
         rule = self.engine.first_match("conclusion", ctx)
         names = " و ".join(self._fl(n) for n in p.feeder_names) or "—"
@@ -503,12 +715,28 @@ class TextGenerator:
         if rule:
             text = self.texts.render(rule.text_id, {
                 "REQUEST_PHRASE": ("افزایش قدرت" if p.request_type == REQUEST_INCREASE
-                                   else "اتصال بار جدید") + f" {p.applicant_name}",
+                                   else "اتصال بار جدید"),
                 "APPLICANT_NAME": p.applicant_name,
                 "S": "" if not multi else "های", "NAMES": names,
                 "MAXCHG": fmt(s.thresholds.voltage_change_max_pct, 0),
                 "ISSUE_SUMMARY": calc.issue_summary(p, s)})
-            self._emit(sec, "conclusion", None, rule, text)
+            analysis = self._resolve_text("conclusion", None, rule, text)
+        else:
+            analysis = self.texts.render("T-CONCL-NODATA", {})
+
+        scenarios = (p.conclusion_scenarios or "").strip()
+        if not scenarios and p.maneuver.enabled:
+            scenarios = self.texts.render("T-CONCL-SCENARIO-MANEUVER", {
+                "SOURCE": self._fl(p.maneuver.source_feeder),
+                "TARGET": self._fl(p.maneuver.target_feeder)})
+
+        hdr = self.texts.render("T-CONCL-HDR", {})
+        header_rows = [[hdr, hdr]]
+        body_rows = [[self.texts.render("T-CONCL-ROW-ANALYSIS", {}), analysis or "—"]]
+        if scenarios:
+            body_rows.append([self.texts.render("T-CONCL-ROW-SCENARIOS", {}), scenarios])
+        sec.blocks.append(TableSpec(caption="", header_rows=header_rows,
+                                    body_rows=body_rows, merges=[(0, 0, 1)]))
         return sec
 
 
@@ -543,31 +771,26 @@ class TextGenerator:
 
     # ------------------------------------------------------------------
     def build_all(self) -> list[ReportSection]:
-        """ساخت کل گزارش + اعمال ویرایش‌های دستی کارشناس (بخش ۲۱)."""
+        """ساخت کل گزارش با ترتیب بخش‌های گزارش مرجع + ویرایش‌های دستی کارشناس."""
+        from app.report.sections import apply_manual_texts
         intro = self.build_intro()
-        loading, forecast = self.build_loading()
+        loading = self.build_loading()
+        forecast = self.build_forecast()
+        stations = self.build_stations()
+        lines = self.build_lines()
         before = self.build_before()
         after = self.build_after()
+        control = self.build_control()
         conclusion = self.build_conclusion()
-        sections = [intro, loading, forecast, before, after, conclusion]
+        sections = [intro, loading, forecast]
+        if stations is not None:
+            sections.append(stations)
+        if lines is not None:
+            sections.append(lines)
+        sections += [before, after]
+        if control is not None:
+            sections.append(control)
+        sections.append(conclusion)
         if getattr(self.settings, "include_appendices", True):
             sections += self.build_appendices()
-
-        # متن دستی کارشناس: پاراگراف‌های بخش را جایگزین می‌کند (جداول/شکل‌ها حفظ می‌شوند)
-        for sec in sections:
-            manual = (self.project.manual_texts or {}).get(sec.key, "").strip()
-            if manual:
-                new_blocks = []
-                inserted = False
-                for b in sec.blocks:
-                    if isinstance(b, Paragraph) and not inserted:
-                        for part in [x.strip() for x in manual.split("\n\n") if x.strip()]:
-                            new_blocks.append(Paragraph(part))
-                        inserted = True
-                    elif not isinstance(b, Paragraph):
-                        new_blocks.append(b)
-                if not inserted:
-                    new_blocks = [Paragraph(x.strip()) for x in manual.split("\n\n") if x.strip()] + new_blocks
-                sec.blocks = new_blocks
-                setattr(sec, "manual", True)
-        return sections
+        return apply_manual_texts(sections, self.project)

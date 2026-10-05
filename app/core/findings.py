@@ -32,7 +32,7 @@ STATUS_LABELS_FA = {REVIEW_PENDING: "در انتظار بازبینی", REVIEW_A
                     REVIEW_EDITED: "ویرایش شده", REVIEW_REJECTED: "رد شده",
                     REVIEW_OVERRIDDEN: "Override شده"}
 DOMAIN_LABELS_FA = {"loading": "بارگذاری", "after_voltage": "ولتاژ", "current": "جریان",
-                    "loss": "تلفات", "forecast": "پیش‌بینی", "conclusion": "جمع‌بندی"}
+                    "loss": "تلفات", "forecast": "پیش‌بینی", "conclusion": "نتیجه‌گیری و پیشنهادات"}
 
 
 _REF_RE = re.compile(r"(شکل|جدول)(‌?های)?\s*[\d۰-۹—،و\s]+")

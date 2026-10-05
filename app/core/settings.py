@@ -38,6 +38,7 @@ class ThresholdSettings:
     loading_normal_pct: float = 70.0      # زیر این مقدار: عادی و نسبتاً کم‌بار
     loading_semi_pct: float = 85.0        # زیر این مقدار: نسبتاً پربار
     loading_heavy_pct: float = 100.0      # زیر/مساوی: پربار — بالاتر: بحرانی
+    loading_severe_pct: float = 115.0     # بالاتر از این مقدار: شدیداً بحرانی (بخش کنترل بارگذاری)
     loss_change_warn_pct: float = 15.0    # هشدار افزایش تلفات (٪)
     forecast_years: int = 5               # افق پیش‌بینی
     forecast_min_history: int = 3         # حداقل داده تاریخی برای رگرسیون
@@ -60,7 +61,7 @@ class ThresholdSettings:
 class AppSettings:
     company_name: str = "شرکت توزیع نیروی برق استان اردبیل"
     unit_name: str = "معاونت مهندسی و برنامه‌ریزی و مطالعات فنی"
-    office_name: str = "گروه هدف‌گذاری مهندسی و نظارت"
+    office_name: str = "دفتر مهندسی و نظارت-گروه GIS و مطالعات فنی سیستم"
     company_logo: str = ""                # مسیر لوگوی صفحه جلد؛ خالی = resource/logo.png همراه برنامه
     template_file: str = ""               # فایل قالب متن کاربر؛ خالی = پیش‌فرض‌های داخلی
     report_prefix: str = "DM-18-"         # پیشوند شماره گزارش

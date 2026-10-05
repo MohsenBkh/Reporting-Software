@@ -9,10 +9,12 @@ import pandas as pd
 
 from app.core import loading_profile as lp
 from app.core import forecast as fc_mod
-from app.core.models import (Feeder, ForecastPoint, Maneuver, PowerFlowResult,
-                             Project, REQUEST_INCREASE, REQUEST_NEW)
+from app.core.models import (Feeder, ForecastPoint, Maneuver, NearbyLine,
+                             NearbyStation, PowerFlowResult, Project,
+                             REQUEST_INCREASE, REQUEST_NEW)
 from app.core.settings import AppSettings
 from app.excel.template import ExcelData, read_workbook
+from app.excel.template import _norm_header as _norm
 
 
 def _fnum(value) -> Optional[float]:
@@ -96,6 +98,8 @@ def build_project_from_excel(path: str | Path, settings: AppSettings) -> tuple[O
         location_note=f.get("location_note", ""),
         location_distance_m=_fnum(f.get("location_distance_m")),
         cable_suggestion=f.get("cable_suggestion", ""),
+        conductor_type=f.get("conductor_type", ""),
+        conclusion_scenarios=f.get("conclusion_scenarios", ""),
     )
     if not project.name:
         project.name = project.title_text()
@@ -117,6 +121,28 @@ def build_project_from_excel(path: str | Path, settings: AppSettings) -> tuple[O
         return None, errors + ["هیچ فیدری در شیت «فیدرها» وارد نشده است."], []
 
     warnings = _apply_powerflow(project, data.powerflow)
+
+    # --- ایستگاه‌ها و خطوط نزدیک به محل تقاضا (اختیاری) ---
+    for rec in data.stations:
+        project.nearby_stations.append(NearbyStation(
+            name=str(rec.get("نام ایستگاه", "")).strip(),
+            distance_km=_fnum(rec.get(_norm("فاصله تا محل تقاضا km"))),
+            capacity_mva=_fnum(rec.get(_norm("ظرفیت ایستگاه mva"))),
+            t1_loading_pct=_fnum(rec.get(_norm("درصد بارگیری ترانس t1 در پیک"))),
+            t2_loading_pct=_fnum(rec.get(_norm("درصد بارگیری ترانس t2 در پیک"))),
+            t1_loading_mva=_fnum(rec.get(_norm("میزان بارگیری ترانس t1 در پیک mva"))),
+            t2_loading_mva=_fnum(rec.get(_norm("میزان بارگیری ترانس t2 در پیک mva"))),
+            feeder_count=_inum(rec.get(_norm("تعداد کل فیدر برقرار")))))
+    for rec in data.lines:
+        project.nearby_lines.append(NearbyLine(
+            name=str(rec.get("نام خط", "")).strip(),
+            distance_m=_fnum(rec.get(_norm("فاصله تا محل تقاضا m"))),
+            peak_mva=_fnum(rec.get(_norm("پیک بار خط mva"))),
+            peak_mw=_fnum(rec.get(_norm("پیک بار خط mw"))),
+            peak_a=_fnum(rec.get(_norm("پیک بار خط a"))),
+            vdrop_before_pct=_fnum(rec.get(_norm("افت ولتاژ انتهای خط قبل از بار جدید درصد"))),
+            vdrop_after_pct=_fnum(rec.get(_norm("افت ولتاژ انتهای خط بعد از بار جدید درصد")))))
+
     from app.core import traceability as _trace
     for _f in project.feeders:
         _trace.mark_all(_f, _trace.SRC_EXCEL, Path(path).name)

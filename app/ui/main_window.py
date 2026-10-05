@@ -325,9 +325,13 @@ class MainWindow(QMainWindow):
         reports = []
         if project.last_report_path:
             reports.append((project.last_report_path, project.last_report_at))
+        if project.is_heavy:
+            type_label = "افزایش قدرت" if project.request_type == "increase" else "تأمین برق جدید"
+        else:
+            type_label = f"مطالعه {project.report_type_short}"
         self.home_page.update_project({
             "name": project.title_text() or project.name, "applicant": project.applicant_name,
-            "type": "افزایش قدرت" if project.request_type == "increase" else "تأمین برق جدید",
+            "type": type_label,
             "feeders": len(project.feeders), "state": state, "status_text": text,
             "done": done, "total": len(workflow.STEPS), "next_key": nk,
             "next_label": labels.get(nk, ""), "reports": reports})

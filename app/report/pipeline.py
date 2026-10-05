@@ -7,9 +7,11 @@ from pathlib import Path
 from typing import Optional
 
 from app.core.models import Project
+from app.core.report_types import REPORT_SECTIONALIZER, is_heavy
 from app.core.settings import AppSettings
 from app.core.validation import validate_project
 from app.report.sections import FigureBlock, GeneratedReport, Paragraph, TableSpec
+from app.report.sectionalizer import SectionalizerTextGenerator
 from app.report.template_manager import TemplateManager
 from app.report.text_generator import TextGenerator
 from app.report.word_generator import WordGenerator
@@ -20,8 +22,13 @@ def build_sections(project: Project, settings: AppSettings,
                    texts: TemplateManager, engine: RuleEngine,
                    charts_dir: Path, image_resolver=None,
                    profile_loader=None) -> GeneratedReport:
-    gen = TextGenerator(project, settings, texts, engine, charts_dir,
-                        image_resolver, profile_loader)
+    if is_heavy(project.report_type):
+        gen = TextGenerator(project, settings, texts, engine, charts_dir,
+                            image_resolver, profile_loader)
+    elif project.report_type == REPORT_SECTIONALIZER:
+        gen = SectionalizerTextGenerator(project, settings, texts)
+    else:
+        raise ValueError(f"نوع گزارش پشتیبانی‌نشده: {project.report_type}")
     report = GeneratedReport(sections=gen.build_all())
     report.findings = gen.findings
     report.warnings = list(gen.report_warnings)
@@ -70,7 +77,7 @@ def report_to_html(report: GeneratedReport, project: Project,
     parts.append(f"""
     <div style="text-align:center; margin-bottom:18px;">
       <div style="font-size:15pt; font-weight:bold;">{esc(settings.company_name)}</div>
-      <div style="font-size:11pt;">دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر</div>
+      <div style="font-size:11pt;">{esc(project.booklet_title())}</div>
       <div style="font-size:13pt; font-weight:bold; margin-top:14px; color:#1F4E79;">{esc(project.title_text())}</div>
       <div style="font-size:10pt; margin-top:8px; color:#555;">
         شماره گزارش: {esc(project.report_number)} &nbsp;|&nbsp; تاریخ: {esc(project.date_jalali)}
@@ -83,8 +90,11 @@ def report_to_html(report: GeneratedReport, project: Project,
         parts.append(f'<h2 style="color:#1F4E79;">{i + 1}- {esc(sec.title)}{tag}</h2>')
         for block in sec.blocks:
             if isinstance(block, Paragraph):
-                cls = "item" if block.style == "item" else ("note" if block.style == "note" else "body")
-                parts.append(f'<p class="{cls}">{esc(block.text)}</p>')
+                if block.style == "bullet":
+                    parts.append(f'<p class="bullet">● {esc(block.text)}</p>')
+                else:
+                    cls = {"item": "item", "note": "note"}.get(block.style, "body")
+                    parts.append(f'<p class="{cls}">{esc(block.text)}</p>')
             elif isinstance(block, TableSpec):
                 parts.append(_table_html(block))
             elif isinstance(block, FigureBlock):
@@ -102,6 +112,7 @@ def report_to_html(report: GeneratedReport, project: Project,
  p.body {{ text-align: justify; margin: 6px 0; }}
  p.item {{ font-weight: bold; }}
  p.note {{ color: #B00; }}
+ p.bullet {{ margin: 4px 24px 4px 0; }}
  h2 {{ font-size: 14pt; border-bottom: 1px solid #ccc; padding-bottom: 4px; }}
  table {{ border-collapse: collapse; margin: 10px auto; direction: rtl; }}
  td, th {{ border: 1px solid #7F7F7F; padding: 5px 10px; font-size: 10.5pt; text-align: center; }}
@@ -112,13 +123,29 @@ def report_to_html(report: GeneratedReport, project: Project,
 
 def _table_html(spec: TableSpec) -> str:
     esc = html_mod.escape
-    out = [f'<p class="cap">{esc(spec.caption)}</p><table>']
-    for row in spec.header_rows:
-        out.append("<tr>" + "".join(
-            f"<th>{esc(c)}</th>" if c else "<th></th>" for c in row) + "</tr>")
+    out = []
+    if spec.caption:
+        out.append(f'<p class="cap">{esc(spec.caption)}</p>')
+    out.append("<table>")
+    # ادغام سلول‌های سربرگ (colspan)
+    spans: dict[int, tuple[int, int]] = {}
+    for (ri, c0, c1) in spec.merges:
+        spans[ri] = (c0, c1)
+    for ri, row in enumerate(spec.header_rows):
+        cells = []
+        skip_to = -1
+        span = spans.get(ri)
+        for ci, c in enumerate(row):
+            if span is not None and span[0] <= ci <= span[1]:
+                if ci == span[0]:
+                    cells.append(f'<th colspan="{span[1] - span[0] + 1}">{esc(c)}</th>')
+                continue
+            cells.append(f"<th>{esc(c)}</th>" if c else "<th></th>")
+        out.append("<tr>" + "".join(cells) + "</tr>")
     for row in spec.body_rows:
         out.append("<tr>" + "".join(
-            f"<td><b>{esc(c)}</b></td>" if i == 0 else f"<td>{esc(c)}</td>"
+            f"<td><b>{esc(c).replace(chr(10), '<br/>')}</b></td>" if i == 0
+            else f"<td>{esc(c).replace(chr(10), '<br/>')}</td>"
             for i, c in enumerate(row)) + "</tr>")
     out.append("</table>")
     return "".join(out)

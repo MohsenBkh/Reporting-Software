@@ -86,6 +86,30 @@ class FeederPage(QWidget):
         f1.addRow("توضیحات:", self.ed_notes)
         rv.addWidget(grp1)
 
+        # --- کنترل بارگذاری و راهکارهای تعدیل بار (بخش ۸ گزارش) ---
+        grp_ctl = self.grp_control = QGroupBox("کنترل بارگذاری و راهکار تعدیل بار (اختیاری)")
+        vc = QVBoxLayout(grp_ctl)
+        fc = QFormLayout()
+        self.ed_solution = QLineEdit()
+        self.ed_solution.setPlaceholderText(
+            "مثال: بازآرایی با فیدرهای همجوار / احداث فیدر جدید")
+        fc.addRow("راهکار پیشنهادی (تعدیل بار):", self.ed_solution)
+        vc.addLayout(fc)
+        self.tbl_adjacent = QTableWidget(0, 2)
+        self.tbl_adjacent.setHorizontalHeaderLabels(["نام فیدر همجوار", "پیک بار (MW)"])
+        self.tbl_adjacent.horizontalHeader().setStretchLastSection(True)
+        self.tbl_adjacent.setAlternatingRowColors(True)
+        self.tbl_adjacent.setMaximumHeight(120)
+        vc.addWidget(self.tbl_adjacent)
+        abtns = QHBoxLayout()
+        self.btn_adj_add = QPushButton("+ فیدر همجوار")
+        self.btn_adj_del = QPushButton("حذف ردیف")
+        abtns.addWidget(self.btn_adj_add)
+        abtns.addWidget(self.btn_adj_del)
+        abtns.addStretch(1)
+        vc.addLayout(abtns)
+        rv.addWidget(grp_ctl)
+
         # --- پیش‌نمایش داده‌های واردشده (Data Preview) ---
         self.grp_preview = QGroupBox("پیش‌نمایش داده‌های همه فیدرها")
         vp = QVBoxLayout(self.grp_preview)
@@ -156,6 +180,10 @@ class FeederPage(QWidget):
         self.btn_stats.clicked.connect(self._show_stats)
         self.btn_auto_forecast.clicked.connect(self._auto_forecast)
         self.btn_manual_fc.clicked.connect(self._manual_forecast)
+        self.ed_solution.textChanged.connect(self._field_changed)
+        self.tbl_adjacent.itemChanged.connect(self._table_changed)
+        self.btn_adj_add.clicked.connect(self._add_adjacent)
+        self.btn_adj_del.clicked.connect(self._del_adjacent)
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -222,6 +250,10 @@ class FeederPage(QWidget):
         for sp in (self.sp_peak, self.sp_peak_year, self.sp_pf, self.sp_peak_i,
                    self.sp_imax, self.sp_capacity):
             sp.setEnabled(enabled)
+        self.ed_solution.setEnabled(enabled)
+        self.tbl_adjacent.setEnabled(enabled)
+        self.btn_adj_add.setEnabled(enabled)
+        self.btn_adj_del.setEnabled(enabled)
         self.tbl_before.setEnabled(enabled)
         self.tbl_after.setEnabled(enabled)
         self.btn_import_profile.setEnabled(enabled)
@@ -241,6 +273,8 @@ class FeederPage(QWidget):
         self.sp_imax.setValue(f.max_current_a or 0)
         self.sp_capacity.setValue(f.capacity_mw or 0)
         self.ed_notes.setText(f.notes)
+        self.ed_solution.setText(f.control_solution or "")
+        self._fill_adjacent(f)
         self._fill_results(self.tbl_before, f.before)
         self._fill_results(self.tbl_after, f.after)
         df = self.manager.get_profile(f)
@@ -275,9 +309,54 @@ class FeederPage(QWidget):
         f.max_current_a = self.sp_imax.value() or None
         f.capacity_mw = self.sp_capacity.value() or None
         f.notes = self.ed_notes.text().strip()
+        f.control_solution = self.ed_solution.text().strip()
+        f.adjacent_feeders = self._read_adjacent()
         self._read_results(self.tbl_before, f.before)
         self._read_results(self.tbl_after, f.after)
         trace.mark_manual_changes(f, _snap)
+
+    # ------------------------------------------------------------------
+    def _fill_adjacent(self, f: Feeder) -> None:
+        t = self.tbl_adjacent
+        t.setRowCount(0)
+        for a in f.adjacent_feeders:
+            r = t.rowCount()
+            t.insertRow(r)
+            t.setItem(r, 0, QTableWidgetItem(a.name))
+            t.setItem(r, 1, QTableWidgetItem("" if a.load_mw is None else str(a.load_mw)))
+
+    def _read_adjacent(self) -> list:
+        from app.core.models import AdjacentFeeder
+        out = []
+        t = self.tbl_adjacent
+        for r in range(t.rowCount()):
+            name = (t.item(r, 0).text().strip() if t.item(r, 0) else "")
+            txt = (t.item(r, 1).text().strip() if t.item(r, 1) else "")
+            if not name:
+                continue
+            try:
+                load = float(txt.replace("٫", ".")) if txt else None
+            except ValueError:
+                load = None
+            out.append(AdjacentFeeder(name=name, load_mw=load))
+        return out
+
+    def _add_adjacent(self) -> None:
+        if self.current is None:
+            return
+        t = self.tbl_adjacent
+        r = t.rowCount()
+        t.insertRow(r)
+        t.setItem(r, 0, QTableWidgetItem(""))
+        t.setItem(r, 1, QTableWidgetItem(""))
+        t.editItem(t.item(r, 0))
+
+    def _del_adjacent(self) -> None:
+        t = self.tbl_adjacent
+        rows = sorted({i.row() for i in t.selectedIndexes()}, reverse=True)
+        for r in rows or ([t.rowCount() - 1] if t.rowCount() else []):
+            t.removeRow(r)
+        self._table_changed()
 
     @staticmethod
     def _read_results(table: QTableWidget, result) -> None:

@@ -11,6 +11,9 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from app.core.report_types import (REPORT_HEAVY, REPORT_SECTIONALIZER, booklet_title,
+                                   type_label, type_short)
+
 REQUEST_NEW = "new"          # تأمین برق جدید
 REQUEST_INCREASE = "increase"  # افزایش قدرت
 
@@ -46,6 +49,60 @@ class Maneuver:
     transferred_mw: Optional[float] = None  # مقدار تقریبی بار منتقل‌شده
     date_jalali: str = ""       # تاریخ مانور
     note: str = ""              # توضیحات کارشناس (عدم قطعیت و ...)
+
+
+# ---------------------------------------------------------------------------
+@dataclass
+class NearbyStation:
+    """ایستگاه (پست فوق توزیع) نزدیک به محل تقاضا — بخش «ایستگاه‌های نزدیک» گزارش."""
+    name: str = ""
+    distance_km: Optional[float] = None        # فاصله تقریبی تا محل تقاضا (km)
+    capacity_mva: Optional[float] = None       # ظرفیت ایستگاه (MVA)
+    t1_loading_pct: Optional[float] = None     # درصد بارگیری ترانس T1 در پیک (%)
+    t2_loading_pct: Optional[float] = None     # درصد بارگیری ترانس T2 در پیک (%)
+    t1_loading_mva: Optional[float] = None     # میزان بارگیری ترانس T1 در پیک (MVA)
+    t2_loading_mva: Optional[float] = None     # میزان بارگیری ترانس T2 در پیک (MVA)
+    feeder_count: Optional[int] = None         # تعداد کل فیدر برقرار
+
+    def has_data(self) -> bool:
+        return bool(self.name) and any(
+            v is not None for v in (self.distance_km, self.capacity_mva,
+                                    self.t1_loading_pct, self.t2_loading_pct,
+                                    self.t1_loading_mva, self.t2_loading_mva,
+                                    self.feeder_count))
+
+
+# ---------------------------------------------------------------------------
+@dataclass
+class NearbyLine:
+    """خط نزدیک به محل تقاضا — بخش «خطوط نزدیک» گزارش."""
+    name: str = ""
+    distance_m: Optional[float] = None         # فاصله تقریبی تا محل تقاضا (m)
+    peak_mva: Optional[float] = None           # پیک بار خط (MVA)
+    peak_mw: Optional[float] = None            # پیک بار خط (MW)
+    peak_a: Optional[float] = None             # پیک بار خط (A)
+    vdrop_before_pct: Optional[float] = None   # افت ولتاژ انتهای خط قبل از بار جدید (%)
+    vdrop_after_pct: Optional[float] = None    # افت ولتاژ انتهای خط بعد از بار جدید (%)
+
+    def vdrop_delta_pct(self) -> Optional[float]:
+        """تغییر افت ولتاژ ناشی از بار جدید (واحد درصد)."""
+        if self.vdrop_before_pct is None or self.vdrop_after_pct is None:
+            return None
+        return self.vdrop_after_pct - self.vdrop_before_pct
+
+    def has_data(self) -> bool:
+        return bool(self.name) and any(
+            v is not None for v in (self.distance_m, self.peak_mva, self.peak_mw,
+                                    self.peak_a, self.vdrop_before_pct,
+                                    self.vdrop_after_pct))
+
+
+# ---------------------------------------------------------------------------
+@dataclass
+class AdjacentFeeder:
+    """فیدر همجوار — کاندید مانور/تعدیل بار در بخش کنترل بارگذاری."""
+    name: str = ""
+    load_mw: Optional[float] = None            # پیک بار فیدر همجوار (MW)
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +179,9 @@ class Feeder:
     forecast: ForecastResult = field(default_factory=ForecastResult)
     manual_forecast: list[ForecastPoint] = field(default_factory=list)
     notes: str = ""
+    # --- کنترل بارگذاری و راهکارهای تعدیل بار (بخش ۸ گزارش) ---
+    control_solution: str = ""                 # راهکار پیشنهادی تعدیل بار (متن کارشناس)
+    adjacent_feeders: list[AdjacentFeeder] = field(default_factory=list)
     # منبع هر داده ورودی: نام فیلد -> "EXCEL:file" | "CSV:file" | "MANUAL" (v1.0.3)
     data_sources: dict[str, str] = field(default_factory=dict)
 
@@ -138,6 +198,8 @@ IMAGE_KINDS = {
     "forecast": "پیش‌بینی",
     "before": "خروجی پخش بار — قبل",
     "after": "خروجی پخش بار — بعد",
+    "adjacent": "موقعیت فیدرهای همجوار",
+    "reconfig": "پخش بار پس از بازآرایی/مانور",
     "other": "سایر",
 }
 
@@ -176,12 +238,26 @@ class ReviewDecision:
 
 # ---------------------------------------------------------------------------
 @dataclass
+class SectionalizerInfo:
+    """داده‌های مطالعه سکشنالایزر — ساختار اولیه (جزئیات تکمیلی متعاقباً ارائه می‌شود)."""
+    feeder_name: str = ""        # فیدر هدف مطالعه
+    location: str = ""           # محل پیشنهادی نصب سکشنالایزر
+    purpose: str = ""            # هدف / دلیل نصب
+    notes: str = ""              # سایر توضیحات کارشناس
+
+    def has_data(self) -> bool:
+        return bool(self.feeder_name or self.location or self.purpose or self.notes)
+
+
+# ---------------------------------------------------------------------------
+@dataclass
 class Project:
     """پروژه مطالعه — واحد اصلی ذخیره‌سازی."""
     uid: str = field(default_factory=_uid)
     name: str = ""                        # عنوان پروژه
     report_number: str = ""               # مثلاً DM-18-001
     date_jalali: str = ""                 # 1405/06/15
+    report_type: str = REPORT_HEAVY       # نوع مطالعه: heavy | sectionalizer | recloser
 
     applicant_name: str = ""              # نام متقاضی
     request_type: str = REQUEST_INCREASE  # new | increase
@@ -195,11 +271,22 @@ class Project:
     # --- موقعیت محل (عمدتاً برای تأمین برق جدید) ---
     location_note: str = ""               # توضیح موقعیت (مختصات و ...)
     location_distance_m: Optional[float] = None  # فاصله تا نزدیک‌ترین تیر (m)
-    cable_suggestion: str = ""            # پیشنهاد نوع کابل
+    cable_suggestion: str = ""            # پیشنهاد نوع کابل (سازگاری با نسخه‌های قبل)
+    conductor_type: str = ""              # نوع هادی شبکه موجود (مثلاً AL-126 (ACSR-Hyena))
 
     maneuver: Maneuver = field(default_factory=Maneuver)
     feeders: list[Feeder] = field(default_factory=list)
     images: list[ProjectImage] = field(default_factory=list)
+
+    # --- ایستگاه‌ها و خطوط نزدیک به محل تقاضا (بخش‌های ۴ و ۵ گزارش) ---
+    nearby_stations: list[NearbyStation] = field(default_factory=list)
+    nearby_lines: list[NearbyLine] = field(default_factory=list)
+
+    # --- نتیجه‌گیری و پیشنهادات (بخش ۹ گزارش) ---
+    conclusion_scenarios: str = ""        # متن سناریوهای پیشنهادی (کارشناس)
+
+    # --- داده‌های مطالعه سکشنالایزر ---
+    sectionalizer: SectionalizerInfo = field(default_factory=SectionalizerInfo)
 
     # متن‌های ویرایش‌شده دستی کارشناس: کلید بخش -> متن
     manual_texts: dict[str, str] = field(default_factory=dict)
@@ -216,6 +303,24 @@ class Project:
     @property
     def request_type_label(self) -> str:
         return REQUEST_TYPE_LABELS.get(self.request_type, self.request_type)
+
+    @property
+    def report_type_label(self) -> str:
+        return type_label(self.report_type)
+
+    @property
+    def report_type_short(self) -> str:
+        return type_short(self.report_type)
+
+    @property
+    def is_heavy(self) -> bool:
+        """پروژه‌های قدیمی (بدون فیلد نوع) نیز مطالعات متقاضیان سنگین هستند."""
+        from app.core.report_types import is_heavy
+        return is_heavy(self.report_type)
+
+    def booklet_title(self) -> str:
+        """عنوان دفترچه روی جلد و سربرگ — بسته به نوع مطالعه."""
+        return booklet_title(self.report_type)
 
     @property
     def feeder_names(self) -> list[str]:
@@ -241,10 +346,26 @@ class Project:
 
     def title_text(self) -> str:
         """عنوان گزارش مطابق ادبیات نمونه‌ها."""
+        if not self.is_heavy:
+            return self._study_title()
         if self.request_type == REQUEST_INCREASE:
             return (f"افزایش قدرت {self.applicant_name} از قدرت "
                     f"{self._num(self.existing_power_kw)} به {self._num(self.requested_power_kw)} کیلووات")
-        return f"تأمین برق به {self.applicant_name} به ظرفیت {self._num(self.requested_power_kw)} کیلووات"
+        return (f"تأمین برق متقاضی {self.applicant_name} به ظرفیت "
+                f"{self._num(self.requested_power_kw)} کیلووات")
+
+    def _study_title(self) -> str:
+        """عنوان گزارش‌های غیر مصارف سنگین (سکشنالایزر/ریکلوزر)."""
+        if self.report_type == REPORT_SECTIONALIZER:
+            study = "مطالعه نصب سکشنالایزر"
+        else:
+            study = "مطالعه نصب ریکلوزر"
+        feeder = (self.sectionalizer.feeder_name or "").strip()
+        if feeder:
+            return f"{study} بر روی {feeder}"
+        if self.applicant_name:
+            return f"{study} — {self.applicant_name}"
+        return study
 
     @staticmethod
     def _num(v: Optional[float]) -> str:
@@ -300,24 +421,31 @@ _NESTED: dict[type, dict[str, type]] = {
     ForecastPoint: {},
     ForecastResult: {},
     ProfileStats: {},
+    NearbyStation: {},
+    NearbyLine: {},
+    AdjacentFeeder: {},
+    SectionalizerInfo: {},
     Feeder: {"before": PowerFlowResult, "after": PowerFlowResult,
              "profile_stats": ProfileStats, "forecast": ForecastResult},
     ProjectImage: {},
     ReviewDecision: {},
-    Project: {"maneuver": Maneuver},
+    Project: {"maneuver": Maneuver, "sectionalizer": SectionalizerInfo},
 }
 
 # فیلدهای لیستی که عضو آن‌ها dataclass است — هنگام بازسازی از JSON
 _NESTED_LISTS: dict[type, dict[str, type]] = {
     ForecastResult: {"points": ForecastPoint},
-    Feeder: {"manual_forecast": ForecastPoint},
-    Project: {"feeders": Feeder, "images": ProjectImage},
+    Feeder: {"manual_forecast": ForecastPoint, "adjacent_feeders": AdjacentFeeder},
+    Project: {"feeders": Feeder, "images": ProjectImage,
+              "nearby_stations": NearbyStation, "nearby_lines": NearbyLine},
 }
 
 
 def feeder_from_dict(data: dict) -> Feeder:
     f = _build(Feeder, data, _NESTED[Feeder])
     f.manual_forecast = [ForecastPoint(**p) for p in (data.get("manual_forecast") or [])]
+    f.adjacent_feeders = [_build(AdjacentFeeder, a, {}) if isinstance(a, dict) else a
+                          for a in (data.get("adjacent_feeders") or [])]
     return f
 
 
@@ -325,6 +453,10 @@ def project_from_dict(data: dict) -> Project:
     p = _build(Project, data, _NESTED[Project])
     p.feeders = [feeder_from_dict(fd) for fd in (data.get("feeders") or [])]
     p.images = [_build(ProjectImage, im, {}) for im in (data.get("images") or [])]
+    p.nearby_stations = [_build(NearbyStation, st, {}) if isinstance(st, dict) else st
+                         for st in (data.get("nearby_stations") or [])]
+    p.nearby_lines = [_build(NearbyLine, ln, {}) if isinstance(ln, dict) else ln
+                      for ln in (data.get("nearby_lines") or [])]
     p.reviews = {}
     for key, rd in (data.get("reviews") or {}).items():
         if isinstance(rd, dict):

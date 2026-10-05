@@ -12,6 +12,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from app.core.models import Project, REQUEST_INCREASE
+from app.core.report_types import REPORT_SECTIONALIZER, is_heavy
 from app.core.settings import AppSettings
 
 ERROR = "error"      # خطای ضروری → دکمه تولید غیرفعال
@@ -47,6 +48,10 @@ def _fa_digits_to_en(s: str) -> str:
 def validate_project(project: Project, settings: AppSettings) -> list[ValidationItem]:
     th = settings.thresholds
     items: list[ValidationItem] = []
+
+    # انواع غیر مصارف سنگین (سکشنالایزر و ...) اعتبارسنجی مستقل دارند.
+    if not is_heavy(project.report_type):
+        return _validate_study_project(project)
 
     # ---------------- اطلاعات پروژه ----------------
     missing = []
@@ -196,6 +201,46 @@ def validate_project(project: Project, settings: AppSettings) -> list[Validation
                 _add(items, WARNING, f"فیدر {label} مانور («{v}») در فهرست فیدرها نیست.", STEP_PROJECT)
         if man.transferred_mw is not None and man.transferred_mw <= 0:
             _add(items, WARNING, "مقدار بار منتقل‌شده در مانور باید مثبت باشد.", STEP_PROJECT)
+    items.append(ValidationItem(OK, "قالب گزارش", ""))
+    return items
+
+
+def _validate_study_project(project: Project) -> list[ValidationItem]:
+    """اعتبارسنجی پروژه‌های مطالعه سکشنالایزر/ریکلوزر — سبک و مستقل از مصارف سنگین.
+
+    جزئیات فنی این مطالعات متعاقباً تکمیل می‌شود؛ فعلاً فقط فیلدهای پایه بررسی می‌شوند
+    تا چرخه «پروژه → تولید گزارش» بدون مانع کار کند.
+    """
+    items: list[ValidationItem] = []
+    missing = []
+    if not project.report_number:
+        missing.append("شماره گزارش")
+    if not project.date_jalali:
+        missing.append("تاریخ گزارش")
+    if project.report_type == REPORT_SECTIONALIZER:
+        secz = project.sectionalizer
+        if not secz.feeder_name.strip():
+            missing.append("فیدر هدف مطالعه")
+    else:
+        if not project.applicant_name:
+            missing.append("نام متقاضی")
+    if missing:
+        _add(items, ERROR, "اطلاعات پروژه ناقص است: " + "، ".join(missing), STEP_PROJECT,
+             "فیلدهای یادشده را در صفحه «پروژه» تکمیل کنید.")
+    else:
+        _add(items, OK, "اطلاعات پروژه", STEP_PROJECT)
+
+    if project.date_jalali and not _DATE_RE.match(_fa_digits_to_en(project.date_jalali)):
+        _add(items, WARNING, f"قالب تاریخ «{project.date_jalali}» استاندارد نیست.", STEP_PROJECT,
+             "تاریخ را به‌صورت 1405/06/15 وارد کنید.")
+
+    if project.report_type == REPORT_SECTIONALIZER:
+        secz = project.sectionalizer
+        _add(items, OK if secz.has_data() else WARNING,
+             "داده‌های مطالعه سکشنالایزر" if secz.has_data()
+             else "جزئیات مطالعه سکشنالایزر هنوز تکمیل نشده است (اختیاری).",
+             STEP_INPUT)
+        _add(items, OK, f"ساختار گزارش سکشنالایزر ({'قابل ویرایش در پیش‌نمایش'})", STEP_ANALYSIS)
     items.append(ValidationItem(OK, "قالب گزارش", ""))
     return items
 

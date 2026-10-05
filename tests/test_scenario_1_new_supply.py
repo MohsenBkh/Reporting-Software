@@ -36,13 +36,13 @@ def test_new_supply_1500kw_single_feeder(tmp_path):
     assert docx.exists()
     text = "\n".join(p.text for s in report.sections for p in s.paragraphs())
 
-    # ساختار چهارگانه + جمع‌بندی
+    # ساختار مطابق گزارش مرجع (مقدمه ... نتیجه‌گیری و پیشنهادات)
     titles = [s.title for s in report.sections]
     assert any("مقدمه" in t for t in titles)
     assert any("تحلیل وضعیت بارگذاری" in t for t in titles)
     assert any("قبل از" in t for t in titles)
     assert any("پس از" in t for t in titles)
-    assert any("جمع‌بندی" in t for t in titles)
+    assert any("نتیجه‌گیری و پیشنهادات" in t for t in titles)
 
     # عدد افزایش: 1.5 مگاوات خودکار محاسبه شود
     assert "1.5" in text

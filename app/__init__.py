@@ -2,4 +2,4 @@
 
 APP_NAME = "ReportForge"
 APP_NAME_FA = "گزارش‌یار مطالعات"
-APP_VERSION = "1.0.3"
+APP_VERSION = "1.1.0"

@@ -25,9 +25,16 @@ def _delta(before: Optional[float], after: Optional[float]) -> Optional[float]:
 
 
 def loading_class(loading_pct: Optional[float], th: Any) -> str:
-    """نام طبقه بارگذاری — هم‌ساز با قواعد loading_rules.json و حدآستانه‌های تنظیمات."""
+    """نام طبقه بارگذاری — هم‌ساز با قواعد loading_rules.json و حدآستانه‌های تنظیمات.
+
+    کلاس «شدیداً بحرانی» (v1.1.0) برای بخش کنترل بارگذاری گزارش است: عبور بار کل
+    از آستانه تنظیمی (پیش‌فرض ۱۱۵٪ معیار) مطابق ادبیات گزارش‌های مرجع.
+    """
     if loading_pct is None:
         return "نامشخص"
+    severe = getattr(th, "loading_severe_pct", 115.0)
+    if loading_pct > severe:
+        return "شدیداً بحرانی"
     if loading_pct > th.loading_heavy_pct:
         return "بحرانی"
     if loading_pct > th.loading_semi_pct:
@@ -57,8 +64,10 @@ def feeder_metrics(feeder: Feeder, project: Project, settings: AppSettings) -> d
 
     added = project.added_power_mw()
     loading_after_pct = None
+    loading_total_mw = None
     if feeder.capacity_mw and feeder.peak_load_mw is not None and added is not None:
-        loading_after_pct = (feeder.peak_load_mw + added) / feeder.capacity_mw * 100.0
+        loading_total_mw = feeder.peak_load_mw + added
+        loading_after_pct = loading_total_mw / feeder.capacity_mw * 100.0
 
     i_loading_pct = None
     if feeder.max_current_a and a.current_a is not None:
@@ -69,6 +78,7 @@ def feeder_metrics(feeder: Feeder, project: Project, settings: AppSettings) -> d
         "loading_class": loading_class(loading_pct, th),
         "loading_after_pct": loading_after_pct,
         "loading_after_class": loading_class(loading_after_pct, th),
+        "loading_total_mw": loading_total_mw,
         "i_loading_pct": i_loading_pct,
         "d_i": d_i, "d_i_pct": d_i_pct,
         "d_loss": d_loss, "d_loss_pct": d_loss_pct,

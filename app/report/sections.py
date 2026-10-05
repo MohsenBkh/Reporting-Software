@@ -9,7 +9,7 @@ from typing import Optional
 @dataclass
 class Paragraph:
     text: str
-    style: str = "body"    # body | item | note
+    style: str = "body"    # body | item | note | bullet
 
 
 @dataclass
@@ -46,3 +46,28 @@ class GeneratedReport:
     docx_path: Optional[str] = None
     warnings: list[str] = field(default_factory=list)
     findings: list = field(default_factory=list)      # list[app.core.findings.Finding]
+
+
+# ---------------------------------------------------------------------------
+def apply_manual_texts(sections: list[ReportSection], project) -> list[ReportSection]:
+    """اعمال ویرایش‌های دستی کارشناس (بخش ۲۱): متن بخش جایگزین پاراگراف‌ها می‌شود
+    و جدول‌ها/شکل‌ها حفظ می‌شوند."""
+    for sec in sections:
+        manual = ((getattr(project, "manual_texts", None) or {}).get(sec.key, "") or "").strip()
+        if not manual:
+            continue
+        new_blocks = []
+        inserted = False
+        for b in sec.blocks:
+            if isinstance(b, Paragraph) and not inserted:
+                for part in [x.strip() for x in manual.split("\n\n") if x.strip()]:
+                    new_blocks.append(Paragraph(part))
+                inserted = True
+            elif not isinstance(b, Paragraph):
+                new_blocks.append(b)
+        if not inserted:
+            new_blocks = ([Paragraph(x.strip()) for x in manual.split("\n\n") if x.strip()]
+                          + new_blocks)
+        sec.blocks = new_blocks
+        setattr(sec, "manual", True)
+    return sections
