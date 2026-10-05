@@ -180,6 +180,17 @@ QScrollBar::add-line, QScrollBar::sub-line {{ width: 0; height: 0; }}
 QSplitter::handle {{ background: {t['border']}; }}
 QMenu {{ background: {t['surface']}; color: {t['text']}; border: 1px solid {t['border']}; }}
 QMenu::item:selected {{ background: {t['selection']}; }}
+
+/* ---- کارت‌ها و نوارهای اطلاع‌رسانی (v1.4.0 — الهام از کارت‌های صفحه تنظیمات) ---- */
+QFrame#Card {{ background: {t['surface']}; border: 1px solid {t['border']}; border-radius: 8px; }}
+QLabel#CardTitle {{ font-size: 11pt; font-weight: 700; }}
+QLabel#CardSub {{ color: {t['muted']}; font-size: 9pt; }}
+QFrame#InfoBarInfo {{ background: {t['info_bg']}; border: 1px solid {t['info']}; border-radius: 6px; }}
+QFrame#InfoBarInfo QLabel {{ color: {t['text']}; background: transparent; }}
+QFrame#InfoBarWarn {{ background: {t['warning_bg']}; border: 1px solid {t['warning']}; border-radius: 6px; }}
+QFrame#InfoBarWarn QLabel {{ color: {t['text']}; background: transparent; }}
+QFrame#Pill {{ background: {t['info_bg']}; border-radius: 12px; }}
+QLabel#PillText {{ color: {t['info']}; font-weight: 600; padding: 0 6px; }}
 """
 
 

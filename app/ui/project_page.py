@@ -116,50 +116,17 @@ class ProjectPage(QWidget):
         f2.addRow("پیشنهاد نوع کابل:", self.ed_cable)
         root.addWidget(grp2)
 
-        # --- گروه سکشنالایزر (v1.3.0 — اسکلت؛ جزئیات تکمیلی بعداً) ---
-        grp3 = QGroupBox("مشخصات سکشنالایزر (برای گزارش نوع «مطالعه سکشنالایزر»)")
-        f3 = QFormLayout(grp3)
-        self.sz_feeder = QLineEdit()
-        self.sz_location = QLineEdit()
-        self.sz_location.setPlaceholderText("شرح نقطه نصب (مثلاً تیر شماره …)")
-        self.sz_objective = QLineEdit()
-        self.sp_sz_fault = QDoubleSpinBox()
-        self.sp_sz_fault.setRange(0, 1e4)
-        self.sp_sz_fault.setDecimals(3)
-        self.sp_sz_minfault = QDoubleSpinBox()
-        self.sp_sz_minfault.setRange(0, 1e4)
-        self.sp_sz_minfault.setDecimals(3)
-        self.sp_sz_pickup = QDoubleSpinBox()
-        self.sp_sz_pickup.setRange(0, 1e5)
-        self.sp_sz_pickup.setDecimals(1)
-        self.sp_sz_tms = QDoubleSpinBox()
-        self.sp_sz_tms.setRange(0, 1e3)
-        self.sp_sz_tms.setDecimals(2)
-        self.sz_upstream = QLineEdit()
-        self.sz_coordination = QLineEdit()
-        f3.addRow("فیدر هدف:", self.sz_feeder)
-        f3.addRow("محل نصب:", self.sz_location)
-        f3.addRow("هدف نصب:", self.sz_objective)
-        f3.addRow("جریان اتصال کوتاه در محل نصب (kA):", self.sp_sz_fault)
-        f3.addRow("حداقل جریان اتصال کوتاه (kA):", self.sp_sz_minfault)
-        f3.addRow("جریان تنظیم پیکاپ (A):", self.sp_sz_pickup)
-        f3.addRow("تنظیم زمانی (TMS):", self.sp_sz_tms)
-        f3.addRow("تجهیز حفاظتی بالادست:", self.sz_upstream)
-        f3.addRow("توضیح هماهنگی حفاظت:", self.sz_coordination)
-        root.addWidget(grp3)
-        self.grp_sectionalizer = grp3
+        # مشخصات فنی سکشنالایزر/ریکلوزر به تب مجزا منتقل شد (v1.4.0):
+        # صفحه «سکشنالایزر و ریکلوزر» — جدا از مطالعه مصارف سنگین.
 
         # --- اتصال سیگنال‌ها ---
         for w in (self.ed_name, self.ed_number, self.ed_date, self.ed_applicant,
                   self.ed_substation, self.ed_office, self.ed_expert,
                   self.cb_man_source, self.cb_man_target, self.ed_man_date,
-                  self.ed_man_note, self.ed_location, self.ed_cable,
-                  self.sz_feeder, self.sz_location, self.sz_objective,
-                  self.sz_upstream, self.sz_coordination):
+                  self.ed_man_note, self.ed_location, self.ed_cable):
             w.textChanged.connect(self._on_change)
-        for w in (self.sp_existing, self.sp_requested, self.sp_man_mw, self.sp_distance,
-                  self.sp_sz_fault, self.sp_sz_minfault, self.sp_sz_pickup,
-                  self.sp_sz_tms):
+        for w in (self.sp_existing, self.sp_requested, self.sp_man_mw,
+                  self.sp_distance):
             w.valueChanged.connect(self._on_change)
         self.cb_type.currentIndexChanged.connect(self._on_type_change)
         self.grp_maneuver.toggled.connect(self._on_change)
@@ -194,10 +161,8 @@ class ProjectPage(QWidget):
             if idx >= 0:
                 self.cb_report_type.setCurrentIndex(idx)
             self.cb_report_type.blockSignals(False)
-            rt = REPORT_TYPE_HEAVY
-        self.grp_sectionalizer.setVisible(rt == REPORT_TYPE_SECTIONALIZER)
-        # در گزارش سکشنالایزر، فرم‌های توان/درخواست موضوعیت ندارند اما برای
-        # حفظ داده‌های مشترک (نام متقاضی، شماره گزارش و …) فرم دست نمی‌خورد.
+        # مشخصات فنی سکشنالایزر/ریکلوزر در صفحهٔ مجزای «سکشنالایزر و ریکلوزر»
+        # وارد می‌شود؛ این فرم فقط قالب گزارش پروژه را تعیین می‌کند.
         self.changed.emit()
 
     def _update_added(self) -> None:
@@ -246,16 +211,6 @@ class ProjectPage(QWidget):
         self.ed_location.setText(project.location_note or "")
         self.sp_distance.setValue(project.location_distance_m or 0)
         self.ed_cable.setText(project.cable_suggestion or "")
-        sz = project.sectionalizer
-        self.sz_feeder.setText(sz.feeder_name)
-        self.sz_location.setText(sz.installation_location)
-        self.sz_objective.setText(sz.objective)
-        self.sp_sz_fault.setValue(sz.fault_current_ka or 0)
-        self.sp_sz_minfault.setValue(sz.min_fault_current_ka or 0)
-        self.sp_sz_pickup.setValue(sz.pickup_current_a or 0)
-        self.sp_sz_tms.setValue(sz.tms or 0)
-        self.sz_upstream.setText(sz.upstream_device)
-        self.sz_coordination.setText(sz.coordination_note)
         self._update_added()
         self._on_report_type_change()   # هنوز با _loading = True → پیام ریکلوزر نمی‌آید
         self._loading = False
@@ -281,13 +236,3 @@ class ProjectPage(QWidget):
         project.location_note = self.ed_location.text().strip()
         project.location_distance_m = self.sp_distance.value() or None
         project.cable_suggestion = self.ed_cable.text().strip()
-        sz = project.sectionalizer
-        sz.feeder_name = self.sz_feeder.text().strip()
-        sz.installation_location = self.sz_location.text().strip()
-        sz.objective = self.sz_objective.text().strip()
-        sz.fault_current_ka = self.sp_sz_fault.value() or None
-        sz.min_fault_current_ka = self.sp_sz_minfault.value() or None
-        sz.pickup_current_a = self.sp_sz_pickup.value() or None
-        sz.tms = self.sp_sz_tms.value() or None
-        sz.upstream_device = self.sz_upstream.text().strip()
-        sz.coordination_note = self.sz_coordination.text().strip()

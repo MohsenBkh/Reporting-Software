@@ -81,6 +81,30 @@ class SectionalizerInfo:
 
 
 # ---------------------------------------------------------------------------
+# v1.4.0 — اسکلت داده مطالعه ریکلوزر (در برنامه — جزئیات بعداً توسط کارفرما).
+# ساختار عمداً با سکشنالایزر هم‌شکل است تا تب «سکشنالایزر و ریکلوزر» هر دو را
+# با یک فرم واحد مدیریت کند؛ گزارش ریکلوزر هنوز پیاده‌سازی نشده است.
+# ---------------------------------------------------------------------------
+@dataclass
+class RecloserInfo:
+    """اطلاعات مطالعه نصب ریکلوزر (اسکلت — در برنامه)."""
+
+    installation_location: str = ""
+    feeder_name: str = ""
+    objective: str = ""
+    fault_current_ka: Optional[float] = None
+    min_fault_current_ka: Optional[float] = None
+    pickup_current_a: Optional[float] = None
+    tms: Optional[float] = None
+    upstream_device: str = ""
+    coordination_note: str = ""
+
+    def is_complete(self) -> bool:
+        return (self.fault_current_ka is not None
+                and self.pickup_current_a is not None)
+
+
+# ---------------------------------------------------------------------------
 # «تغییرات آرنا» v1.1.0 — ساختار داده‌های مطالعه مصارف سنگین
 # (منطبق با صورت‌مسئله Rule Engine: A) تقاضا B) پست‌ها C) خطوط D) متقاضیان همزمان
 #  E) سناریوهای تأمین — همه مقادیر اختیاری: نبود داده = None و نه صفر)
@@ -481,6 +505,7 @@ class Project:
     # نوع گزارش (v1.3.0): heavy | sectionalizer | recloser
     report_type: str = REPORT_TYPE_HEAVY
     sectionalizer: SectionalizerInfo = field(default_factory=SectionalizerInfo)
+    recloser: RecloserInfo = field(default_factory=RecloserInfo)
 
     applicant_name: str = ""              # نام متقاضی
     request_type: str = REQUEST_INCREASE  # new | increase
@@ -655,6 +680,7 @@ _NESTED: dict[type, dict[str, type]] = {
     PowerFlowResult: {},
     Maneuver: {},
     SectionalizerInfo: {},
+    RecloserInfo: {},
     ForecastPoint: {},
     ForecastResult: {},
     ProfileStats: {},
@@ -668,7 +694,7 @@ _NESTED: dict[type, dict[str, type]] = {
     CoincidentDemand: {},
     SupplyScenario: {},
     Project: {"maneuver": Maneuver, "demand": DemandInfo,
-              "sectionalizer": SectionalizerInfo},
+              "sectionalizer": SectionalizerInfo, "recloser": RecloserInfo},
 }
 
 # فیلدهای لیستی که عضو آن‌ها dataclass است — هنگام بازسازی از JSON
