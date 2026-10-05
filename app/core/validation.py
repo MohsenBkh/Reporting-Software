@@ -12,6 +12,8 @@ from collections import Counter
 from dataclasses import dataclass
 
 from app.core.models import Project, REQUEST_INCREASE
+from app.core.report_types import (REPORT_TYPE_RECLOSER, REPORT_TYPE_SECTIONALIZER,
+                                   normalize, pending_message)
 from app.core.settings import AppSettings
 
 ERROR = "error"      # خطای ضروری → دکمه تولید غیرفعال
@@ -51,6 +53,16 @@ def _fa_digits_to_en(s: str) -> str:
 def validate_project(project: Project, settings: AppSettings) -> list[ValidationItem]:
     th = settings.thresholds
     items: list[ValidationItem] = []
+
+    # ---------------- نوع گزارش (v1.3.0) ----------------
+    report_type = normalize(getattr(project, "report_type", ""))
+    if report_type == REPORT_TYPE_SECTIONALIZER:
+        return validate_sectionalizer(project, settings)
+    if report_type == REPORT_TYPE_RECLOSER:
+        _add(items, WARNING, pending_message(REPORT_TYPE_RECLOSER), STEP_PROJECT,
+             "تا زمان پیاده‌سازی قالب ریکلوزر، نوع گزارش را روی «متقاضیان سنگین» "
+             "بگذارید.")
+        return items
 
     # ---------------- اطلاعات پروژه ----------------
     missing = []
@@ -203,6 +215,50 @@ def validate_project(project: Project, settings: AppSettings) -> list[Validation
             _add(items, WARNING, "مقدار بار منتقل‌شده در مانور باید مثبت باشد.", STEP_PROJECT)
     # ---------------- کنترل ناسازگاری داده‌های مطالعه (Cross Validation) ----------------
     items.extend(study_validation_items(project, settings))
+
+    items.append(ValidationItem(OK, "قالب گزارش", ""))
+    return items
+
+
+# ---------------------------------------------------------------------------
+# v1.3.0 — اعتبارسنجی گزارش نوع «سکشنالایزر» (اسکلت)
+# ---------------------------------------------------------------------------
+def validate_sectionalizer(project: Project, settings: AppSettings) -> list[ValidationItem]:
+    """اعتبارسنجی سبک برای گزارش سکشنالایزر.
+
+    تا ارسال جزئیات تکمیلی توسط کارفرما، فقط فیلدهای اصلی گزارش بررسی می‌شوند؛
+    کمبود داده‌های فنی (جریان خطا و تنظیمات) «هشدار» است نه خطا، تا ساخت گزارش
+    ممکن بماند و مقادیر ناموجود در جدول با وضعیت «ناموجود» درج شوند.
+    """
+    items: list[ValidationItem] = []
+    sz = project.sectionalizer
+
+    missing = []
+    if not project.applicant_name:
+        missing.append("نام متقاضی/درخواست‌دهنده")
+    if not project.report_number:
+        missing.append("شماره گزارش")
+    if not project.date_jalali:
+        missing.append("تاریخ گزارش")
+    if missing:
+        _add(items, ERROR, "اطلاعات پروژه ناقص است: " + "، ".join(missing),
+             STEP_PROJECT, "فیلدهای یادشده را در صفحه «پروژه» تکمیل کنید.")
+    else:
+        _add(items, OK, "اطلاعات پروژه", STEP_PROJECT)
+
+    if not sz.feeder_name and not sz.installation_location:
+        _add(items, WARNING, "فیدر هدف یا محل نصب سکشنالایزر مشخص نشده است.",
+             STEP_INPUT, "در صفحه «پروژه» مشخصات سکشنالایزر را تکمیل کنید.")
+    else:
+        _add(items, OK, "محل نصب سکشنالایزر", STEP_INPUT)
+
+    if not sz.is_complete():
+        _add(items, WARNING,
+             "سطح اتصال کوتاه/تنظیمات حفاظتی سکشنالایزر ناقص است؛ مقادیر ناموجود "
+             "در گزارش با وضعیت «ناموجود» درج می‌شوند.", STEP_INPUT,
+             "جریان اتصال کوتاه و جریان پیکاپ را تکمیل کنید.")
+    else:
+        _add(items, OK, "تنظیمات حفاظتی سکشنالایزر", STEP_INPUT)
 
     items.append(ValidationItem(OK, "قالب گزارش", ""))
     return items

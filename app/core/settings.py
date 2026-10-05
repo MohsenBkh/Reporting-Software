@@ -121,17 +121,26 @@ class ReportSectionsSettings:
     forecast: bool = True
     before: bool = True
     after: bool = True
-    study_demand: bool = True
+    # بخش‌های اصلی مطابق گزارش مرجع — روشن
     study_substations: bool = True
     study_lines: bool = True
-    study_coincident: bool = True
     study_loading: bool = True
-    study_analysis: bool = True
-    study_scenarios: bool = True
-    study_economics: bool = True
     study_conclusion: bool = True
+    # بخش‌های تکمیلی موتور مطالعه — پیش‌فرض خاموش تا چیدمان گزارش دقیقاً
+    # مطابق دفترچه مرجع (۹ بخش) باشد؛ از «تنظیمات → بخش‌های گزارش» فعال می‌شوند
+    study_demand: bool = False
+    study_coincident: bool = False
+    study_analysis: bool = False
+    study_scenarios: bool = False
+    study_economics: bool = False
     conclusion: bool = True
     appendix: bool = True
+    # قالب سکشنالایزر (v1.3.0)
+    secz_overview: bool = True
+    secz_network: bool = True
+    secz_settings: bool = True
+    secz_coordination: bool = True
+    secz_conclusion: bool = True
 
     def enabled(self, key: str) -> bool:
         return bool(getattr(self, key, True))
@@ -142,7 +151,9 @@ class ReportSectionsSettings:
             "study_substations", "study_lines", "study_coincident", "study_loading",
             "study_analysis",
             "study_scenarios", "study_economics", "study_conclusion", "conclusion",
-            "appendix")}
+            "appendix",
+            "secz_overview", "secz_network", "secz_settings",
+            "secz_coordination", "secz_conclusion")}
 
 
 @dataclass

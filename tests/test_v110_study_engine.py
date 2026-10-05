@@ -373,6 +373,11 @@ def test_joint_supply_with_evidence_is_recorded():
 def test_report_contains_study_sections_and_tables(tmp_path):
     p = make_study_project()
     settings = AppSettings(include_appendices=False)
+    # بخش‌های تکمیلی در چیدمان مرجع (v1.3.0) پیش‌فرض خاموش‌اند — برای آزمون
+    # کامل قابلیت موتور، روشن می‌شوند.
+    for key in ("study_demand", "study_coincident", "study_analysis",
+                "study_scenarios", "study_economics"):
+        setattr(settings.report_sections, key, True)
     gen = TextGenerator(p, settings, TemplateManager(), ENGINE, tmp_path)
     sections = gen.build_all()
     keys = [s.key for s in sections]
@@ -380,7 +385,8 @@ def test_report_contains_study_sections_and_tables(tmp_path):
                      "study_coincident", "study_analysis", "study_scenarios",
                      "study_economics"):
         assert expected in keys, expected
-    assert keys[-1] == "conclusion" and keys.index("study_lines") < keys.index("conclusion")
+    # نتیجه‌گیری و پیشنهادات، آخرین بخش محتوایی گزارش است
+    assert keys[-1] == "study_conclusion"
 
     text = "\n".join(x.text for s in sections for x in s.paragraphs())
     assert "{" not in text and "}" not in text          # هیچ متغیر پرنشده‌ای نماند
@@ -396,11 +402,17 @@ def test_report_contains_study_sections_and_tables(tmp_path):
 
 
 def test_word_generation_includes_study_tables(tmp_path):
+    import dataclasses
+
     from app.report.pipeline import generate_report_full
 
     p = make_study_project()
+    settings = dataclasses.replace(
+        SETTINGS, report_sections=dataclasses.replace(SETTINGS.report_sections))
+    for key in ("study_scenarios", "study_economics"):
+        setattr(settings.report_sections, key, True)
     report, out, _items = generate_report_full(
-        p, SETTINGS, tmp_path / "charts", tmp_path / "out")
+        p, settings, tmp_path / "charts", tmp_path / "out")
     assert out.exists()
     from docx import Document
 
@@ -553,11 +565,26 @@ def test_conclusion_table_has_reference_three_rows(tmp_path):
     assert "اقلام هزینه کلید ایستگاه" in econ
 
 
-def test_conclusion_section_is_before_generic_conclusion(tmp_path):
-    report = _report(tmp_path)
+def test_reference_layout_section_order_matches_reference_report(tmp_path):
+    """چیدمان پیش‌فرض (v1.3.0) دقیقاً مطابق گزارش مرجع مهر ۱۴۰۵:
+    مقدمه، تحلیل بارگذاری، پیش‌بینی، ایستگاه‌ها، خطوط، پخش بار قبل،
+    پخش بار بعد، کنترل بارگذاری، نتیجه‌گیری و پیشنهادات.
+    """
+    from sample_projects import make_feeder
+
+    p = make_study_project()
+    p.feeders.append(make_feeder())   # فیدر فعال → بخش کنترل بارگذاری ساخته می‌شود
+    report = _report(tmp_path, p)
     keys = [s.key for s in report.sections]
-    assert "study_conclusion" in keys
-    assert keys.index("study_conclusion") > keys.index("study_economics")
+    core = ["intro", "loading", "forecast", "study_substations", "study_lines",
+            "before", "after", "study_loading", "study_conclusion"]
+    assert [k for k in keys if k in core] == core
+    # جمع‌بندی کلاسیک وقتی «نتیجه‌گیری و پیشنهادات» هست حذف می‌شود
+    assert "conclusion" not in keys
+    # بخش‌های تکمیلی به‌طور پیش‌فرض در گزارش نیستند
+    for extra in ("study_demand", "study_coincident", "study_analysis",
+                  "study_scenarios", "study_economics"):
+        assert extra not in keys
 
 
 def test_multiline_table_cells_render_in_word(tmp_path):

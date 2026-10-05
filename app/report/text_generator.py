@@ -245,6 +245,39 @@ class TextGenerator:
             self.texts.render("T-INTRO-MAIN", {"REQUEST_PHRASE": request_phrase})))
         sec.blocks.append(Paragraph(item, style="item"))
 
+        # بند الف — مشخصات تقاضا (مطابق گزارش مرجع مهر ۱۴۰۵) — فقط با دادهٔ ثبت‌شده
+        d = p.demand
+        if getattr(d, "enabled", True) and (
+                d.without_coincidence_kw is not None
+                or d.with_coincidence_kw is not None
+                or d.existing_demand_kw is not None):
+            requested = fmt(p.requested_power_kw, 0) or (
+                fmt(d.with_coincidence_kw if d.with_coincidence_kw is not None
+                    else d.without_coincidence_kw, 0))
+            parts = {
+                "REQUESTED": requested,
+                "EXISTING": "" if d.existing_demand_kw is None
+                else f"؛ دیماند موجود: {fmt(d.existing_demand_kw, 0)} کیلووات",
+                "WITHOUT": "" if d.without_coincidence_kw is None
+                else f"؛ تقاضای بدون ضریب همزمانی: {fmt(d.without_coincidence_kw, 0)} کیلووات",
+                "WITH": "" if d.with_coincidence_kw is None
+                else f"؛ با ضریب همزمانی: {fmt(d.with_coincidence_kw, 0)} کیلووات",
+                "FACTOR": "" if d.coincidence_factor() is None
+                else f" (ضریب همزمانی: {fmt(d.coincidence_factor(), 2)})",
+                "REQUEST_KIND": "؛ " + (
+                    "نوع متقاضی: افزایش قدرت" if p.request_type == REQUEST_INCREASE
+                    else "نوع متقاضی: جدید"),
+            }
+            default_tpl = ("الف) تقاضای درخواستی {REQUESTED} کیلووات می‌باشد"
+                           "{EXISTING}{WITHOUT}{WITH}{FACTOR}{REQUEST_KIND}.")
+            demand_text = self.texts.render("T-INTRO-ITEM-DEMAND", parts)
+            if not demand_text:
+                try:
+                    demand_text = default_tpl.format_map(parts)
+                except (KeyError, IndexError):
+                    demand_text = default_tpl
+            sec.blocks.append(Paragraph(demand_text, style="item"))
+
         # بند ب — موقعیت محل (نمونه ۲)
         has_location = p.location_note or p.location_distance_m or self._kind_count("location")
         if has_location:
@@ -663,8 +696,11 @@ class TextGenerator:
         before = self.build_before()
         after = self.build_after()
         study = self._build_study_sections()
-        conclusion = self.build_conclusion()
-        sections = [intro, loading, forecast, before, after] + study + [conclusion]
+        sections = [intro, loading, forecast, before, after] + study
+        # جمع‌بندی کلاسیک فقط وقتی می‌آید که بخش «نتیجه‌گیری و پیشنهادات»
+        # مطالعه در گزارش نباشد (مطابق گزارش مرجع: نتیجه‌گیری، بخش پایانی است).
+        if not any(sec.key == "study_conclusion" for sec in study):
+            sections.append(self.build_conclusion())
         if getattr(self.settings, "include_appendices", True):
             sections += self.build_appendices()
         sections = [sec for sec in sections if self.settings.section_enabled(sec.key)]

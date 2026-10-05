@@ -70,16 +70,21 @@
     "forecast": true,
     "before": true,
     "after": true,
-    "study_demand": true,
     "study_substations": true,
     "study_lines": true,
-    "study_coincident": true,
     "study_loading": true,
-    "study_analysis": false,
-    "study_scenarios": true,
-    "study_economics": false,
     "study_conclusion": true,
+    "study_demand": false,
+    "study_coincident": false,
+    "study_analysis": false,
+    "study_scenarios": false,
+    "study_economics": false,
     "conclusion": true,
-    "appendix": true
+    "appendix": true,
+    "secz_overview": true,
+    "secz_network": true,
+    "secz_settings": true,
+    "secz_coordination": true,
+    "secz_conclusion": true
   }
 }

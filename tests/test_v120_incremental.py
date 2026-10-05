@@ -511,6 +511,9 @@ def test_demand_onoff_toggle_removes_study_demand_section(app, manager):
     from app.rules.rule_engine import RuleEngine
 
     p = manager.project
+    # بخش «اطلاعات تقاضا» در چیدمان مرجع (v1.3.0) پیش‌فرض خاموش است؛
+    # این تست رفتار کلید On/Off ردیف تقاضا را می‌سنجد، پس بخش را روشن می‌کنیم.
+    manager.settings.report_sections.study_demand = True
     p.demand.without_coincidence_kw = 1000.0
     p.demand.with_coincidence_kw = 900.0
     p.demand.enabled = False
@@ -625,9 +628,16 @@ def test_settings_page_saves_loading_thresholds_and_sections(app, manager, monke
     assert settings.report_sections.study_loading is False
     assert settings.report_sections.study_economics is False
     assert settings.section_enabled("study_loading") is False
-    # بازنشانی: همهٔ بخش‌ها روشن و آستانه‌ها به پیش‌فرض برمی‌گردند
+    # بازنشانی: پیش‌فرض‌های چیدمان مرجع (v1.3.0) برمی‌گردند — بخش‌های اصلی
+    # مطابق گزارش مرجع روشن و بخش‌های تکمیلی خاموش.
     page._reset()
-    assert all(chk.isChecked() for chk in page.chk_sections.values())
+    for key in ("intro", "loading", "forecast", "before", "after",
+                "study_substations", "study_lines", "study_loading",
+                "study_conclusion", "conclusion", "appendix"):
+        assert page.chk_sections[key].isChecked(), key
+    for extra in ("study_demand", "study_coincident", "study_analysis",
+                  "study_scenarios", "study_economics"):
+        assert not page.chk_sections[extra].isChecked(), extra
 
 
 # ===========================================================================

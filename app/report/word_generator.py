@@ -17,6 +17,7 @@ from docx.shared import Cm, Pt, RGBColor
 
 from app.core.models import Project, REQUEST_INCREASE
 from app import APP_VERSION
+from app.core.report_types import booklet_title
 from app.core.settings import AppSettings
 from app.report.sections import FigureBlock, GeneratedReport, Paragraph, ReportSection, TableSpec
 from app.utils.jalali import jalali_month_year
@@ -232,7 +233,7 @@ class WordGenerator:
     def _set_properties(self, doc: Document) -> None:
         cp = doc.core_properties
         cp.title = self.project.title_text()
-        cp.subject = "دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر"
+        cp.subject = booklet_title(getattr(self.project, "report_type", ""))
         cp.author = self.project.expert_name or self.settings.company_name
         cp.language = "fa-IR"
         cp.keywords = f"ReportForge {APP_VERSION}"
@@ -280,7 +281,7 @@ class WordGenerator:
         cp = right_cell.paragraphs[0]
         cp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         set_rtl(cp)
-        r = cp.add_run("دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر")
+        r = cp.add_run(booklet_title(getattr(self.project, "report_type", "")))
         style_run(r, f.body_font, 10, bold=True)
         cp2 = left_cell.paragraphs[0]
         cp2.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -360,7 +361,7 @@ class WordGenerator:
         add_par(doc, self.settings.office_name, font_fa=f.body_font,
                 size=12, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=24)
 
-        add_par(doc, "دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر",
+        add_par(doc, booklet_title(getattr(self.project, "report_type", "")),
                 font_fa=f.heading_font, size=22, bold=True,
                 align=WD_ALIGN_PARAGRAPH.CENTER, space_after=30,
                 color=RGBColor(0x1F, 0x4E, 0x79))

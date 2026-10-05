@@ -11,6 +11,9 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from app.core.report_types import (REPORT_TYPE_HEAVY,
+                                   REPORT_TYPE_SECTIONALIZER)
+
 REQUEST_NEW = "new"          # تأمین برق جدید
 REQUEST_INCREASE = "increase"  # افزایش قدرت
 
@@ -46,6 +49,35 @@ class Maneuver:
     transferred_mw: Optional[float] = None  # مقدار تقریبی بار منتقل‌شده
     date_jalali: str = ""       # تاریخ مانور
     note: str = ""              # توضیحات کارشناس (عدم قطعیت و ...)
+
+
+# ---------------------------------------------------------------------------
+# v1.3.0 — داده‌های مطالعه سکشنالایزر (اسکلت؛ جزئیات تکمیلی بعداً توسط کارفرما
+# ارسال می‌شود — فیلدها اختیاری‌اند و نبود داده = None و نه صفر)
+# ---------------------------------------------------------------------------
+@dataclass
+class SectionalizerInfo:
+    """اطلاعات مطالعه نصب سکشنالایزر.
+
+    ساختار آمادهٔ گسترش است: هر فیلد جدیدی که کارفرما مشخص کند بدون شکستن
+    پروژه‌های قدیمی به همین dataclass اضافه می‌شود (بازسازی از dict با
+    ``_build`` فقط فیلدهای شناخته‌شده را می‌خواند).
+    """
+
+    installation_location: str = ""              # شرح محل نصب / نقطه نصب
+    feeder_name: str = ""                        # فیدر هدف
+    objective: str = ""                          # هدف نصب (مثلاً ایزوله‌سازی منطقه خطا)
+    fault_current_ka: Optional[float] = None     # جریان اتصال کوتاه در محل نصب (kA)
+    min_fault_current_ka: Optional[float] = None  # حداقل جریان اتصال کوتاه (kA)
+    pickup_current_a: Optional[float] = None     # جریان تنظیم پیکاپ (A)
+    tms: Optional[float] = None                  # تنظیم زمانی (TMS)
+    upstream_device: str = ""                    # تجهیز حفاظتی بالادست
+    coordination_note: str = ""                  # توضیح هماهنگی حفاظت
+
+    def is_complete(self) -> bool:
+        """حداقل داده‌های لازم برای صدور جدول تنظیمات."""
+        return (self.fault_current_ka is not None
+                and self.pickup_current_a is not None)
 
 
 # ---------------------------------------------------------------------------
@@ -446,6 +478,10 @@ class Project:
     report_number: str = ""               # مثلاً DM-18-001
     date_jalali: str = ""                 # 1405/06/15
 
+    # نوع گزارش (v1.3.0): heavy | sectionalizer | recloser
+    report_type: str = REPORT_TYPE_HEAVY
+    sectionalizer: SectionalizerInfo = field(default_factory=SectionalizerInfo)
+
     applicant_name: str = ""              # نام متقاضی
     request_type: str = REQUEST_INCREASE  # new | increase
     existing_power_kw: Optional[float] = None   # توان فعلی (kW)
@@ -558,6 +594,10 @@ class Project:
 
     def title_text(self) -> str:
         """عنوان گزارش مطابق ادبیات نمونه‌ها."""
+        if self.report_type == REPORT_TYPE_SECTIONALIZER:
+            sz = self.sectionalizer
+            where = sz.installation_location or sz.feeder_name or "محل تعیین‌شده"
+            return f"مطالعه نصب سکشنالایزر در {where}"
         if self.request_type == REQUEST_INCREASE:
             return (f"افزایش قدرت {self.applicant_name} از قدرت "
                     f"{self._num(self.existing_power_kw)} به {self._num(self.requested_power_kw)} کیلووات")
@@ -614,6 +654,7 @@ def _build(cls, data: dict, nested: dict[str, type]) -> Any:
 _NESTED: dict[type, dict[str, type]] = {
     PowerFlowResult: {},
     Maneuver: {},
+    SectionalizerInfo: {},
     ForecastPoint: {},
     ForecastResult: {},
     ProfileStats: {},
@@ -626,7 +667,8 @@ _NESTED: dict[type, dict[str, type]] = {
     LineCandidate: {},
     CoincidentDemand: {},
     SupplyScenario: {},
-    Project: {"maneuver": Maneuver, "demand": DemandInfo},
+    Project: {"maneuver": Maneuver, "demand": DemandInfo,
+              "sectionalizer": SectionalizerInfo},
 }
 
 # فیلدهای لیستی که عضو آن‌ها dataclass است — هنگام بازسازی از JSON

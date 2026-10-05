@@ -7,13 +7,36 @@ from pathlib import Path
 from typing import Optional
 
 from app.core.models import Project
+from app.core.report_types import (REPORT_TYPE_HEAVY, REPORT_TYPE_SECTIONALIZER,
+                                   booklet_title, is_implemented, pending_message)
 from app.core.settings import AppSettings
 from app.core.validation import validate_project
 from app.report.sections import FigureBlock, GeneratedReport, Paragraph, TableSpec
+from app.report.sectionalizer import SectionalizerGenerator
 from app.report.template_manager import TemplateManager
 from app.report.text_generator import TextGenerator
 from app.report.word_generator import WordGenerator
 from app.rules.rule_engine import RuleEngine
+
+
+def make_generator(project: Project, settings: AppSettings,
+                   texts: TemplateManager, engine: RuleEngine,
+                   charts_dir: Path, image_resolver=None,
+                   profile_loader=None):
+    """ساخت مولد گزارش متناسب با «نوع گزارش» پروژه (v1.3.0).
+
+    * متقاضیان سنگین → ``TextGenerator``
+    * سکشنالایزر → ``SectionalizerGenerator``
+    * ریکلوزر → هنوز پیاده‌سازی نشده؛ خطای واضح با پیام فارسی.
+    """
+    report_type = getattr(project, "report_type", "") or REPORT_TYPE_HEAVY
+    if not is_implemented(report_type):
+        raise NotImplementedError(pending_message(report_type))
+    if report_type == REPORT_TYPE_SECTIONALIZER:
+        return SectionalizerGenerator(project, settings, texts, engine,
+                                      charts_dir, image_resolver, profile_loader)
+    return TextGenerator(project, settings, texts, engine, charts_dir,
+                         image_resolver, profile_loader)
 
 
 def build_sections(project: Project, settings: AppSettings,
@@ -21,8 +44,8 @@ def build_sections(project: Project, settings: AppSettings,
                    charts_dir: Path, image_resolver=None,
                    profile_loader=None) -> GeneratedReport:
     Path(charts_dir).mkdir(parents=True, exist_ok=True)
-    gen = TextGenerator(project, settings, texts, engine, charts_dir,
-                        image_resolver, profile_loader)
+    gen = make_generator(project, settings, texts, engine, charts_dir,
+                         image_resolver, profile_loader)
     report = GeneratedReport(sections=gen.build_all())
     report.findings = gen.findings
     report.warnings = list(gen.report_warnings)
@@ -71,7 +94,7 @@ def report_to_html(report: GeneratedReport, project: Project,
     parts.append(f"""
     <div style="text-align:center; margin-bottom:18px;">
       <div style="font-size:15pt; font-weight:bold;">{esc(settings.company_name)}</div>
-      <div style="font-size:11pt;">دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر</div>
+      <div style="font-size:11pt;">{esc(booklet_title(getattr(project, "report_type", "")))}</div>
       <div style="font-size:13pt; font-weight:bold; margin-top:14px; color:#1F4E79;">{esc(project.title_text())}</div>
       <div style="font-size:10pt; margin-top:8px; color:#555;">
         شماره گزارش: {esc(project.report_number)} &nbsp;|&nbsp; تاریخ: {esc(project.date_jalali)}
