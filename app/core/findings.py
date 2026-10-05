@@ -32,7 +32,16 @@ STATUS_LABELS_FA = {REVIEW_PENDING: "در انتظار بازبینی", REVIEW_A
                     REVIEW_EDITED: "ویرایش شده", REVIEW_REJECTED: "رد شده",
                     REVIEW_OVERRIDDEN: "Override شده"}
 DOMAIN_LABELS_FA = {"loading": "بارگذاری", "after_voltage": "ولتاژ", "current": "جریان",
-                    "loss": "تلفات", "forecast": "پیش‌بینی", "conclusion": "نتیجه‌گیری و پیشنهادات"}
+                    "loss": "تلفات", "forecast": "پیش‌بینی", "conclusion": "جمع‌بندی",
+                    # «تغییرات آرنا» v1.1.0 — حوزه‌های مطالعه مصارف سنگین
+                    "study_demand": "اطلاعات تقاضا",
+                    "study_substation": "ایستگاه‌های نزدیک",
+                    "study_line": "خطوط نزدیک",
+                    "study_coincidence": "متقاضیان همزمان",
+                    "study_topology": "تأمین مشترک/توپولوژی",
+                    "study_scenario": "سناریوی تأمین",
+                    "study_economics": "بررسی اقتصادی",
+                    "study_crosscheck": "کنترل ناسازگاری داده"}
 
 
 _REF_RE = re.compile(r"(شکل|جدول)(‌?های)?\s*[\d۰-۹—،و\s]+")

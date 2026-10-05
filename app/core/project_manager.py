@@ -123,8 +123,14 @@ class ProjectManager:
     # ------------------------------------------------------------------
     # تصاویر
     # ------------------------------------------------------------------
-    def import_image(self, source: str | Path, title: str, kind: str) -> bool:
-        """کپی تصویر به پوشه images پروژه."""
+    def import_image(self, source: str | Path, title: str, kind: str,
+                     section_key: str = "", order: int = 0,
+                     caption: str = "") -> bool:
+        """کپی تصویر به پوشه images پروژه.
+
+        ``section_key``/``order``/``caption`` (v1.2.0) محل قرارگیری، اولویت و کپشن
+        مستقل شکل را ثبت می‌کنند؛ مقدار پیش‌فرض، رفتار نسخه‌های قبل است.
+        """
         from app.core.models import ProjectImage
         if self.project is None or self.project_dir is None:
             return False
@@ -134,7 +140,8 @@ class ProjectManager:
         dst_dir = self.project_dir / "images"
         dst_dir.mkdir(exist_ok=True)
         img = ProjectImage(file_name=f"img_{ProjectImage().uid}{src.suffix.lower()}",
-                           title=title, kind=kind)
+                           title=title, kind=kind, section_key=section_key or "",
+                           order=int(order or 0), caption=caption or "")
         shutil.copy2(src, dst_dir / img.file_name)
         self.project.images.append(img)
         self.dirty = True

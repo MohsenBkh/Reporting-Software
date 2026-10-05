@@ -28,6 +28,7 @@ from app.ui.preview_page import PreviewPage
 from app.ui.project_page import ProjectPage
 from app.ui.review_page import ReviewPage
 from app.ui.settings_page import SettingsPage
+from app.ui.study_page import StudyPage
 from app.ui.widgets import StatusBadge, StepBar
 from app.utils.errors import handle_error, log_exception
 
@@ -38,6 +39,7 @@ NAV = [
     ("input", "ورود داده", "input", True),
     ("profile", "پروفیل و پیش‌بینی", "profile", True),
     ("loadflow", "نتایج پخش بار", "loadflow", True),
+    ("study", "مطالعه مصارف سنگین", "study", True),
     ("images", "تصاویر", "images", True),
     ("analysis", "تحلیل مهندسی", "analysis", True),
     ("review", "بازبینی مهندس", "review", True),
@@ -185,6 +187,7 @@ class MainWindow(QMainWindow):
         self.home_page = HomePage(self.settings.recent_projects, self.settings.theme)
         self.project_page = ProjectPage(self.settings)
         self.feeder_page = FeederPage(self.manager, self.settings)
+        self.study_page = StudyPage(self.manager, self.settings)
         self.images_page = ImagesPage(self.manager)
         self.analysis_page = AnalysisPage(self.manager, self.settings, self.analysis)
         self.review_page = ReviewPage(self.manager, self.settings, self.analysis)
@@ -193,11 +196,13 @@ class MainWindow(QMainWindow):
         self.settings_page = SettingsPage(self.settings)
         self.pages = {
             "home": self.home_page, "project": self.project_page, "input": self.feeder_page,
-            "profile": self.feeder_page, "loadflow": self.feeder_page, "images": self.images_page,
+            "profile": self.feeder_page, "loadflow": self.feeder_page,
+            "study": self.study_page, "images": self.images_page,
             "analysis": self.analysis_page, "review": self.review_page,
             "preview": self.preview_page, "generate": self.generate_page,
             "settings": self.settings_page}
         for w in (self.home_page, self.project_page, self.feeder_page, self.images_page,
+                  self.study_page,
                   self.analysis_page, self.review_page, self.preview_page,
                   self.generate_page, self.settings_page):
             self.stack.addWidget(w)
@@ -220,8 +225,10 @@ class MainWindow(QMainWindow):
         hp.settings_requested.connect(lambda: self.navigate("settings"))
         hp.continue_requested.connect(lambda k: self.navigate(STEP_TO_PAGE.get(k, "home")))
         hp.open_file_requested.connect(GeneratePage._open)
-        for pg in (self.project_page, self.feeder_page, self.images_page):
+        for pg in (self.project_page, self.feeder_page, self.images_page, self.study_page):
             pg.changed.connect(self._data_changed)
+        self.study_page.request_generate_scenarios.connect(self._generate_scenarios)
+        self.study_page.request_cost_estimate.connect(self._cost_estimate)
         self.review_page.changed.connect(self._data_changed_keep_cache)
         self.preview_page.changed.connect(self._data_changed_keep_cache)
         self.analysis_page.navigate_requested.connect(self.navigate)
@@ -253,6 +260,8 @@ class MainWindow(QMainWindow):
             elif key in FEEDER_SECTIONS:
                 self.feeder_page.refresh()
                 self.feeder_page.show_section(key)
+            elif key == "study":
+                self.study_page.refresh()
             elif key == "images":
                 self.images_page.refresh()
             elif key == "analysis":
@@ -325,13 +334,9 @@ class MainWindow(QMainWindow):
         reports = []
         if project.last_report_path:
             reports.append((project.last_report_path, project.last_report_at))
-        if project.is_heavy:
-            type_label = "افزایش قدرت" if project.request_type == "increase" else "تأمین برق جدید"
-        else:
-            type_label = f"مطالعه {project.report_type_short}"
         self.home_page.update_project({
             "name": project.title_text() or project.name, "applicant": project.applicant_name,
-            "type": type_label,
+            "type": "افزایش قدرت" if project.request_type == "increase" else "تأمین برق جدید",
             "feeders": len(project.feeders), "state": state, "status_text": text,
             "done": done, "total": len(workflow.STEPS), "next_key": nk,
             "next_label": labels.get(nk, ""), "reports": reports})
@@ -434,10 +439,51 @@ class MainWindow(QMainWindow):
         try:
             if self.current_key == "project":
                 self.project_page.save_to(self.manager.project)
+            elif self.current_key == "study":
+                self.study_page.save_to_project()
             elif self.current_key in FEEDER_SECTIONS:
                 self.feeder_page._save_current()  # noqa: SLF001
         except Exception as exc:  # noqa: BLE001
             log_exception(exc, "collect forms")
+
+    # ------------------------------------------------------------------
+    # عملیات صفحه مطالعه مصارف سنگین
+    # ------------------------------------------------------------------
+    def _generate_scenarios(self) -> None:
+        """تولید/بازتولید سناریوها از Rule Engine (بدون هیچ توصیه‌ای)."""
+        if self.manager.project is None:
+            return
+        from app.core import scenarios as scenario_mod
+        self.study_page.save_to_project()
+        scenario_mod.ensure_scenarios(self.manager.project, self.settings,
+                                      self.analysis.engine, regenerate=True)
+        self.study_page.refresh()
+        self._data_changed()
+        self.statusBar().showMessage(
+            f"{len(self.manager.project.scenarios)} سناریو از Rule Engine تولید شد؛ "
+            "انتخاب نهایی با مهندس مطالعات است.", 6000)
+
+    def _cost_estimate(self) -> None:
+        """محاسبه برآورد پارامتریک هزینه سناریوها (در نبود پارامتر ⇒ MISSING_DATA)."""
+        project = self.manager.project
+        if project is None:
+            return
+        self.study_page.save_to_project()
+        from app.core.study import cost_estimate
+        missing_all = []
+        for s in project.scenarios:
+            est = cost_estimate(s, project, self.settings)
+            if est["estimated_total"] is None:
+                missing_all.append(s.display_title)
+        self.study_page.refresh()
+        if missing_all:
+            QMessageBox.information(
+                self, "برآورد هزینه",
+                "پارامترهای هزینه در «تنظیمات → مطالعه و هزینه» تعریف نشده‌اند؛ "
+                "بنابراین برای این سناریوها برآوردی ساخته نشد (MISSING_DATA):\n"
+                + "\n".join(missing_all))
+        else:
+            self.statusBar().showMessage("برآورد پارامتریک هزینه سناریوها به‌روزرسانی شد.", 5000)
 
     def _autosave_tick(self) -> None:
         if self.manager.dirty and self.manager.project:

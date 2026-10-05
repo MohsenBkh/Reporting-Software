@@ -1,0 +1,324 @@
+{
+  "domain": "study_loading",
+  "kind": "analysis",
+  "description": "بارگذاری کل فیدر — پیک بار فیدر + بار اضافه‌شدهٔ جدید متقاضی (Total = Peak + Added) و مقایسه با آستانه‌های مصوب کارفرما: «بحرانی» در ۷ مگاوات و بالاتر و «شدیداً بحرانی» در ۸ مگاوات و بالاتر. مبنای آستانه: سیاست بهره‌برداری (تعریف‌شده در تنظیمات برنامه)؛ هیچ آستانه‌ای در کد هارد‌کد نشده است. مرجع ساختار مطالعه: دفترچه TAV111-10/00.",
+  "rules": [
+    {
+      "id": "LD-TOTAL-DESCRIBE",
+      "name": "شرح بارگذاری کل فیدر (پیک + بار اضافه‌شده)",
+      "domain": "study_loading",
+      "condition": "has_feeder_total_load",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 55,
+      "requires": [
+        "feeder_peak_load_mw",
+        "added_load_mw"
+      ],
+      "inputs": [
+        "feeder_name",
+        "feeder_substation",
+        "feeder_peak_load_mw",
+        "feeder_peak_year",
+        "added_load_mw",
+        "feeder_capacity_mw",
+        "feeder_peak_current_a"
+      ],
+      "calculated": [
+        "feeder_total_load_mw",
+        "feeder_total_load_pct"
+      ],
+      "finding": "بارگذاری کل فیدر «{feeder_name}»: پیک بار ثبت‌شده {feeder_peak_load_mw} مگاوات (سال {feeder_peak_year}) به‌همراه بار اضافه‌شدهٔ جدید متقاضی {added_load_mw} مگاوات ⇒ Total = {feeder_total_load_mw} مگاوات{feeder_total_load_pct}٪ از معیار بارگذاری ثبت‌شده.",
+      "evidence": "پیک بار فیدر از صفحهٔ «ورود داده» و بار اضافه‌شده از اطلاعات تقاضا (تقاضای مبنای تحلیل، در نبود آن افزایش قدرت) خوانده شده و جمع آن‌ها به‌صورت صریح محاسبه شده است.",
+      "recommended_text": "بارگذاری کل فیدر {feeder_name} پس از اتصال بار جدید برابر {feeder_total_load_mw} مگاوات برآورد می‌شود (پیک فعلی {feeder_peak_load_mw} مگاوات + بار اضافه‌شدهٔ {added_load_mw} مگاوات).",
+      "source": "TAV111-10/00",
+      "source_page": "صفحهٔ ۲ دفترچه — جدول پیک بار فیدر + اطلاعات تقاضا (محاسبهٔ صریح)",
+      "engineer_review_required": false
+    },
+    {
+      "id": "LD-FEEDER-PEAK-MISSING",
+      "name": "نبود پیک بار فیدر",
+      "domain": "study_loading",
+      "condition": "not has_feeder_peak",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 70,
+      "inputs": [
+        "feeder_name",
+        "feeder_peak_load_mw"
+      ],
+      "calculated": [],
+      "finding": "برای فیدر «{feeder_name}» مقدار پیک بار ثبت نشده است؛ بدون آن، کنترل بارگذاری کل فیدر (پیک + بار اضافه‌شده) قابل انجام نیست.",
+      "evidence": "دادهٔ پیک بار فیدر باید در صفحهٔ «ورود داده» تکمیل شود؛ هیچ مقدار پیش‌فرضی جای آن نمی‌نشیند.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحهٔ ۲ دفترچه — جدول پیک بار فیدر",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LD-ADDED-LOAD-MISSING",
+      "name": "نبود بار اضافه‌شدهٔ متقاضی",
+      "domain": "study_loading",
+      "condition": "has_feeder_peak and not has_added_load",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 69,
+      "inputs": [
+        "feeder_name",
+        "feeder_peak_load_mw"
+      ],
+      "calculated": [],
+      "finding": "برای متقاضی، بار اضافه‌شده‌ای ثبت نشده است (نه تقاضای مبنای تحلیل و نه افزایش قدرت)؛ بنابراین جمع «پیک فیدر + بار جدید» قابل محاسبه نیست.",
+      "evidence": "تقاضای مبنای تحلیل در تب «اطلاعات تقاضا» و/یا اطلاعات متقاضی در «اطلاعات پروژه» باید تکمیل شود.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحهٔ ۲ دفترچه — اطلاعات تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LD-THRESHOLD-UNDEFINED",
+      "name": "آستانهٔ بارگذاری بحرانی تعریف‌نشده",
+      "domain": "study_loading",
+      "condition": "has_feeder_total_load and not has_feeder_loading_critical_mw",
+      "status": "MISSING_RULE",
+      "severity": "review",
+      "priority": 68,
+      "requires": [
+        "feeder_total_load_mw"
+      ],
+      "thresholds": [
+        {
+          "key": "feeder_loading_critical_mw",
+          "label": "آستانهٔ بارگذاری بحرانی فیدر (مگاوات)",
+          "basis": "config",
+          "note": "آستانه از سیاست بهره‌برداری/دستور کارفرما می‌آید و در «تنظیمات → مطالعه و هزینه» تعریف می‌شود (پیش‌فرض ۷ مگاوات). در صورت پاک‌کردن مقدار، هیچ داوری‌ای انجام نمی‌شود."
+        }
+      ],
+      "inputs": [
+        "feeder_name",
+        "feeder_total_load_mw"
+      ],
+      "calculated": [],
+      "finding": "بارگذاری کل فیدر «{feeder_name}» برابر {feeder_total_load_mw} مگاوات محاسبه شد، اما آستانهٔ «بارگذاری بحرانی» تعریف نشده است؛ بنابراین طبقه‌بندی بحرانی/غیربحرانی انجام نمی‌شود.",
+      "evidence": "آستانه نه در سند مرجع TAV111-10/00 ارائه شده و نه در پیکربندی مقدار دارد.",
+      "recommended_text": "",
+      "source": "سیاست بهره‌برداری (دستور کارفرما)",
+      "source_page": "تنظیمات → مطالعه و هزینه — آستانه‌های بارگذاری فیدر",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LD-THRESHOLD-ORDER-ERROR",
+      "name": "ناسازگاری ترتیب آستانه‌های بارگذاری",
+      "domain": "study_loading",
+      "condition": "threshold_order_error",
+      "status": "DATA_ERROR",
+      "severity": "review",
+      "priority": 80,
+      "requires": [
+        "feeder_loading_critical_mw"
+      ],
+      "thresholds": [
+        {
+          "key": "feeder_loading_severe_mw",
+          "label": "آستانهٔ بارگذاری شدیداً بحرانی (مگاوات)",
+          "basis": "config",
+          "note": "آستانهٔ «شدیداً بحرانی» باید بزرگ‌تر از «بحرانی» باشد."
+        }
+      ],
+      "inputs": [
+        "feeder_loading_critical_mw",
+        "feeder_loading_severe_mw"
+      ],
+      "calculated": [],
+      "finding": "آستانهٔ «بحرانی» ({feeder_loading_critical_mw} مگاوات) بزرگ‌تر یا مساوی آستانهٔ «شدیداً بحرانی» ({feeder_loading_severe_mw} مگاوات) تعریف شده است؛ این پیکربندی ناسازگار است و طبقه‌بندی بارگذاری انجام نمی‌شود.",
+      "evidence": "دو مقدار از تنظیمات خوانده شده و بدون اصلاح گزارش می‌شود؛ هیچ مقداری به‌صورت خودکار جایگزین نمی‌گردد.",
+      "recommended_text": "",
+      "source": "سیاست بهره‌برداری (دستور کارفرما)",
+      "source_page": "تنظیمات → مطالعه و هزینه — آستانه‌های بارگذاری فیدر",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LD-FEEDER-LOADING-OK",
+      "name": "بارگذاری کل فیدر زیر آستانهٔ بحرانی",
+      "domain": "study_loading",
+      "condition": "has_feeder_total_load and has_feeder_loading_critical_mw and feeder_total_lt_critical",
+      "status": "PASS",
+      "severity": "normal",
+      "priority": 40,
+      "requires": [
+        "feeder_total_load_mw"
+      ],
+      "thresholds": [
+        {
+          "key": "feeder_loading_critical_mw",
+          "label": "آستانهٔ بارگذاری بحرانی فیدر (مگاوات)",
+          "basis": "config",
+          "note": "پیش‌فرض ۷ مگاوات — قابل ویرایش در تنظیمات."
+        }
+      ],
+      "inputs": [
+        "feeder_name",
+        "feeder_total_load_mw"
+      ],
+      "calculated": [
+        "feeder_total_load_mw"
+      ],
+      "finding": "بارگذاری کل فیدر «{feeder_name}» برابر {feeder_total_load_mw} مگاوات است و کمتر از آستانهٔ بحرانی {feeder_loading_critical_mw} مگاوات قرار دارد.",
+      "evidence": "مقایسهٔ صریح مقدار محاسبه‌شده با آستانهٔ پیکربندی‌شده.",
+      "recommended_text": "بارگذاری فیدر {feeder_name} پس از اتصال بار جدید ({feeder_total_load_mw} مگاوات) کمتر از حد بحرانی تعیین‌شده است.",
+      "source": "سیاست بهره‌برداری (دستور کارفرما)",
+      "source_page": "تنظیمات → مطالعه و هزینه — آستانه‌های بارگذاری فیدر",
+      "engineer_review_required": false
+    },
+    {
+      "id": "LD-CRITICAL",
+      "name": "بارگذاری بحرانی فیدر (≥ ۷ مگاوات)",
+      "domain": "study_loading",
+      "condition": "has_feeder_total_load and has_feeder_loading_critical_mw and has_feeder_loading_severe_mw and not threshold_order_error and feeder_total_ge_critical and not feeder_total_ge_severe",
+      "status": "WARNING",
+      "severity": "warning",
+      "priority": 78,
+      "requires": [
+        "feeder_total_load_mw"
+      ],
+      "thresholds": [
+        {
+          "key": "feeder_loading_critical_mw",
+          "label": "آستانهٔ بارگذاری بحرانی فیدر (مگاوات)",
+          "basis": "config",
+          "note": "پیش‌فرض ۷ مگاوات مطابق دستور کارفرما."
+        }
+      ],
+      "inputs": [
+        "feeder_name",
+        "feeder_peak_load_mw",
+        "added_load_mw",
+        "feeder_total_load_mw"
+      ],
+      "calculated": [
+        "feeder_total_load_mw",
+        "over_critical_mw"
+      ],
+      "finding": "بارگذاری کل فیدر «{feeder_name}» برابر {feeder_total_load_mw} مگاوات است و از آستانهٔ بحرانی {feeder_loading_critical_mw} مگاوات عبور کرده (مازاد {over_critical_mw} مگاوات)؛ این وضعیت «بارگذاری بحرانی» ارزیابی می‌شود.",
+      "evidence": "Total = پیک فیدر ({feeder_peak_load_mw} MW) + بار اضافه‌شدهٔ متقاضی ({added_load_mw} MW) و مقایسه با آستانهٔ مصوب کارفرما.",
+      "recommended_text": "با توجه به بارگذاری بحرانی فیدر {feeder_name} ({feeder_total_load_mw} مگاوات)، پیشنهاد می‌شود راهکارهای تعدیل بار بررسی شود: (۱) بازآرایی فیدر و انتقال بخشی از بار به فیدر همجوار نزدیک — {rearrange_feeder_name} — و (۲) احداث فیدر جدید در صورت عدم کفایت ظرفیت فیدرهای همجوار. انتخاب راهکار نهایی نیازمند تأیید مهندس است.",
+      "source": "سیاست بهره‌برداری (دستور کارفرما)",
+      "source_page": "تنظیمات → مطالعه و هزینه — آستانهٔ بحرانی ۷ مگاوات",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LD-SEVERE",
+      "name": "بارگذاری شدیداً بحرانی فیدر (≥ ۸ مگاوات)",
+      "domain": "study_loading",
+      "condition": "has_feeder_total_load and has_feeder_loading_severe_mw and not threshold_order_error and feeder_total_ge_severe",
+      "status": "FAIL",
+      "severity": "error",
+      "priority": 90,
+      "requires": [
+        "feeder_total_load_mw"
+      ],
+      "thresholds": [
+        {
+          "key": "feeder_loading_severe_mw",
+          "label": "آستانهٔ بارگذاری شدیداً بحرانی فیدر (مگاوات)",
+          "basis": "config",
+          "note": "پیش‌فرض ۸ مگاوات مطابق دستور کارفرما."
+        }
+      ],
+      "inputs": [
+        "feeder_name",
+        "feeder_peak_load_mw",
+        "added_load_mw",
+        "feeder_total_load_mw"
+      ],
+      "calculated": [
+        "feeder_total_load_mw",
+        "over_severe_mw"
+      ],
+      "finding": "بارگذاری کل فیدر «{feeder_name}» برابر {feeder_total_load_mw} مگاوات است و از آستانهٔ «شدیداً بحرانی» {feeder_loading_severe_mw} مگاوات عبور کرده (مازاد {over_severe_mw} مگاوات)؛ وضعیت فیدر «شدیداً بحرانی» است و اتصال بار جدید بدون اصلاح شبکه توصیه نمی‌شود.",
+      "evidence": "Total = پیک فیدر ({feeder_peak_load_mw} MW) + بار اضافه‌شدهٔ متقاضی ({added_load_mw} MW) در مقایسه با آستانهٔ مصوب کارفرما.",
+      "recommended_text": "فیدر {feeder_name} در وضعیت شدیداً بحرانی ({feeder_total_load_mw} مگاوات) قرار می‌گیرد؛ لازم است پیش از تأمین بار جدید: (۱) بازآرایی فیدر و انتقال بار به فیدر همجوار نزدیک — {rearrange_feeder_name} — با ثبت نتیجهٔ پخش بار، و (۲) احداث فیدر جدید (یا تقویت فیدر موجود/پست) بررسی و در سناریوهای تأمین لحاظ شود. هیچ‌یک از این راهکارها بدون تأیید مهندس نهایی نمی‌شود.",
+      "source": "سیاست بهره‌برداری (دستور کارفرما)",
+      "source_page": "تنظیمات → مطالعه و هزینه — آستانهٔ شدیداً بحرانی ۸ مگاوات",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LD-REARRANGE-PROPOSAL",
+      "name": "پیشنهاد بازآرایی از فیدر همجوار نزدیک",
+      "domain": "study_loading",
+      "condition": "has_rearrange_candidate and has_feeder_total_load and (feeder_total_ge_critical or feeder_total_ge_severe)",
+      "status": "REQUIRES_ENGINEER_REVIEW",
+      "severity": "review",
+      "priority": 74,
+      "requires": [
+        "transfer_proposed_mw"
+      ],
+      "inputs": [
+        "feeder_name",
+        "feeder_total_load_mw",
+        "rearrange_feeder_name",
+        "rearrange_distance_km",
+        "rearrange_peak_mw",
+        "rearrange_capacity_mw",
+        "rearrange_free_mw",
+        "rearrange_transferable_mw"
+      ],
+      "calculated": [
+        "transfer_needed_mw",
+        "transfer_proposed_mw",
+        "feeder_after_rearrange_mw",
+        "rearrange_feeder_after_mw",
+        "rearrange_feeder_after_pct",
+        "transfer_limited",
+        "transfer_limiting_factor"
+      ],
+      "finding": "پیشنهاد بازآرایی: انتقال {transfer_proposed_mw} مگاوات از فیدر «{feeder_name}» به فیدر همجوار «{rearrange_feeder_name}» با فاصلهٔ {rearrange_distance_km} کیلومتر ثبت‌شده است. با این انتقال، بار فیدر متقاضی به {feeder_after_rearrange_mw} مگاوات و بار فیدر همجوار به {rearrange_feeder_after_mw} مگاوات ({rearrange_feeder_after_pct}٪ معیار بارگذاری) می‌رسد. عامل محدودکننده: {transfer_limiting_factor}.",
+      "evidence": "مقدار پیشنهادی انتقال = مازاد بار بر آستانهٔ بحرانی (Total − آستانه)؛ در صورت وجود «بار قابل انتقال ثبت‌شده» یا «ظرفیت آزاد فیدر همجوار»، پیشنهاد به همان مقدار محدود می‌شود. این محاسبه پیشنهاد است و انتخاب راهکار با مهندس است.",
+      "recommended_text": "به‌منظور تعدیل بار فیدر {feeder_name}، بازآرایی و انتقال حدود {transfer_proposed_mw} مگاوات بار به فیدر همجوار {rearrange_feeder_name} پیشنهاد می‌شود؛ نتیجهٔ پخش بار پس از بازآرایی باید ثبت و تأیید گردد.",
+      "source": "سیاست بهره‌برداری (دستور کارفرما)",
+      "source_page": "تنظیمات → مطالعه و هزینه — بازآرایی از فیدر همجوار نزدیک",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LD-REARRANGE-NO-CANDIDATE",
+      "name": "نبود فیدر همجوار برای بازآرایی",
+      "domain": "study_loading",
+      "condition": "has_feeder_total_load and (feeder_total_ge_critical or feeder_total_ge_severe) and not has_rearrange_candidate",
+      "status": "WARNING",
+      "severity": "warning",
+      "priority": 72,
+      "requires": [
+        "feeder_total_load_mw"
+      ],
+      "inputs": [
+        "feeder_name",
+        "feeder_total_load_mw",
+        "nf_count"
+      ],
+      "calculated": [],
+      "finding": "بارگذاری فیدر «{feeder_name}» در محدودهٔ بحرانی است، اما هیچ «فیدر همجوار» (کاندید بازآرایی) در ورودی‌ها ثبت نشده است؛ بنابراین پیشنهاد بازآرایی قابل ارائه نیست.",
+      "evidence": "جدول «فیدرهای همجوار (بازآرایی)» در صفحهٔ مطالعه مصارف سنگین خالی است.",
+      "recommended_text": "برای تعدیل بار فیدر {feeder_name}، ابتدا فیدرهای همجوار و بار قابل انتقال آن‌ها در ورودی‌های مطالعه ثبت شود؛ در غیر این صورت احداث فیدر جدید در سناریوهای تأمین مطرح می‌گردد.",
+      "source": "سیاست بهره‌برداری (دستور کارفرما)",
+      "source_page": "صفحهٔ «مطالعه مصارف سنگین» — تب فیدرهای همجوار",
+      "engineer_review_required": true
+    },
+    {
+      "id": "LD-NO-FEEDER",
+      "name": "نبود فیدر برای کنترل بارگذاری",
+      "domain": "study_loading",
+      "condition": "not has_feeder_total_load and not has_feeder_peak",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 30,
+      "inputs": [],
+      "calculated": [],
+      "finding": "هیچ فیدر فعالی برای کنترل بارگذاری (پیک فیدر + بار اضافه‌شده) ثبت نشده است.",
+      "evidence": "در صفحهٔ «ورود داده» باید فیدر(ها) و پیک بار آن‌ها ثبت شود.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحهٔ ۲ دفترچه — جدول پیک بار فیدر",
+      "engineer_review_required": true
+    }
+  ]
+}

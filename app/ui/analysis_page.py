@@ -14,6 +14,7 @@ from app.core.findings import (DOMAIN_LABELS_FA, SEV_ERROR, SEV_NORMAL, SEV_REVI
 from app.core.models import (REVIEW_ACCEPTED, REVIEW_EDITED, REVIEW_OVERRIDDEN,
                              REVIEW_PENDING, REVIEW_REJECTED)
 from app.core.validation import ERROR, OK, WARNING, summary_counts, validate_project
+from app.ui.excel_table import enable_excel_table
 from app.ui.widgets import Card, page_header, state_item
 from app.utils.formatting import fmt
 
@@ -89,10 +90,12 @@ class AnalysisPage(QWidget):
     def _table_defaults(t: QTableWidget) -> None:
         t.setEditTriggers(QTableWidget.NoEditTriggers)
         t.setAlternatingRowColors(True)
-        t.setSelectionBehavior(QTableWidget.SelectRows)
+        t.setSelectionBehavior(QTableWidget.SelectItems)
         t.verticalHeader().setVisible(False)
         t.horizontalHeader().setStretchLastSection(True)
         t.horizontalHeader().setMinimumSectionSize(80)
+        # v1.2.0: انتخاب/کپی مانند Excel (Ctrl+C، Ctrl+A، منوی راست‌کلیک)
+        enable_excel_table(t, editable=False, auto_add_row=False)
 
     def show_tab(self, name: str) -> None:
         self.tabs.setCurrentIndex({"metrics": 0, "findings": 1, "validation": 2, "trace": 3}.get(name, 0))

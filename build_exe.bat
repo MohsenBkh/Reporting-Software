@@ -47,5 +47,25 @@ if errorlevel 1 (
 
 echo.
 echo Build OK: dist\ReportForge.exe
+echo.
+
+rem ------------------------------------------------------------
+rem  Startup self-check (v1.1.2): runs the produced exe with
+rem  --smoke-test and prints ReportForge-smoke.txt.
+rem  "start /wait" is required because the exe is a GUI app.
+rem ------------------------------------------------------------
+if exist "dist\ReportForge-smoke.txt" del "dist\ReportForge-smoke.txt"
+echo Running startup self-check ...
+start /wait "" "dist\ReportForge.exe" --smoke-test
+if exist "dist\ReportForge-smoke.txt" (
+    echo.
+    type "dist\ReportForge-smoke.txt"
+) else (
+    echo [WARN] self-check report was not created. Run it manually:
+    echo        dist\ReportForge.exe --smoke-test
+)
+
+echo.
+echo Done. The application itself is at: dist\ReportForge.exe
 pause
 endlocal

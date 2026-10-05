@@ -1,20 +1,23 @@
 {
   "company_name": "شرکت توزیع نیروی برق استان اردبیل",
   "unit_name": "معاونت مهندسی و برنامه‌ریزی و مطالعات فنی",
-  "office_name": "دفتر مهندسی و نظارت-گروه GIS و مطالعات فنی سیستم",
+  "office_name": "گروه هدف‌گذاری مهندسی و نظارت",
   "company_logo": "",
   "template_file": "",
   "report_prefix": "DM-18-",
   "output_dir": "",
-  "recent_projects": [],
+  "recent_projects": [
+    "C:\\Users\\Mohsen\\Desktop\\مطالعه درخواست دیماند 1000kW متقاضي گلخانه آقاي مجيد دهقاني دهنو\\project.json",
+    "/tmp/pytest-of-user/pytest-13/test_forecast_flag_survives_re0/proj/project.json"
+  ],
   "theme": "light",
   "template_name": "standard",
-  "include_appendices": false,
+  "include_appendices": true,
   "open_folder_after": true,
   "fonts": {
     "body_font": "B Nazanin",
     "body_size": 13,
-    "heading_font": "B Titr",
+    "heading_font": "Urdu Typesetting",
     "heading1_size": 16,
     "heading2_size": 14,
     "latin_font": "Times New Roman"
@@ -32,15 +35,51 @@
     "forecast_min_history": 3,
     "growth_low_pct": 2.0,
     "growth_high_pct": 4.0,
-    "forecast_r2_min": 0.6,
-    "forecast_outlier_sigma": 3.0,
-    "forecast_jump_pct": 25.0,
+    "forecast_r2_min": 0.0,
+    "forecast_outlier_sigma": 2.0,
+    "forecast_jump_pct": 20.0,
     "forecast_max_gap_years": 1,
     "plausible_voltage_min_pu": 0.5,
     "plausible_voltage_max_pu": 1.3,
     "plausible_pf_min": 0.5,
     "plausible_current_max_a": 2000.0,
-    "plausible_peak_max_mw": 40.0,
-    "loading_severe_pct": 115.0
+    "plausible_peak_max_mw": 40.0
+  },
+  "study": {
+    "heavy_consumer_min_kw": 1000.0,
+    "substation_loading_tolerance_pct": null,
+    "line_current_tolerance_pct": null,
+    "study_substation_loading_warn_pct": null,
+    "study_sc_limit_ka": null,
+    "load_sum_tolerance_kw": null,
+    "feeder_loading_critical_mw": 7.0,
+    "feeder_loading_severe_mw": 8.0,
+    "rearrange_use_nearest_feeder": true
+  },
+  "costs": {
+    "overhead_per_km_million": null,
+    "underground_per_km_million": null,
+    "ground_substation_million": null,
+    "switchgear_million": null,
+    "protection_million": null,
+    "other_equipment_million": null
+  },
+  "report_sections": {
+    "intro": true,
+    "loading": true,
+    "forecast": true,
+    "before": true,
+    "after": true,
+    "study_demand": true,
+    "study_substations": true,
+    "study_lines": true,
+    "study_coincident": true,
+    "study_loading": true,
+    "study_analysis": false,
+    "study_scenarios": true,
+    "study_economics": false,
+    "study_conclusion": true,
+    "conclusion": true,
+    "appendix": true
   }
 }

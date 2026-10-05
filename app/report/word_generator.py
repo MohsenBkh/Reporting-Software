@@ -137,25 +137,21 @@ def shade_cell(cell, hex_color: str) -> None:
 def cell_text(cell, text: str, *, font_fa: str, size: int, bold=False,
               align=WD_ALIGN_PARAGRAPH.CENTER, color: RGBColor | None = None,
               font_latin: str = "Times New Roman") -> None:
-    """متن سلول — از «\\n» برای چند خط داخل سلول پشتیبانی می‌کند (مثل گزارش مرجع)."""
-    lines = str(text).split("\n")
+    """نوشتن متن در یک خانه جدول — با پشتیبانی از چند خط (\n).
+
+    جدول‌های دفترچه مطالعات (مثل «پیک بار خط») چند مقدار را در یک خانه دارند
+    (MVA / MW / A)؛ این تابع هر خط را در یک پاراگراف جداگانه می‌نویسد.
+    """
     cell.text = ""
-    _cell_par(cell.paragraphs[0], lines[0], font_fa=font_fa, size=size, bold=bold,
-              align=align, color=color, font_latin=font_latin)
-    for line in lines[1:]:
-        _cell_par(cell.add_paragraph(), line, font_fa=font_fa, size=size, bold=bold,
-                  align=align, color=color, font_latin=font_latin)
-
-
-def _cell_par(p, text: str, *, font_fa: str, size: int, bold=False,
-              align=WD_ALIGN_PARAGRAPH.CENTER, color: RGBColor | None = None,
-              font_latin: str = "Times New Roman") -> None:
-    p.alignment = align
-    set_rtl(p)
-    p.paragraph_format.space_after = Pt(2)
-    p.paragraph_format.space_before = Pt(2)
-    run = p.add_run(text)
-    style_run(run, font_fa, size, bold=bold, color=color, font_latin=font_latin)
+    lines = [ln for ln in str(text).split("\n")] or [""]
+    for idx, line in enumerate(lines):
+        p = cell.paragraphs[0] if idx == 0 else cell.add_paragraph()
+        p.alignment = align
+        set_rtl(p)
+        p.paragraph_format.space_after = Pt(1)
+        p.paragraph_format.space_before = Pt(1)
+        run = p.add_run(line)
+        style_run(run, font_fa, size, bold=bold, color=color, font_latin=font_latin)
 
 
 def _field(paragraph, instr: str) -> None:
@@ -236,7 +232,7 @@ class WordGenerator:
     def _set_properties(self, doc: Document) -> None:
         cp = doc.core_properties
         cp.title = self.project.title_text()
-        cp.subject = self.project.booklet_title()
+        cp.subject = "دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر"
         cp.author = self.project.expert_name or self.settings.company_name
         cp.language = "fa-IR"
         cp.keywords = f"ReportForge {APP_VERSION}"
@@ -284,7 +280,7 @@ class WordGenerator:
         cp = right_cell.paragraphs[0]
         cp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         set_rtl(cp)
-        r = cp.add_run(p.booklet_title())
+        r = cp.add_run("دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر")
         style_run(r, f.body_font, 10, bold=True)
         cp2 = left_cell.paragraphs[0]
         cp2.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -364,21 +360,21 @@ class WordGenerator:
         add_par(doc, self.settings.office_name, font_fa=f.body_font,
                 size=12, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=24)
 
-        # چیدمان جلد مطابق گزارش مرجع: عنوان دفترچه ← موضوع مطالعه ← ماه/سال
-        # ← شماره گزارش ← کارشناس مطالعات
-        add_par(doc, p.booklet_title(),
+        add_par(doc, "دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر",
                 font_fa=f.heading_font, size=22, bold=True,
                 align=WD_ALIGN_PARAGRAPH.CENTER, space_after=30,
                 color=RGBColor(0x1F, 0x4E, 0x79))
 
-        add_par(doc, f"مطالعات مربوط به {p.title_text()}", font_fa=f.heading_font,
-                size=16, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=40)
+        add_par(doc, p.title_text(), font_fa=f.heading_font, size=16, bold=True,
+                align=WD_ALIGN_PARAGRAPH.CENTER, space_after=40)
 
         add_par(doc, jalali_month_year(p.date_jalali), font_fa=f.heading_font,
                 size=14, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=60)
 
         add_par(doc, f"شماره گزارش: {p.report_number}", font_fa=f.body_font,
                 size=12, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
+        add_par(doc, f"تاریخ: {p.date_jalali}", font_fa=f.body_font,
+                size=12, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
         if p.expert_name:
             add_par(doc, f"کارشناس مطالعات: {p.expert_name}", font_fa=f.body_font,
                     size=12, align=WD_ALIGN_PARAGRAPH.CENTER)
@@ -423,11 +419,11 @@ class WordGenerator:
                   color=RGBColor(0x1F, 0x4E, 0x79), font_latin=f.latin_font)
         for block in sec.blocks:
             if isinstance(block, Paragraph):
-                if block.style == "bullet":
-                    self._bullet(doc, block.text)
-                else:
-                    style = ("item" if block.style == "item" else "body")
-                    add_par(doc, block.text, font_fa=f.body_font, size=f.body_size,
+                style = ("item" if block.style == "item" else "body")
+                for line in str(block.text).split("\n"):
+                    if not line.strip():
+                        continue
+                    add_par(doc, line, font_fa=f.body_font, size=f.body_size,
                             bold=(style == "item"),
                             align=WD_ALIGN_PARAGRAPH.JUSTIFY)
             elif isinstance(block, TableSpec):
@@ -435,26 +431,10 @@ class WordGenerator:
             elif isinstance(block, FigureBlock):
                 self._figure(doc, block)
 
-    def _bullet(self, doc: Document, text: str) -> None:
-        """آیتهای نشانه‌دار (مانند «جریان ابتدای فیدر ...») — مطابق استایل لیست گزارش مرجع."""
-        f = self.f
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        set_rtl(p)
-        pf = p.paragraph_format
-        pf.space_after = Pt(4)
-        pf.line_spacing = 1.15
-        pf.right_indent = Cm(0.9)
-        run = p.add_run("•  ")
-        style_run(run, f.body_font, f.body_size, bold=True, font_latin=f.latin_font)
-        run = p.add_run(text)
-        style_run(run, f.body_font, f.body_size, font_latin=f.latin_font)
-
     # ------------------------------------------------------------------
     def _table(self, doc: Document, spec: TableSpec) -> None:
         f = self.f
-        # عنوان جدول — بالای جدول (مطابق نمونه‌ها). عنوان خالی = بدون کپشن
-        # (مثل جدول نتیجه‌گیری و پیشنهادات که سربرگ ادغام‌شده خودش عنوان است).
+        # عنوان جدول — بالای جدول (مطابق نمونه‌ها)؛ خالی = جدول بدون عنوان
         if spec.caption:
             cap = add_par(doc, spec.caption, font_fa=f.body_font, size=f.body_size - 1,
                           bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4,
@@ -482,16 +462,7 @@ class WordGenerator:
                 trPr.append(_el("w:tblHeader"))
         for (ri, c0, c1) in spec.merges:
             if c1 > c0 and c1 < n_cols:
-                # سلول‌های ادغام‌شونده (جز اولی) خالی شوند تا متن سربرگ تکرار نشود
-                for ci in range(c0 + 1, c1 + 1):
-                    for par in table.cell(ri, ci).paragraphs:
-                        for run in list(par.runs):
-                            run._r.getparent().remove(run._r)
-                merged = table.cell(ri, c0).merge(table.cell(ri, c1))
-                # حذف پاراگراف‌های خالی باقی‌مانده از ادغام (سلول سربرگ یک‌خطی بماند)
-                for extra in merged.paragraphs[1:]:
-                    if not extra.text.strip():
-                        extra._p.getparent().remove(extra._p)
+                table.cell(ri, c0).merge(table.cell(ri, c1))
 
         for ri, row in enumerate(spec.body_rows):
             for ci in range(n_cols):

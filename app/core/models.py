@@ -11,9 +11,6 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from app.core.report_types import (REPORT_HEAVY, REPORT_SECTIONALIZER, booklet_title,
-                                   type_label, type_short)
-
 REQUEST_NEW = "new"          # تأمین برق جدید
 REQUEST_INCREASE = "increase"  # افزایش قدرت
 
@@ -52,57 +49,241 @@ class Maneuver:
 
 
 # ---------------------------------------------------------------------------
-@dataclass
-class NearbyStation:
-    """ایستگاه (پست فوق توزیع) نزدیک به محل تقاضا — بخش «ایستگاه‌های نزدیک» گزارش."""
-    name: str = ""
-    distance_km: Optional[float] = None        # فاصله تقریبی تا محل تقاضا (km)
-    capacity_mva: Optional[float] = None       # ظرفیت ایستگاه (MVA)
-    t1_loading_pct: Optional[float] = None     # درصد بارگیری ترانس T1 در پیک (%)
-    t2_loading_pct: Optional[float] = None     # درصد بارگیری ترانس T2 در پیک (%)
-    t1_loading_mva: Optional[float] = None     # میزان بارگیری ترانس T1 در پیک (MVA)
-    t2_loading_mva: Optional[float] = None     # میزان بارگیری ترانس T2 در پیک (MVA)
-    feeder_count: Optional[int] = None         # تعداد کل فیدر برقرار
-
-    def has_data(self) -> bool:
-        return bool(self.name) and any(
-            v is not None for v in (self.distance_km, self.capacity_mva,
-                                    self.t1_loading_pct, self.t2_loading_pct,
-                                    self.t1_loading_mva, self.t2_loading_mva,
-                                    self.feeder_count))
-
-
+# «تغییرات آرنا» v1.1.0 — ساختار داده‌های مطالعه مصارف سنگین
+# (منطبق با صورت‌مسئله Rule Engine: A) تقاضا B) پست‌ها C) خطوط D) متقاضیان همزمان
+#  E) سناریوهای تأمین — همه مقادیر اختیاری: نبود داده = None و نه صفر)
 # ---------------------------------------------------------------------------
 @dataclass
-class NearbyLine:
-    """خط نزدیک به محل تقاضا — بخش «خطوط نزدیک» گزارش."""
-    name: str = ""
-    distance_m: Optional[float] = None         # فاصله تقریبی تا محل تقاضا (m)
-    peak_mva: Optional[float] = None           # پیک بار خط (MVA)
-    peak_mw: Optional[float] = None            # پیک بار خط (MW)
-    peak_a: Optional[float] = None             # پیک بار خط (A)
-    vdrop_before_pct: Optional[float] = None   # افت ولتاژ انتهای خط قبل از بار جدید (%)
-    vdrop_after_pct: Optional[float] = None    # افت ولتاژ انتهای خط بعد از بار جدید (%)
+class DemandInfo:
+    """اطلاعات تقاضا (جدول «اطلاعات تقاضا» دفترچه مطالعات)."""
 
-    def vdrop_delta_pct(self) -> Optional[float]:
-        """تغییر افت ولتاژ ناشی از بار جدید (واحد درصد)."""
-        if self.vdrop_before_pct is None or self.vdrop_after_pct is None:
+    without_coincidence_kw: Optional[float] = None   # Demand_without_coincidence_kW
+    with_coincidence_kw: Optional[float] = None      # Demand_with_coincidence_kW
+    existing_demand_kw: Optional[float] = None       # Existing_demand_kW
+    enabled: bool = True                             # کلید On/Off — در گزارش/تحلیل لحاظ شود؟
+
+    def coincidence_factor(self) -> Optional[float]:
+        """ضریب همزمانی = تقاضای با ضریب / تقاضای بدون ضریب (فقط اگر داده باشد)."""
+        if not self.without_coincidence_kw or self.with_coincidence_kw is None:
             return None
-        return self.vdrop_after_pct - self.vdrop_before_pct
+        return self.with_coincidence_kw / self.without_coincidence_kw
 
-    def has_data(self) -> bool:
-        return bool(self.name) and any(
-            v is not None for v in (self.distance_m, self.peak_mva, self.peak_mw,
-                                    self.peak_a, self.vdrop_before_pct,
-                                    self.vdrop_after_pct))
+    def analysis_demand_kw(self) -> Optional[float]:
+        """تقاضای مبنای تحلیل — در نبود ضریب همزمانی، بدون جایگزینی فرض نمی‌شود."""
+        if self.with_coincidence_kw is not None:
+            return self.with_coincidence_kw
+        return self.without_coincidence_kw
+
+    def is_complete(self) -> bool:
+        return (self.without_coincidence_kw is not None
+                and self.with_coincidence_kw is not None)
+
+
+@dataclass
+class SubstationCandidate:
+    """ایستگاه نزدیک به محل تقاضا (جدول «ایستگاه‌های نزدیک به محل تقاضا»)."""
+
+    uid: str = field(default_factory=_uid)
+    name: str = ""
+    distance_km: Optional[float] = None                 # Distance_km
+    transformer_capacity_mva: Optional[float] = None    # Transformer_Capacity_MVA (برای هر ترانس)
+    t1_loading_percent: Optional[float] = None          # T1_Loading_Percent
+    t2_loading_percent: Optional[float] = None          # T2_Loading_Percent
+    t1_peak_mva: Optional[float] = None                 # T1_Peak_MVA
+    t2_peak_mva: Optional[float] = None                 # T2_Peak_MVA
+    feeder_count: Optional[int] = None                  # Feeder_Count
+    peak_year: Optional[int] = None
+    office: str = ""
+    enabled: bool = True                                # کلید On/Off (v1.2.0)
+
+    @property
+    def display_name(self) -> str:
+        return self.name or "بی‌نام"
+
+    def missing_fields(self) -> list[str]:
+        """فیلدهای ناموجود (فارسی) — برای گزارش MISSING_DATA."""
+        labels = (("فاصله", self.distance_km),
+                  ("ظرفیت ترانس", self.transformer_capacity_mva),
+                  ("درصد بارگیری T1", self.t1_loading_percent),
+                  ("درصد بارگیری T2", self.t2_loading_percent),
+                  ("پیک T1", self.t1_peak_mva),
+                  ("پیک T2", self.t2_peak_mva),
+                  ("تعداد فیدر", self.feeder_count))
+        return [label for label, value in labels if value is None]
+
+
+@dataclass
+class LineCandidate:
+    """خط نزدیک به محل تقاضا (جدول «خطوط نزدیک به محل تقاضا»)."""
+
+    uid: str = field(default_factory=_uid)
+    name: str = ""
+    office: str = ""
+    distance_m: Optional[float] = None                  # Distance_m
+    peak_mva: Optional[float] = None                    # Peak_MVA
+    peak_mw: Optional[float] = None                     # Peak_MW
+    peak_current_a: Optional[float] = None              # Peak_Current_A
+    vdrop_before_percent: Optional[float] = None        # Voltage_Drop_Before_Percent
+    vdrop_after_percent: Optional[float] = None         # Voltage_Drop_After_Percent
+    sc_max_ka: Optional[float] = None                   # Max_3Phase_SC_Current_kA
+    sc_min_ka: Optional[float] = None                   # Min_3Phase_SC_Current_kA
+    max_current_a: Optional[float] = None               # ظرفیت هدایتی (در سند مرجع ارائه نشده)
+    peak_year: Optional[int] = None
+    enabled: bool = True                                # کلید On/Off (v1.2.0)
+
+    @property
+    def display_name(self) -> str:
+        return self.name or "بی‌نام"
+
+    def missing_fields(self) -> list[str]:
+        labels = (("فاصله", self.distance_m),
+                  ("پیک MVA", self.peak_mva),
+                  ("افت ولتاژ قبل", self.vdrop_before_percent),
+                  ("افت ولتاژ بعد", self.vdrop_after_percent))
+        return [label for label, value in labels if value is None]
+
+
+@dataclass
+class CoincidentDemand:
+    """تقاضای همزمان / سایر متقاضیان محدوده."""
+
+    uid: str = field(default_factory=_uid)
+    name: str = ""
+    existing_or_requested_power_kw: Optional[float] = None   # Existing_or_Requested_Power
+    new_requested_power_kw: Optional[float] = None           # New_Requested_Power
+    delta_power_kw: Optional[float] = None                   # Delta_Power (اگر ثبت نشده باشد محاسبه می‌شود)
+    location: str = ""                                       # Location
+    supply_feasibility: str = ""                             # Supply_Feasibility
+    enabled: bool = True                                     # کلید On/Off (v1.2.0)
+
+    def computed_delta_kw(self) -> Optional[float]:
+        """افزایش بار متقاضی: مقدار ثبت‌شده یا تفاضل توان جدید و موجود."""
+        if self.delta_power_kw is not None:
+            return self.delta_power_kw
+        if (self.new_requested_power_kw is not None
+                and self.existing_or_requested_power_kw is not None):
+            return self.new_requested_power_kw - self.existing_or_requested_power_kw
+        return None
+
+    def missing_fields(self) -> list[str]:
+        labels = (("نام متقاضی", self.name),
+                  ("توان جدید", self.new_requested_power_kw),
+                  ("محل", self.location))
+        return [label for label, value in labels
+                if value is None or (isinstance(value, str) and not value.strip())]
 
 
 # ---------------------------------------------------------------------------
+SCENARIO_NEW_FEEDER = "new_feeder"
+SCENARIO_EXISTING_FEEDER = "existing_feeder"
+SCENARIO_ALTERNATIVE_FEEDER = "alternative_feeder"
+SCENARIO_REARRANGEMENT = "rearrangement"      # v1.2.0 — بازآرایی/انتقال بار
+SCENARIO_KIND_LABELS = {
+    SCENARIO_NEW_FEEDER: "احداث فیدر جدید",
+    SCENARIO_EXISTING_FEEDER: "تأمین از فیدر موجود",
+    SCENARIO_ALTERNATIVE_FEEDER: "تأمین از فیدر جایگزین",
+    SCENARIO_REARRANGEMENT: "بازآرایی فیدر (انتقال بار)",
+}
+
+
 @dataclass
-class AdjacentFeeder:
-    """فیدر همجوار — کاندید مانور/تعدیل بار در بخش کنترل بارگذاری."""
-    name: str = ""
-    load_mw: Optional[float] = None            # پیک بار فیدر همجوار (MW)
+class SupplyScenario:
+    """سناریوی تأمین برق — تولیدشده توسط Rule Engine یا واردشده توسط کارشناس."""
+
+    uid: str = field(default_factory=_uid)
+    kind: str = SCENARIO_NEW_FEEDER          # New_Feeder | Existing_Feeder | Alternative_Feeders
+    rule_id: str = ""                        # Rule تولیدکننده سناریو
+    title: str = ""
+    technical_basis: str = ""                # Technical Basis
+    required_network_changes: str = ""       # Required Network Changes
+    candidate_feeder: str = ""               # Candidate Feeder
+    required_equipment: list[str] = field(default_factory=list)   # Required Equipment
+    evidence: str = ""                       # Supporting Evidence
+    review_status: str = "REQUIRES_ENGINEER_REVIEW"               # Review Status
+    # --- بررسی اقتصادی (پارامتریک؛ نبود داده = None) ---
+    estimated_cost_million: Optional[float] = None  # Economic_Cost (میلیون تومان)
+    cost_items: dict[str, Optional[float]] = field(default_factory=dict)
+    cost_excluded_items: list[str] = field(default_factory=list)
+    cost_note: str = ""
+    # --- مسیر و تجهیزات ---
+    required_line_length_km: Optional[float] = None  # Required_Line_Length
+    overhead_percent: Optional[float] = None          # Overhead_Percent
+    underground_percent: Optional[float] = None       # Underground_Percent
+    required_switchgear: str = ""                     # Required_Switchgear
+    source: str = "TAV111-10/00"
+    source_page: str = ""
+    enabled: bool = True                                     # کلید On/Off (v1.2.0)
+
+    @property
+    def kind_label(self) -> str:
+        return SCENARIO_KIND_LABELS.get(self.kind, self.kind)
+
+    @property
+    def display_title(self) -> str:
+        return self.title or self.kind_label
+
+    @property
+    def key(self) -> str:
+        """کلید پایدار شناسایی سناریو (مستقل از uid)."""
+        return f"scenario:{self.kind}"
+
+    def missing_fields(self) -> list[str]:
+        labels = (("مبنای فنی", self.technical_basis),
+                  ("تغییرات لازم شبکه", self.required_network_changes),
+                  ("فیدر نامزد", self.candidate_feeder),
+                  ("تجهیزات موردنیاز", self.required_equipment),
+                  ("شاهد پشتیبان", self.evidence))
+        return [label for label, value in labels
+                if value is None or (isinstance(value, (str, list)) and not value)]
+
+    def overhead_km(self) -> Optional[float]:
+        if self.required_line_length_km is None or self.overhead_percent is None:
+            return None
+        return self.required_line_length_km * self.overhead_percent / 100.0
+
+    def underground_km(self) -> Optional[float]:
+        if self.required_line_length_km is None or self.underground_percent is None:
+            return None
+        return self.required_line_length_km * self.underground_percent / 100.0
+
+
+# ---------------------------------------------------------------------------
+# v1.2.0 — فیدرهای همجوار (کاندید بازآرایی بار)
+# ---------------------------------------------------------------------------
+@dataclass
+class NeighborFeeder:
+    """فیدر نزدیک برای بازآرایی/انتقال بار (ورودی جدید نسخه ۱.۲.۰).
+
+    مقادیر اختیاری‌اند: نبود داده = None (هیچ مقدار جایگزینی ساخته نمی‌شود).
+    """
+
+    uid: str = field(default_factory=_uid)
+    name: str = ""                                  # نام فیدر همجوار
+    office: str = ""                                # امور/دفتر
+    substation: str = ""                            # پست مبدأ
+    peak_load_mw: Optional[float] = None            # پیک بار فعلی (MW)
+    capacity_mw: Optional[float] = None             # معیار/ظرفیت بارگذاری (MW)
+    peak_current_a: Optional[float] = None          # پیک جریان (A)
+    max_current_a: Optional[float] = None           # حداکثر جریان مجاز هادی (A)
+    distance_km: Optional[float] = None             # فاصله تا محل تقاضا (km)
+    transferable_mw: Optional[float] = None         # بار قابل انتقال ثبت‌شده (MW) — اختیاری
+    note: str = ""
+    enabled: bool = True                            # کلید On/Off
+
+    @property
+    def display_name(self) -> str:
+        return self.name or "بی‌نام"
+
+    def free_capacity_mw(self) -> Optional[float]:
+        """ظرفیت آزاد = ظرفیت − پیک (فقط با داده کامل؛ در غیر این صورت None)."""
+        if self.capacity_mw is None or self.peak_load_mw is None:
+            return None
+        return self.capacity_mw - self.peak_load_mw
+
+    def missing_fields(self) -> list[str]:
+        labels = (("نام فیدر", self.name), ("پیک بار", self.peak_load_mw))
+        return [label for label, value in labels
+                if value is None or (isinstance(value, str) and not value.strip())]
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +291,8 @@ class AdjacentFeeder:
 class ForecastPoint:
     year: int = 0
     value_mw: float = 0.0
+    source: str = "MANUAL"        # MANUAL | PROFILE | EXCEL | FORECAST
+    enabled: bool = True          # v1.2.0 — On/Off ردیف سال (سال خاموش در گزارش/برازش نمی‌آید)
 
 
 # ---------------------------------------------------------------------------
@@ -178,16 +361,31 @@ class Feeder:
     profile_stats: ProfileStats = field(default_factory=ProfileStats)
     forecast: ForecastResult = field(default_factory=ForecastResult)
     manual_forecast: list[ForecastPoint] = field(default_factory=list)
+    # «تغییرات آرنا» — پیک سالانه واقعی که کاربر وارد می‌کند (مبنای پیش‌بینی).
+    # پروفیل بار فقط برای تحلیل پروفیل است و مبنای پیش‌بینی قرار نمی‌گیرد.
+    annual_peaks: list[ForecastPoint] = field(default_factory=list)
     notes: str = ""
-    # --- کنترل بارگذاری و راهکارهای تعدیل بار (بخش ۸ گزارش) ---
-    control_solution: str = ""                 # راهکار پیشنهادی تعدیل بار (متن کارشناس)
-    adjacent_feeders: list[AdjacentFeeder] = field(default_factory=list)
+    enabled: bool = True                  # کلید On/Off: در تحلیل و گزارش لحاظ شود؟ (v1.2.0)
     # منبع هر داده ورودی: نام فیلد -> "EXCEL:file" | "CSV:file" | "MANUAL" (v1.0.3)
     data_sources: dict[str, str] = field(default_factory=dict)
 
     @property
     def display_name(self) -> str:
         return self.name or "بی‌نام"
+
+    # --- v1.2.0: کلید «در گزارش» (On/Off) روی هر سطر ورودی ---
+    @property
+    def active_forecast_points(self) -> list[ForecastPoint]:
+        """سطرهای پیش‌بینی روشن (On) — مقادیر سطرهای Off حفظ می‌شود ولی در گزارش نمی‌آید."""
+        return [p for p in self.forecast.points if getattr(p, "enabled", True)]
+
+    @property
+    def active_manual_forecast(self) -> list[ForecastPoint]:
+        return [p for p in self.manual_forecast if getattr(p, "enabled", True)]
+
+    @property
+    def active_annual_peaks(self) -> list[ForecastPoint]:
+        return [p for p in self.annual_peaks if getattr(p, "enabled", True)]
 
 
 # ---------------------------------------------------------------------------
@@ -198,8 +396,6 @@ IMAGE_KINDS = {
     "forecast": "پیش‌بینی",
     "before": "خروجی پخش بار — قبل",
     "after": "خروجی پخش بار — بعد",
-    "adjacent": "موقعیت فیدرهای همجوار",
-    "reconfig": "پخش بار پس از بازآرایی/مانور",
     "other": "سایر",
 }
 
@@ -210,6 +406,11 @@ class ProjectImage:
     file_name: str = ""    # نام فایل کپی‌شده در پوشه images پروژه
     title: str = ""        # عنوان شکل
     kind: str = "other"    # یکی از IMAGE_KINDS
+    # --- v1.2.0: محل قرارگیری، ترتیب و کپشن مستقل ---
+    section_key: str = ""  # کلید بخش گزارش (خالی = از نوع شکل استخراج می‌شود)
+    order: int = 0         # اولویت/ترتیب نمایش در بخش (کمتر = جلوتر)
+    caption: str = ""      # کپشن مستقل (خالی = کپشن خودکار برنامه)
+    enabled: bool = True   # کلید On/Off: در گزارش بیاید یا نه
 
     @property
     def kind_label(self) -> str:
@@ -238,26 +439,12 @@ class ReviewDecision:
 
 # ---------------------------------------------------------------------------
 @dataclass
-class SectionalizerInfo:
-    """داده‌های مطالعه سکشنالایزر — ساختار اولیه (جزئیات تکمیلی متعاقباً ارائه می‌شود)."""
-    feeder_name: str = ""        # فیدر هدف مطالعه
-    location: str = ""           # محل پیشنهادی نصب سکشنالایزر
-    purpose: str = ""            # هدف / دلیل نصب
-    notes: str = ""              # سایر توضیحات کارشناس
-
-    def has_data(self) -> bool:
-        return bool(self.feeder_name or self.location or self.purpose or self.notes)
-
-
-# ---------------------------------------------------------------------------
-@dataclass
 class Project:
     """پروژه مطالعه — واحد اصلی ذخیره‌سازی."""
     uid: str = field(default_factory=_uid)
     name: str = ""                        # عنوان پروژه
     report_number: str = ""               # مثلاً DM-18-001
     date_jalali: str = ""                 # 1405/06/15
-    report_type: str = REPORT_HEAVY       # نوع مطالعه: heavy | sectionalizer | recloser
 
     applicant_name: str = ""              # نام متقاضی
     request_type: str = REQUEST_INCREASE  # new | increase
@@ -271,22 +458,29 @@ class Project:
     # --- موقعیت محل (عمدتاً برای تأمین برق جدید) ---
     location_note: str = ""               # توضیح موقعیت (مختصات و ...)
     location_distance_m: Optional[float] = None  # فاصله تا نزدیک‌ترین تیر (m)
-    cable_suggestion: str = ""            # پیشنهاد نوع کابل (سازگاری با نسخه‌های قبل)
-    conductor_type: str = ""              # نوع هادی شبکه موجود (مثلاً AL-126 (ACSR-Hyena))
+    cable_suggestion: str = ""            # پیشنهاد نوع کابل
 
     maneuver: Maneuver = field(default_factory=Maneuver)
     feeders: list[Feeder] = field(default_factory=list)
     images: list[ProjectImage] = field(default_factory=list)
 
-    # --- ایستگاه‌ها و خطوط نزدیک به محل تقاضا (بخش‌های ۴ و ۵ گزارش) ---
-    nearby_stations: list[NearbyStation] = field(default_factory=list)
-    nearby_lines: list[NearbyLine] = field(default_factory=list)
-
-    # --- نتیجه‌گیری و پیشنهادات (بخش ۹ گزارش) ---
-    conclusion_scenarios: str = ""        # متن سناریوهای پیشنهادی (کارشناس)
-
-    # --- داده‌های مطالعه سکشنالایزر ---
-    sectionalizer: SectionalizerInfo = field(default_factory=SectionalizerInfo)
+    # --- «تغییرات آرنا» v1.1.0: داده‌های مطالعه مصارف سنگین ---
+    demand: DemandInfo = field(default_factory=DemandInfo)
+    nearby_substations: list[SubstationCandidate] = field(default_factory=list)
+    nearby_lines: list[LineCandidate] = field(default_factory=list)
+    neighbor_feeders: list[NeighborFeeder] = field(default_factory=list)   # v1.2.0
+    coincident_demands: list[CoincidentDemand] = field(default_factory=list)
+    scenarios: list[SupplyScenario] = field(default_factory=list)
+    # کنترل ناسازگاری داده‌ها (Cross Validation) — مقادیر مرجع گزارش
+    reported_total_additional_load_kw: Optional[float] = None   # Reported_Total_Additional_Load
+    demand_used_in_analysis_kw: Optional[float] = None          # Demand used in analysis
+    network_voltage_kv: Optional[float] = None                  # سطح ولتاژ شبکه (برای کنترل جریان)
+    # بررسی توپولوژیکی تأمین مشترک چند نقطه تقاضا
+    joint_supply_feasible: Optional[bool] = None
+    joint_supply_note: str = ""
+    joint_supply_evidence: str = ""            # شاهد مسیر/آرایش شبکه (GIS/PowerFactory)
+    # معیار صریح انتخاب سناریو (در صورت تعریف‌نشدن، موتور توصیه‌ای نمی‌کند)
+    scenario_selection_criterion: str = ""
 
     # متن‌های ویرایش‌شده دستی کارشناس: کلید بخش -> متن
     manual_texts: dict[str, str] = field(default_factory=dict)
@@ -304,23 +498,41 @@ class Project:
     def request_type_label(self) -> str:
         return REQUEST_TYPE_LABELS.get(self.request_type, self.request_type)
 
+    # ------------------------------------------------------------------
+    # v1.2.0 — ورودی‌های فعال (On/Off)
+    # ------------------------------------------------------------------
     @property
-    def report_type_label(self) -> str:
-        return type_label(self.report_type)
+    def active_feeders(self) -> list["Feeder"]:
+        """فیدرهایی که کلید «در گزارش» آن‌ها روشن است."""
+        return [f for f in self.feeders if getattr(f, "enabled", True)]
 
     @property
-    def report_type_short(self) -> str:
-        return type_short(self.report_type)
+    def active_substations(self) -> list[SubstationCandidate]:
+        return [s for s in self.nearby_substations if getattr(s, "enabled", True)]
 
     @property
-    def is_heavy(self) -> bool:
-        """پروژه‌های قدیمی (بدون فیلد نوع) نیز مطالعات متقاضیان سنگین هستند."""
-        from app.core.report_types import is_heavy
-        return is_heavy(self.report_type)
+    def active_lines(self) -> list[LineCandidate]:
+        return [ln for ln in self.nearby_lines if getattr(ln, "enabled", True)]
 
-    def booklet_title(self) -> str:
-        """عنوان دفترچه روی جلد و سربرگ — بسته به نوع مطالعه."""
-        return booklet_title(self.report_type)
+    @property
+    def active_coincident_demands(self) -> list[CoincidentDemand]:
+        return [c for c in self.coincident_demands if getattr(c, "enabled", True)]
+
+    @property
+    def active_scenarios(self) -> list[SupplyScenario]:
+        return [s for s in self.scenarios if getattr(s, "enabled", True)]
+
+    @property
+    def active_neighbor_feeders(self) -> list["NeighborFeeder"]:
+        return [n for n in self.neighbor_feeders if getattr(n, "enabled", True)]
+
+    @property
+    def active_images(self) -> list[ProjectImage]:
+        return [i for i in self.images if getattr(i, "enabled", True)]
+
+    @property
+    def active_feeder_names(self) -> list[str]:
+        return [f.name for f in self.active_feeders if f.name]
 
     @property
     def feeder_names(self) -> list[str]:
@@ -346,26 +558,10 @@ class Project:
 
     def title_text(self) -> str:
         """عنوان گزارش مطابق ادبیات نمونه‌ها."""
-        if not self.is_heavy:
-            return self._study_title()
         if self.request_type == REQUEST_INCREASE:
             return (f"افزایش قدرت {self.applicant_name} از قدرت "
                     f"{self._num(self.existing_power_kw)} به {self._num(self.requested_power_kw)} کیلووات")
-        return (f"تأمین برق متقاضی {self.applicant_name} به ظرفیت "
-                f"{self._num(self.requested_power_kw)} کیلووات")
-
-    def _study_title(self) -> str:
-        """عنوان گزارش‌های غیر مصارف سنگین (سکشنالایزر/ریکلوزر)."""
-        if self.report_type == REPORT_SECTIONALIZER:
-            study = "مطالعه نصب سکشنالایزر"
-        else:
-            study = "مطالعه نصب ریکلوزر"
-        feeder = (self.sectionalizer.feeder_name or "").strip()
-        if feeder:
-            return f"{study} بر روی {feeder}"
-        if self.applicant_name:
-            return f"{study} — {self.applicant_name}"
-        return study
+        return f"تأمین برق به {self.applicant_name} به ظرفیت {self._num(self.requested_power_kw)} کیلووات"
 
     @staticmethod
     def _num(v: Optional[float]) -> str:
@@ -421,31 +617,35 @@ _NESTED: dict[type, dict[str, type]] = {
     ForecastPoint: {},
     ForecastResult: {},
     ProfileStats: {},
-    NearbyStation: {},
-    NearbyLine: {},
-    AdjacentFeeder: {},
-    SectionalizerInfo: {},
     Feeder: {"before": PowerFlowResult, "after": PowerFlowResult,
              "profile_stats": ProfileStats, "forecast": ForecastResult},
     ProjectImage: {},
     ReviewDecision: {},
-    Project: {"maneuver": Maneuver, "sectionalizer": SectionalizerInfo},
+    DemandInfo: {},
+    SubstationCandidate: {},
+    LineCandidate: {},
+    CoincidentDemand: {},
+    SupplyScenario: {},
+    Project: {"maneuver": Maneuver, "demand": DemandInfo},
 }
 
 # فیلدهای لیستی که عضو آن‌ها dataclass است — هنگام بازسازی از JSON
 _NESTED_LISTS: dict[type, dict[str, type]] = {
     ForecastResult: {"points": ForecastPoint},
-    Feeder: {"manual_forecast": ForecastPoint, "adjacent_feeders": AdjacentFeeder},
+    Feeder: {"manual_forecast": ForecastPoint, "annual_peaks": ForecastPoint},
     Project: {"feeders": Feeder, "images": ProjectImage,
-              "nearby_stations": NearbyStation, "nearby_lines": NearbyLine},
+              "nearby_substations": SubstationCandidate,
+              "nearby_lines": LineCandidate,
+              "coincident_demands": CoincidentDemand,
+              "scenarios": SupplyScenario,
+              "neighbor_feeders": NeighborFeeder},
 }
 
 
 def feeder_from_dict(data: dict) -> Feeder:
     f = _build(Feeder, data, _NESTED[Feeder])
     f.manual_forecast = [ForecastPoint(**p) for p in (data.get("manual_forecast") or [])]
-    f.adjacent_feeders = [_build(AdjacentFeeder, a, {}) if isinstance(a, dict) else a
-                          for a in (data.get("adjacent_feeders") or [])]
+    f.annual_peaks = [ForecastPoint(**p) for p in (data.get("annual_peaks") or [])]
     return f
 
 
@@ -453,10 +653,15 @@ def project_from_dict(data: dict) -> Project:
     p = _build(Project, data, _NESTED[Project])
     p.feeders = [feeder_from_dict(fd) for fd in (data.get("feeders") or [])]
     p.images = [_build(ProjectImage, im, {}) for im in (data.get("images") or [])]
-    p.nearby_stations = [_build(NearbyStation, st, {}) if isinstance(st, dict) else st
-                         for st in (data.get("nearby_stations") or [])]
-    p.nearby_lines = [_build(NearbyLine, ln, {}) if isinstance(ln, dict) else ln
-                      for ln in (data.get("nearby_lines") or [])]
+    # داده‌های مطالعه مصارف سنگین (v1.1.0)
+    p.nearby_substations = [_build(SubstationCandidate, x, {})
+                            for x in (data.get("nearby_substations") or [])]
+    p.nearby_lines = [_build(LineCandidate, x, {})
+                      for x in (data.get("nearby_lines") or [])]
+    p.coincident_demands = [_build(CoincidentDemand, x, {})
+                            for x in (data.get("coincident_demands") or [])]
+    p.scenarios = [_build(SupplyScenario, x, {})
+                   for x in (data.get("scenarios") or [])]
     p.reviews = {}
     for key, rd in (data.get("reviews") or {}).items():
         if isinstance(rd, dict):

@@ -1,0 +1,202 @@
+{
+  "domain": "study_demand",
+  "kind": "analysis",
+  "description": "اطلاعات تقاضا — استخراج و کنترل کامل بودن/سازگاری داده تقاضا (مرجع: جدول «اطلاعات تقاضا»، صفحه ۲ دفترچه / صفحه ۱۰ از ۱۵ سند TAV111-10/00)",
+  "rules": [
+    {
+      "id": "D-DEMAND-COMPLETE",
+      "name": "کنترل کامل بودن اطلاعات تقاضا",
+      "domain": "study_demand",
+      "condition": "has_demand_with and has_demand_without",
+      "status": "PASS",
+      "severity": "normal",
+      "priority": 60,
+      "requires": [
+        "demand_without_coincidence_kw",
+        "demand_with_coincidence_kw"
+      ],
+      "inputs": [
+        "demand_without_coincidence_kw",
+        "demand_with_coincidence_kw",
+        "existing_demand_kw"
+      ],
+      "calculated": [
+        "coincidence_factor",
+        "demand_for_analysis_kw"
+      ],
+      "finding": "اطلاعات تقاضا کامل است: تقاضا بدون ضریب همزمانی {demand_without_coincidence_kw:.0f} کیلووات، با ضریب همزمانی {demand_with_coincidence_kw:.0f} کیلووات (ضریب همزمانی محاسبه‌شده {coincidence_factor:.3f}) و دیماند موجود {existing_demand_kw:.0f} کیلووات.",
+      "evidence": "مقادیر جدول «اطلاعات تقاضا» به‌صورت داده ورودی ثبت شده‌اند؛ ضریب همزمانی از نسبت تقاضای با ضریب همزمانی به تقاضای بدون ضریب همزمانی محاسبه شده است.",
+      "recommended_text": "میزان تقاضای متقاضی بدون اعمال ضریب همزمانی {demand_without_coincidence_kw:.0f} کیلووات و با اعمال ضریب همزمانی {demand_with_coincidence_kw:.0f} کیلووات است.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول اطلاعات تقاضا",
+      "engineer_review_required": false
+    },
+    {
+      "id": "D-COINCIDENCE-NOT-APPLIED",
+      "name": "ضریب همزمانی اعمال‌نشده (تقاضا با و بدون ضریب برابر)",
+      "domain": "study_demand",
+      "condition": "has_demand_with and has_demand_without and coincidence_factor_eq_one",
+      "status": "REQUIRES_ENGINEER_REVIEW",
+      "severity": "review",
+      "priority": 55,
+      "requires": [
+        "demand_without_coincidence_kw",
+        "demand_with_coincidence_kw"
+      ],
+      "inputs": [
+        "demand_without_coincidence_kw",
+        "demand_with_coincidence_kw"
+      ],
+      "calculated": [
+        "coincidence_factor"
+      ],
+      "finding": "تقاضا با ضریب همزمانی و بدون ضریب همزمانی هر دو {demand_with_coincidence_kw:.0f} کیلووات ثبت شده‌اند؛ ضریب همزمانی عملاً ۱ گرفته شده است. اعمال‌نشدن ضریب همزمانی باید توسط مهندس تأیید یا اصلاح شود.",
+      "evidence": "هر دو ستون «میزان تقاضا (kW)» در جدول اطلاعات تقاضا مقدار یکسان دارند.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول اطلاعات تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "D-COINCIDENCE-OVER-ONE",
+      "name": "ضریب همزمانی بزرگ‌تر از یک — ناسازگاری داده",
+      "domain": "study_demand",
+      "condition": "has_demand_with and has_demand_without and coincidence_factor_gt_one",
+      "status": "DATA_ERROR",
+      "severity": "review",
+      "priority": 58,
+      "requires": [
+        "demand_without_coincidence_kw",
+        "demand_with_coincidence_kw"
+      ],
+      "inputs": [
+        "demand_without_coincidence_kw",
+        "demand_with_coincidence_kw"
+      ],
+      "calculated": [
+        "coincidence_factor"
+      ],
+      "finding": "تقاضای با ضریب همزمانی ({demand_with_coincidence_kw:.0f} کیلووات) از تقاضای بدون ضریب همزمانی ({demand_without_coincidence_kw:.0f} کیلووات) بزرگ‌تر است؛ این وضعیت از نظر تعریف ضریب همزمانی ناسازگار است.",
+      "evidence": "نسبت دو ستون جدول اطلاعات تقاضا بزرگ‌تر از ۱ است.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول اطلاعات تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "D-DELTA-POWER",
+      "name": "محاسبه افزایش قدرت (تفاضل توان جدید و موجود)",
+      "domain": "study_demand",
+      "condition": "has_demand_for_analysis and has_existing_demand and req_type == 'increase'",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 40,
+      "requires": [
+        "requested_power_kw",
+        "existing_demand_kw"
+      ],
+      "inputs": [
+        "requested_power_kw",
+        "existing_demand_kw"
+      ],
+      "calculated": [
+        "delta_power_kw",
+        "demand_for_analysis_kw"
+      ],
+      "finding": "افزایش قدرت متقاضی برابر {delta_power_kw:.0f} کیلووات است (تفاضل توان جدید {requested_power_kw:.0f} و توان موجود {existing_demand_kw:.0f} کیلووات).",
+      "evidence": "Delta = After − Before؛ تنها همین تفاضل مبنای بررسی اثر متقاضی است و مقدار مطلق توان با تغییر ناشی از متقاضی اشتباه گرفته نمی‌شود.",
+      "recommended_text": "افزایش قدرت متقاضی از {existing_demand_kw:.0f} به {requested_power_kw:.0f} کیلووات و برابر {delta_power_kw:.0f} کیلووات است.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول اطلاعات تقاضا",
+      "engineer_review_required": false
+    },
+    {
+      "id": "D-DEMAND-FALLBACK",
+      "name": "نبود ضریب همزمانی — تحلیل بر مبنای تقاضای بدون ضریب",
+      "domain": "study_demand",
+      "condition": "has_demand_without and not has_demand_with",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 45,
+      "requires": [
+        "demand_without_coincidence_kw"
+      ],
+      "inputs": [
+        "demand_without_coincidence_kw"
+      ],
+      "calculated": [
+        "demand_for_analysis_kw"
+      ],
+      "finding": "ستون تقاضای با ضریب همزمانی ثبت نشده است؛ مبنای تحلیل ناچاراً تقاضای بدون ضریب همزمانی ({demand_without_coincidence_kw:.0f} کیلووات) است و این انتخاب باید توسط مهندس تأیید شود.",
+      "evidence": "داده ضریب همزمانی در ورودی موجود نیست؛ هیچ مقدار جایگزینی فرض نشده است.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول اطلاعات تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "D-DEMAND-HEAVY-LIMIT",
+      "name": "کنترل موضوع دستورالعمل مصارف سنگین (۱ مگاوات و بالاتر)",
+      "domain": "study_demand",
+      "condition": "has_demand_for_analysis and demand_for_analysis_kw < heavy_consumer_min_kw",
+      "status": "WARNING",
+      "severity": "warning",
+      "priority": 35,
+      "requires": [
+        "demand_for_analysis_kw"
+      ],
+      "thresholds": [
+        {
+          "key": "heavy_consumer_min_kw",
+          "label": "حد پایین مصرف سنگین",
+          "basis": "document",
+          "note": "دستورالعمل TAV111-10/00 برای اتصال مصارف سنگین (۱ مگاوات و بالاتر) تدوین شده است."
+        }
+      ],
+      "inputs": [
+        "demand_for_analysis_kw"
+      ],
+      "calculated": [
+        "demand_for_analysis_kw"
+      ],
+      "finding": "تقاضای مبنای تحلیل ({demand_for_analysis_kw:.0f} کیلووات) کمتر از حد مصرف سنگین ({heavy_consumer_min_kw:.0f} کیلووات) است؛ دامنه شمول دستورالعمل باید بررسی شود.",
+      "evidence": "حد ۱ مگاوات به‌عنوان دامنه شمول دستورالعمل مصارف سنگین در Rule Set ثبت شده است.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول اطلاعات تقاضا",
+      "engineer_review_required": true
+    },
+    {
+      "id": "D-DEMAND-HEAVY-NO-THRESHOLD",
+      "name": "دامنه شمول دستورالعمل — حد مصرف سنگین تعریف‌نشده",
+      "domain": "study_demand",
+      "condition": "has_demand_for_analysis and not has_heavy_consumer_min_kw",
+      "status": "MISSING_RULE",
+      "severity": "review",
+      "priority": 34,
+      "requires": [
+        "demand_for_analysis_kw"
+      ],
+      "thresholds": [
+        {
+          "key": "heavy_consumer_min_kw",
+          "label": "حد پایین مصرف سنگین (دامنه شمول دستورالعمل)",
+          "basis": "document",
+          "note": "دامنه شمول دستورالعمل مصارف سنگین (۱ مگاوات و بالاتر) باید در Rule Set تعریف شود."
+        }
+      ],
+      "inputs": [
+        "demand_for_analysis_kw"
+      ],
+      "calculated": [
+        "demand_for_analysis_kw"
+      ],
+      "finding": "تقاضای مبنای تحلیل {demand_for_analysis_kw:.0f} کیلووات است، اما حد پایین مصرف سنگین (دامنه شمول دستورالعمل) تعریف نشده و کنترل شمول انجام نمی‌شود.",
+      "evidence": "آستانه دامنه شمول باید در پیکربندی تعریف شود.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۰ از ۱۵ — جدول اطلاعات تقاضا",
+      "engineer_review_required": true
+    }
+  ]
+}

@@ -131,9 +131,7 @@ def test_preview_manual_edit_survives_regeneration(win, app, monkeypatch):
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)
     win.navigate("preview")
     pv = win.preview_page
-    # بخش نتیجه‌گیری بر اساس کلید پیدا می‌شود (ترتیب بخش‌ها ممکن است تغییر کند)
-    row = next(i for i, s in enumerate(pv.report.sections) if s.key == "conclusion")
-    pv.section_list.setCurrentRow(row)
+    pv.section_list.setCurrentRow(5)         # جمع‌بندی
     pv.editor.setPlainText("جمع‌بندی دستی مهندس.")
     pv.save_manual_text()
     rep = win.analysis.get(force=True)

@@ -36,8 +36,6 @@ PROJECT_KEYS = [
     ("توضیح موقعیت محل", "location_note", "اختیاری"),
     ("فاصله تا نزدیک‌ترین تیر (متر)", "location_distance_m", "اختیاری"),
     ("پیشنهاد نوع کابل", "cable_suggestion", "اختیاری"),
-    ("نوع هادی شبکه موجود", "conductor_type", "اختیاری — مثال: AL-126 (ACSR-Hyena)"),
-    ("سناریوهای پیشنهادی", "conclusion_scenarios", "اختیاری — متن بخش سناریوهای نتیجه‌گیری"),
 ]
 
 FEEDER_HEADERS = ["نام فیدر", "نام پست", "پیک بار (MW)", "سال پیک", "ضریب توان",
@@ -49,15 +47,6 @@ POWERFLOW_HEADERS = ["نام فیدر", "وضعیت", "جریان ابتدای �
 PROFILE_HEADERS = ["Date", "Feeder", "P_MW", "Q_MVAR"]
 
 FORECAST_HEADERS = ["نام فیدر", "سال", "پیک پیش‌بینی‌شده (MW)"]
-
-STATION_HEADERS = ["نام ایستگاه", "فاصله تا محل تقاضا (km)", "ظرفیت ایستگاه (MVA)",
-                   "درصد بارگیری ترانس T1 در پیک", "درصد بارگیری ترانس T2 در پیک",
-                   "میزان بارگیری ترانس T1 در پیک (MVA)", "میزان بارگیری ترانس T2 در پیک (MVA)",
-                   "تعداد کل فیدر برقرار"]
-
-LINE_HEADERS = ["نام خط", "فاصله تا محل تقاضا (m)", "پیک بار خط (MVA)", "پیک بار خط (MW)",
-                "پیک بار خط (A)", "افت ولتاژ انتهای خط قبل از بار جدید (درصد)",
-                "افت ولتاژ انتهای خط بعد از بار جدید (درصد)"]
 
 
 def _style_header_row(ws, row: int, count: int) -> None:
@@ -112,6 +101,16 @@ def create_template(path: str | Path) -> Path:
         ws4.column_dimensions[get_column_letter(i)].width = 14
     ws4.append(["1404/05/02", "فیدر 1 اردبیل", 2.5, 0.9])
 
+    # --- شیت پیک سالانه (داده واقعی — مبنای پیش‌بینی، مستقل از پروفیل) ---
+    ws6 = wb.create_sheet("پیک سالانه (داده واقعی)")
+    ws6.sheet_view.rightToLeft = True
+    ws6.append(PEAK_HEADERS)
+    _style_header_row(ws6, 1, len(PEAK_HEADERS))
+    for i, h in enumerate(PEAK_HEADERS, 1):
+        ws6.column_dimensions[get_column_letter(i)].width = max(16, len(h) + 4)
+    ws6.append(["فیدر 1 اردبیل", 1402, 2.4])
+    ws6.append(["فیدر 1 اردبیل", 1403, 2.75])
+
     # --- شیت پیش‌بینی (اختیاری/دستی) ---
     ws5 = wb.create_sheet("پیش‌بینی")
     ws5.sheet_view.rightToLeft = True
@@ -120,26 +119,11 @@ def create_template(path: str | Path) -> Path:
     for i, h in enumerate(FORECAST_HEADERS, 1):
         ws5.column_dimensions[get_column_letter(i)].width = 18
 
-    # --- شیت ایستگاه‌های نزدیک (اختیاری) ---
-    ws6 = wb.create_sheet("ایستگاه‌های نزدیک")
-    ws6.sheet_view.rightToLeft = True
-    ws6.append(STATION_HEADERS)
-    _style_header_row(ws6, 1, len(STATION_HEADERS))
-    for i, h in enumerate(STATION_HEADERS, 1):
-        ws6.column_dimensions[get_column_letter(i)].width = max(14, len(h) + 2)
-    ws6.append(["پارس آباد", 15, 45, 70, 70, 11, 22, 12])
-
-    # --- شیت خطوط نزدیک (اختیاری) ---
-    ws7 = wb.create_sheet("خطوط نزدیک")
-    ws7.sheet_view.rightToLeft = True
-    ws7.append(LINE_HEADERS)
-    _style_header_row(ws7, 1, len(LINE_HEADERS))
-    for i, h in enumerate(LINE_HEADERS, 1):
-        ws7.column_dimensions[get_column_letter(i)].width = max(14, len(h) + 2)
-    ws7.append(["7 گلخانه", 10, 7.69, 7.12, 222, 0.9, 0.9])
-
     wb.save(path)
     return Path(path)
+
+
+PEAK_HEADERS = ["نام فیدر", "سال", "پیک واقعی (MW)", "منبع"]
 
 
 def _norm_header(value) -> str:
@@ -157,8 +141,7 @@ class ExcelData:
         self.powerflow: list[dict] = []
         self.profile_rows: list[dict] = []
         self.forecast_rows: list[dict] = []
-        self.stations: list[dict] = []
-        self.lines: list[dict] = []
+        self.peak_rows: list[dict] = []      # پیک سالانه واقعی (مبنای پیش‌بینی)
 
 
 def read_workbook(path: str | Path) -> tuple[ExcelData, list[str]]:
@@ -243,6 +226,27 @@ def read_workbook(path: str | Path) -> tuple[ExcelData, list[str]]:
             if rec.get("date") is not None and rec.get("p_mw") is not None:
                 data.profile_rows.append(rec)
 
+    # --- پیک سالانه واقعی (اختیاری — مبنای پیش‌بینی) ---
+    for sheet_name in ("پیک سالانه (داده واقعی)", "پیک سالانه", "داده واقعی"):
+        if sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            headers = [_norm_header(h) for h in next(ws.iter_rows(min_row=1, max_row=1, values_only=True))]
+            col = {h: i for i, h in enumerate(headers)}
+            k_name = _norm_header("نام فیدر")
+            k_year = _norm_header("سال")
+            k_val = next((c for c in (_norm_header("پیک واقعی (MW)"), _norm_header("پیک (MW)"),
+                                      _norm_header("پیک")) if c in col), None)
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row:
+                    continue
+                name = row[col[k_name]] if k_name in col and col[k_name] < len(row) else None
+                year = row[col[k_year]] if k_year in col and col[k_year] < len(row) else None
+                val = row[col[k_val]] if k_val and col[k_val] < len(row) else None
+                if name and year is not None and val is not None:
+                    data.peak_rows.append({"feeder": str(name).strip(),
+                                           "year": year, "value": val})
+            break
+
     # --- پیش‌بینی دستی (اختیاری) ---
     if "پیش‌بینی" in wb.sheetnames:
         ws = wb["پیش‌بینی"]
@@ -259,24 +263,5 @@ def read_workbook(path: str | Path) -> tuple[ExcelData, list[str]]:
             if name and year is not None and val is not None:
                 data.forecast_rows.append({"feeder": str(name).strip(),
                                            "year": year, "value": val})
-
-    # --- ایستگاه‌ها و خطوط نزدیک به محل تقاضا (اختیاری) ---
-    for sheet, key_col, dest in (("ایستگاه‌های نزدیک", "نام ایستگاه", data.stations),
-                                 ("خطوط نزدیک", "نام خط", data.lines)):
-        if sheet not in wb.sheetnames:
-            continue
-        ws = wb[sheet]
-        headers = [_norm_header(h) for h in next(ws.iter_rows(min_row=1, max_row=1, values_only=True))]
-        col = {h: i for i, h in enumerate(headers)}
-        k_name = _norm_header(key_col)
-        if k_name not in col:
-            errors.append(f"در شیت «{sheet}» ستون «{key_col}» پیدا نشد.")
-            continue
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row or col[k_name] >= len(row) or not row[col[k_name]]:
-                continue
-            rec = {h: (row[col[h]] if col[h] < len(row) else None)
-                   for h in headers if h}
-            dest.append(rec)
     wb.close()
     return data, errors

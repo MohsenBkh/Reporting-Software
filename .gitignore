@@ -1,15 +1,7 @@
-# Python
 __pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
-
-# ابزارهای توسعه
+*.pyc
+*.pyo
+ReportForge-smoke.txt
+build/
+dist/
 .pytest_cache/
-.mypy_cache/
-.ruff_cache/
-_smoke_out/
-
-# سیستم‌عامل
-Thumbs.db
-Desktop.ini

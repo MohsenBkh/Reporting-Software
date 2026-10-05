@@ -38,27 +38,15 @@
     },
     {
       "id": "T-LOCATION-DETAIL",
-      "title": "توضیح موقعیت (با فاصله و هادی، با شکل)",
-      "template": "{LOCATION_NOTE} طبق مختصات ارائه‌شده در مدارک ارسالی، فاصله محل تقاضا تا نزدیک‌ترین تیر فشار متوسط حدود {DISTANCE_M} متر بوده و هادی شبکه از نوع {CONDUCTOR_TYPE} می‌باشد. موقعیت محل در شکل {FIG_NO} نمایش داده شده است.",
-      "vars": ["LOCATION_NOTE", "DISTANCE_M", "CONDUCTOR_TYPE", "FIG_NO"]
+      "title": "توضیح موقعیت (با فاصله و کابل، با شکل)",
+      "template": "{LOCATION_NOTE} طبق مختصات ارائه‌شده در مدارک ارسالی، فاصله محل تقاضا تا نزدیک‌ترین تیر فشار متوسط حدود {DISTANCE_M} متر بوده که کابل نوع {CABLE_TYPE} پیشنهاد شده است. موقعیت محل در شکل {FIG_NO} نمایش داده شده است.",
+      "vars": ["LOCATION_NOTE", "DISTANCE_M", "CABLE_TYPE", "FIG_NO"]
     },
     {
       "id": "T-LOCATION-DETAIL-NOFIG",
-      "title": "توضیح موقعیت (با فاصله و هادی، بدون شکل)",
-      "template": "{LOCATION_NOTE} طبق مختصات ارائه‌شده در مدارک ارسالی، فاصله محل تقاضا تا نزدیک‌ترین تیر فشار متوسط حدود {DISTANCE_M} متر بوده و هادی شبکه از نوع {CONDUCTOR_TYPE} می‌باشد.",
-      "vars": ["LOCATION_NOTE", "DISTANCE_M", "CONDUCTOR_TYPE"]
-    },
-    {
-      "id": "T-LOCATION-DETAIL-NOCOND",
-      "title": "توضیح موقعیت (با فاصله، بدون هادی، با شکل)",
-      "template": "{LOCATION_NOTE} طبق مختصات ارائه‌شده در مدارک ارسالی، فاصله محل تقاضا تا نزدیک‌ترین تیر فشار متوسط حدود {DISTANCE_M} متر می‌باشد. موقعیت محل در شکل {FIG_NO} نمایش داده شده است.",
-      "vars": ["LOCATION_NOTE", "DISTANCE_M", "FIG_NO"]
-    },
-    {
-      "id": "T-LOCATION-DETAIL-NOCOND-NOFIG",
-      "title": "توضیح موقعیت (با فاصله، بدون هادی، بدون شکل)",
-      "template": "{LOCATION_NOTE} طبق مختصات ارائه‌شده در مدارک ارسالی، فاصله محل تقاضا تا نزدیک‌ترین تیر فشار متوسط حدود {DISTANCE_M} متر می‌باشد.",
-      "vars": ["LOCATION_NOTE", "DISTANCE_M"]
+      "title": "توضیح موقعیت (با فاصله و کابل، بدون شکل)",
+      "template": "{LOCATION_NOTE} طبق مختصات ارائه‌شده در مدارک ارسالی، فاصله محل تقاضا تا نزدیک‌ترین تیر فشار متوسط حدود {DISTANCE_M} متر بوده که کابل نوع {CABLE_TYPE} پیشنهاد شده است.",
+      "vars": ["LOCATION_NOTE", "DISTANCE_M", "CABLE_TYPE"]
     },
     {
       "id": "T-MANEUVER",
