@@ -17,6 +17,7 @@ from app.report.template_manager import TemplateManager
 from app.report.text_generator import TextGenerator
 from app.report.word_generator import WordGenerator
 from app.rules.rule_engine import RuleEngine
+from app.report.composer import ReportComposer
 
 
 def make_generator(project: Project, settings: AppSettings,
@@ -43,7 +44,27 @@ def build_sections(project: Project, settings: AppSettings,
                    texts: TemplateManager, engine: RuleEngine,
                    charts_dir: Path, image_resolver=None,
                    profile_loader=None) -> GeneratedReport:
+    """تولید بخش‌های گزارش بر اساس مطالعات انتخاب‌شده.
+
+    برای پروژه‌های جدید با ReportCenter، از ReportComposer برای Protection Studies
+    استفاده می‌شود. Heavy Applicant همچنان از TextGenerator استفاده می‌کند.
+    برای پروژه‌های قدیمی (بدون ReportCenter)، از مولدهای سنتی.
+    """
     Path(charts_dir).mkdir(parents=True, exist_ok=True)
+
+    # بررسی اینکه آیا پروژه دارای ReportCenter است (پروژه yeni)
+    report_center = getattr(project, "report_center", None)
+
+    if report_center is not None and hasattr(report_center, "studies"):
+        # استفاده از ReportComposer برای پروژه‌های جدید
+        composer = ReportComposer(project, settings, texts, engine, charts_dir,
+                                   image_resolver, profile_loader)
+        report = composer.compose_report()
+        report.findings = composer.report_findings if hasattr(composer, 'report_findings') else []
+        # warnings sudah di-set oleh composer.compose_report()
+        return report
+
+    # پشتیبانی از پروژه‌های قدیمی (بدون ReportCenter)
     gen = make_generator(project, settings, texts, engine, charts_dir,
                          image_resolver, profile_loader)
     report = GeneratedReport(sections=gen.build_all())

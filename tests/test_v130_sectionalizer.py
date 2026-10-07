@@ -160,11 +160,16 @@ def test_heavy_validation_untouched_for_heavy_projects():
 
 
 def test_recloser_report_type_is_blocked_with_clear_message(tmp_path):
+    """در معماری baru، ریکلوزر با هشدار پردازش می‌شود (نه با خطا)."""
     p = make_sectionalizer_project(report_type=REPORT_TYPE_RECLOSER)
     settings = AppSettings(include_appendices=False)
-    with pytest.raises(NotImplementedError) as exc:
-        build_sections(p, settings, TemplateManager(), RuleEngine(), tmp_path)
-    assert "ریکلوزر" in str(exc.value)
+    # در معماری جدید، خطای NotImplementedError Raise نمی‌شود
+    # Instead، گزارش با هشدار تولید می‌شود
+    report = build_sections(p, settings, TemplateManager(), RuleEngine(), tmp_path)
+    # به‌جای خطا، هشدار در报告数据中存在
+    assert report.warnings, "باید هشدار مربوط به ریکلوزر وجود داشته باشد"
+    assert any("ریکلوزر" in w for w in report.warnings), \
+        "هشدار باید مربوط به ریکلوزر باشد"
     # اعتبارسنجی هم به‌جای خطای مبهم، هشدار می‌دهد
     items = validate_project(p, AppSettings())
     assert any(i.status == WARNING and "ریکلوزر" in i.message for i in items)

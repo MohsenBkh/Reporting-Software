@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from app.core.report_types import (REPORT_TYPE_HEAVY,
+                                   REPORT_TYPE_RECLOSER,
                                    REPORT_TYPE_SECTIONALIZER)
 
 REQUEST_NEW = "new"          # تأمین برق جدید
@@ -444,6 +445,13 @@ class Feeder:
         return [p for p in self.annual_peaks if getattr(p, "enabled", True)]
 
 
+# --- Importهای بعد از تعریف کلاس‌های پایه (برای جلوگیری از circular import) ---
+from app.core.heavy_applicant import HeavyApplicantStudy
+from app.core.report_center import (ReportCenter, ProtectionReportConfig,
+                                     STUDY_HEAVY, STUDY_RECLOSER,
+                                     STUDY_SECTIONALIZER, StudySelection)
+
+
 # ---------------------------------------------------------------------------
 IMAGE_KINDS = {
     "location": "موقعیت محل",
@@ -496,21 +504,373 @@ class ReviewDecision:
 # ---------------------------------------------------------------------------
 @dataclass
 class Project:
-    """پروژه مطالعه — واحد اصلی ذخیره‌سازی."""
+    """پروژه مطالعه — واحد اصلی ذخیره‌سازی (Refactored v2.0).
+
+    تغییرات معماری:
+    - Heavy Applicant Study به HeavyApplicantStudy جدا شده است
+    - Report Center برای مدیریت چند مطالعه و ترکیب گزارش‌ها اضافه شده است
+    - report_type به عنوان property برای Backward Compatibility حفظ شده است
+
+    Backward Compatibility:
+    - Constructor accepts old-style keyword arguments (applicant_name, request_type, etc.)
+    - These are stored in heavy_applicant for proper property delegation
+    """
+
     uid: str = field(default_factory=_uid)
     name: str = ""                        # عنوان پروژه
     report_number: str = ""               # مثلاً DM-18-001
     date_jalali: str = ""                 # 1405/06/15
 
-    # نوع گزارش (v1.3.0): heavy | sectionalizer | recloser
-    report_type: str = REPORT_TYPE_HEAVY
+    # ---- บริเวณการศึกษา (Studies) ----
+    # Heavy Applicant Study — داده‌های مطالعه مصارف سنگین
+    heavy_applicant: HeavyApplicantStudy = field(default_factory=HeavyApplicantStudy)
+
+    # Protection Studies — اطلاعات تجهیزات حفاظتی
     sectionalizer: SectionalizerInfo = field(default_factory=SectionalizerInfo)
     recloser: RecloserInfo = field(default_factory=RecloserInfo)
 
-    applicant_name: str = ""              # نام متقاضی
-    request_type: str = REQUEST_INCREASE  # new | increase
-    existing_power_kw: Optional[float] = None   # توان فعلی (kW)
-    requested_power_kw: Optional[float] = None  # توان درخواستی/جدید (kW)
+    # ---- Report Center ----
+    # مدیریت انتخاب مطالعات و ترکیب گزارش‌ها (جایگزین report_type واحد)
+    report_center: ReportCenter = field(default_factory=ReportCenter)
+
+    # --- فیلدهای خاص پروژه (نه در heavy_applicant) ---
+    substation: str = ""                  # نام پست فوق توزیع
+    office: str = ""                      # نام امور
+    expert_name: str = ""                 # نام کارشناس
+    location_note: str = ""               # توضیح موقعیت (مختصات و ...)
+    location_distance_m: Optional[float] = None  # فاصله تا نزدیک‌ترین تیر (m)
+    cable_suggestion: str = ""            # پیشنهاد نوع کابل
+    maneuver: Maneuver = field(default_factory=Maneuver)
+    images: list[ProjectImage] = field(default_factory=list)
+
+    # --- Constructor for Backward Compatibility ---
+    # Accepts old-style keyword arguments and stores them in heavy_applicant
+    def __init__(self, **kwargs):
+        """ساختار پروژه با پشتیبانی از آرگومان‌های قدیمی.
+
+        برای backward compatibility، آرگومان‌هایی مانند applicant_name،
+        request_type، existing_power_kw و غیره را می‌پذیرد و در
+        heavy_applicant ذخیره می‌کند.
+        """
+        # فیلدهای ضروری را با مقادیر پیش‌فرض مقداردهی کن
+        self.uid = kwargs.get('uid', _uid())
+        self.name = kwargs.get('name', '')
+        self.report_number = kwargs.get('report_number', '')
+        self.date_jalali = kwargs.get('date_jalali', '')
+
+        # heavy_applicant را با مقادیر پیش‌فرض مقداردهی کن
+        self.heavy_applicant = HeavyApplicantStudy()
+
+        # مقادیر may be passed directly or via kwargs
+        ha_kwargs = {}
+        for key in ['applicant_name', 'request_type', 'existing_power_kw',
+                     'requested_power_kw', 'demand', 'nearby_substations',
+                     'nearby_lines', 'coincident_demands', 'neighbor_feeders',
+                     'scenarios', 'feeders', 'reported_total_additional_load_kw',
+                     'demand_used_in_analysis_kw', 'network_voltage_kv',
+                     'joint_supply_feasible', 'joint_supply_note',
+                     'joint_supply_evidence', 'scenario_selection_criterion']:
+            if key in kwargs:
+                ha_kwargs[key] = kwargs[key]
+
+        # اعمال مقادیر به heavy_applicant
+        if ha_kwargs:
+            for key, value in ha_kwargs.items():
+                setattr(self.heavy_applicant, key, value)
+
+        # سایر فیلدهای خاص پروژه
+        self.sectionalizer = kwargs.get('sectionalizer', SectionalizerInfo())
+        self.recloser = kwargs.get('recloser', RecloserInfo())
+        self.report_center = kwargs.get('report_center', ReportCenter())
+        self.substation = kwargs.get('substation', '')
+        self.office = kwargs.get('office', '')
+        self.expert_name = kwargs.get('expert_name', '')
+        self.location_note = kwargs.get('location_note', '')
+        self.location_distance_m = kwargs.get('location_distance_m')
+        self.cable_suggestion = kwargs.get('cable_suggestion', '')
+        self.maneuver = kwargs.get('maneuver', Maneuver())
+        self.images = kwargs.get('images', [])
+        self.manual_texts = kwargs.get('manual_texts', {})
+        self.reviews = kwargs.get('reviews', {})
+        self.created_at = kwargs.get('created_at', '')
+        self.updated_at = kwargs.get('updated_at', '')
+        self.last_report_path = kwargs.get('last_report_path', '')
+        self.last_report_at = kwargs.get('last_report_at', '')
+
+    # فیلدهای خاص پروژه (نه در heavy_applicant)
+    manual_texts: dict[str, str] = field(default_factory=dict)
+    reviews: dict[str, ReviewDecision] = field(default_factory=dict)
+    created_at: str = ""
+    updated_at: str = ""
+    last_report_path: str = ""            # آخرین خروجی Word تولیدشده (v1.0.3)
+    last_report_at: str = ""
+
+    # ---- Backward Compatibility: report_type property ----
+
+    @property
+    def report_type(self) -> str:
+        """نوع گزارش — برای Backward Compatibility.
+
+        این property با پروژه‌های قدیمی که دارای report_type هستند سازگار است.
+        Contra routinely از report_center استفاده می‌شود.
+        """
+        # اگر هر دو Protection Study فعال باشند و combined باشند:、両方を返す
+        if self.report_center.both_protection_enabled() and self.report_center.protection_report.combined:
+            return REPORT_TYPE_SECTIONALIZER  # یا REPORTS_TYPE_COMBINED
+
+        #優先順位: ｀Heavy > Sectionalizer > Recloser
+        if (self.report_center.studies.get("heavy", StudySelection()).include_in_report and
+                self.report_center.studies["heavy"].enabled):
+            return REPORT_TYPE_HEAVY
+        if (self.report_center.studies.get("sectionalizer", StudySelection()).include_in_report and
+                self.report_center.studies["sectionalizer"].enabled):
+            return REPORT_TYPE_SECTIONALIZER
+        if (self.report_center.studies.get("recloser", StudySelection()).include_in_report and
+                self.report_center.studies["recloser"].enabled):
+            return REPORT_TYPE_RECLOSER
+
+        # Fallback به روزگار قدیمی
+        return REPORT_TYPE_HEAVY
+
+    @report_type.setter
+    def report_type(self, value: str) -> None:
+        """برای سازگاری با پروژه‌های قدیمی — 실적 را 设置 می‌کند."""
+        from app.core.report_types import normalize
+        rt = normalize(value)
+
+        # Reset semua ke keadaan semula
+        for key in ("heavy", "sectionalizer", "recloser"):
+            if key in self.report_center.studies:
+                self.report_center.studies[key].enabled = False
+                self.report_center.studies[key].include_in_report = False
+
+        # Set yang baru
+        if rt == REPORT_TYPE_HEAVY:
+            self.report_center.studies["heavy"].enabled = True
+            self.report_center.studies["heavy"].include_in_report = True
+        elif rt == REPORT_TYPE_SECTIONALIZER:
+            self.report_center.studies["sectionalizer"].enabled = True
+            self.report_center.studies["sectionalizer"].include_in_report = True
+        elif rt == REPORT_TYPE_RECLOSER:
+            self.report_center.studies["recloser"].enabled = True
+            self.report_center.studies["recloser"].include_in_report = True
+
+    # ------------------------------------------------------------------
+    # Properties that delegate to heavy_applicant for Backward Compatibility
+    # ------------------------------------------------------------------
+
+    @property
+    def applicant_name(self) -> str:
+        """نام متقاضی — بر اساس heavy_applicant."""
+        return self.heavy_applicant.applicant_name
+
+    @applicant_name.setter
+    def applicant_name(self, value: str) -> None:
+        self.heavy_applicant.applicant_name = value
+
+    @property
+    def request_type(self) -> str:
+        """نوع درخواست — بر اساس heavy_applicant."""
+        return self.heavy_applicant.request_type
+
+    @request_type.setter
+    def request_type(self, value: str) -> None:
+        self.heavy_applicant.request_type = value
+
+    @property
+    def existing_power_kw(self) -> Optional[float]:
+        """توان فعلی — بر اساس heavy_applicant."""
+        return self.heavy_applicant.existing_power_kw
+
+    @existing_power_kw.setter
+    def existing_power_kw(self, value: Optional[float]) -> None:
+        self.heavy_applicant.existing_power_kw = value
+
+    @property
+    def requested_power_kw(self) -> Optional[float]:
+        """توان درخواستی — بر اساس heavy_applicant."""
+        return self.heavy_applicant.requested_power_kw
+
+    @requested_power_kw.setter
+    def requested_power_kw(self, value: Optional[float]) -> None:
+        self.heavy_applicant.requested_power_kw = value
+
+    @property
+    def demand(self) -> DemandInfo:
+        """اطلاعات تقاضا — بر اساس heavy_applicant."""
+        return self.heavy_applicant.demand
+
+    @demand.setter
+    def demand(self, value: DemandInfo) -> None:
+        self.heavy_applicant.demand = value
+
+    @property
+    def nearby_substations(self) -> list[SubstationCandidate]:
+        return self.heavy_applicant.nearby_substations
+
+    @nearby_substations.setter
+    def nearby_substations(self, value: list[SubstationCandidate]) -> None:
+        self.heavy_applicant.nearby_substations = value
+
+    @property
+    def nearby_lines(self) -> list[LineCandidate]:
+        return self.heavy_applicant.nearby_lines
+
+    @nearby_lines.setter
+    def nearby_lines(self, value: list[LineCandidate]) -> None:
+        self.heavy_applicant.nearby_lines = value
+
+    @property
+    def coincident_demands(self) -> list[CoincidentDemand]:
+        return self.heavy_applicant.coincident_demands
+
+    @coincident_demands.setter
+    def coincident_demands(self, value: list[CoincidentDemand]) -> None:
+        self.heavy_applicant.coincident_demands = value
+
+    @property
+    def neighbor_feeders(self) -> list[NeighborFeeder]:
+        return self.heavy_applicant.neighbor_feeders
+
+    @neighbor_feeders.setter
+    def neighbor_feeders(self, value: list[NeighborFeeder]) -> None:
+        self.heavy_applicant.neighbor_feeders = value
+
+    @property
+    def scenarios(self) -> list[SupplyScenario]:
+        return self.heavy_applicant.scenarios
+
+    @scenarios.setter
+    def scenarios(self, value: list[SupplyScenario]) -> None:
+        self.heavy_applicant.scenarios = value
+
+    @property
+    def feeders(self) -> list[Feeder]:
+        return self.heavy_applicant.feeders
+
+    @feeders.setter
+    def feeders(self, value: list[Feeder]) -> None:
+        self.heavy_applicant.feeders = value
+
+    @property
+    def reported_total_additional_load_kw(self) -> Optional[float]:
+        return self.heavy_applicant.reported_total_additional_load_kw
+
+    @reported_total_additional_load_kw.setter
+    def reported_total_additional_load_kw(self, value: Optional[float]) -> None:
+        self.heavy_applicant.reported_total_additional_load_kw = value
+
+    @property
+    def demand_used_in_analysis_kw(self) -> Optional[float]:
+        return self.heavy_applicant.demand_used_in_analysis_kw
+
+    @demand_used_in_analysis_kw.setter
+    def demand_used_in_analysis_kw(self, value: Optional[float]) -> None:
+        self.heavy_applicant.demand_used_in_analysis_kw = value
+
+    @property
+    def network_voltage_kv(self) -> Optional[float]:
+        return self.heavy_applicant.network_voltage_kv
+
+    @network_voltage_kv.setter
+    def network_voltage_kv(self, value: Optional[float]) -> None:
+        self.heavy_applicant.network_voltage_kv = value
+
+    @property
+    def joint_supply_feasible(self) -> Optional[bool]:
+        return self.heavy_applicant.joint_supply_feasible
+
+    @joint_supply_feasible.setter
+    def joint_supply_feasible(self, value: Optional[bool]) -> None:
+        self.heavy_applicant.joint_supply_feasible = value
+
+    @property
+    def joint_supply_note(self) -> str:
+        return self.heavy_applicant.joint_supply_note
+
+    @joint_supply_note.setter
+    def joint_supply_note(self, value: str) -> None:
+        self.heavy_applicant.joint_supply_note = value
+
+    @property
+    def joint_supply_evidence(self) -> str:
+        return self.heavy_applicant.joint_supply_evidence
+
+    @joint_supply_evidence.setter
+    def joint_supply_evidence(self, value: str) -> None:
+        self.heavy_applicant.joint_supply_evidence = value
+
+    @property
+    def scenario_selection_criterion(self) -> str:
+        return self.heavy_applicant.scenario_selection_criterion
+
+    @scenario_selection_criterion.setter
+    def scenario_selection_criterion(self, value: str) -> None:
+        self.heavy_applicant.scenario_selection_criterion = value
+
+    # Active property	that work with heavy_applicant's active_* properties
+    @property
+    def active_feeders(self) -> list["Feeder"]:
+        """فیدرهایی که کلید «در گزارش» آن‌ها روشن است."""
+        return self.heavy_applicant.active_feeders
+
+    @property
+    def active_substations(self) -> list[SubstationCandidate]:
+        return self.heavy_applicant.active_substations
+
+    @property
+    def active_lines(self) -> list[LineCandidate]:
+        return self.heavy_applicant.active_lines
+
+    @property
+    def active_coincident_demands(self) -> list[CoincidentDemand]:
+        return self.heavy_applicant.active_coincident_demands
+
+    @property
+    def active_scenarios(self) -> list[SupplyScenario]:
+        return self.heavy_applicant.active_scenarios
+
+    @property
+    def active_neighbor_feeders(self) -> list["NeighborFeeder"]:
+        return self.heavy_applicant.active_neighbor_feeders
+
+    @property
+    def active_images(self) -> list[ProjectImage]:
+        return [i for i in self.images if getattr(i, "enabled", True)]
+
+    @property
+    def active_feeder_names(self) -> list[str]:
+        return self.heavy_applicant.active_feeder_names
+
+    @property
+    def feeder_names(self) -> list[str]:
+        return self.heavy_applicant.feeder_names
+
+    @property
+    def added_power_mw(self) -> Optional[float]:
+        """توان اضافه‌شده (MW) — با استفاده از heavy_applicant."""
+        return self.heavy_applicant.added_power_mw
+
+    @property
+    def power_delta_kw(self) -> Optional[float]:
+        """افزایش قدرت = توان جدید − توان فعلی."""
+        return self.heavy_applicant.power_delta_kw
+
+    @property
+    def request_type_label(self) -> str:
+        return REQUEST_TYPE_LABELS.get(self.request_type, self.request_type)
+
+    @property
+    def title_text(self) -> str:
+        """عنوان گزارش مطابق ادبیات نمونه‌ها."""
+        if self.report_type == REPORT_TYPE_SECTIONALIZER:
+            sz = self.sectionalizer
+            where = sz.installation_location or sz.feeder_name or "محل تعیین‌شده"
+            return f"مطالعه نصب سکشنالایزر در {where}"
+        return self.heavy_applicant.title_text
+
+    # --- فیلدهای خاص پروژه (نه در heavy_applicant) ---
+    # این فیلدها در heavy_applicant منتقل نشده‌اند و仍然 در Project هستند
 
     substation: str = ""                  # نام پست فوق توزیع
     office: str = ""                      # نام امور
@@ -522,26 +882,7 @@ class Project:
     cable_suggestion: str = ""            # پیشنهاد نوع کابل
 
     maneuver: Maneuver = field(default_factory=Maneuver)
-    feeders: list[Feeder] = field(default_factory=list)
     images: list[ProjectImage] = field(default_factory=list)
-
-    # --- «تغییرات آرنا» v1.1.0: داده‌های مطالعه مصارف سنگین ---
-    demand: DemandInfo = field(default_factory=DemandInfo)
-    nearby_substations: list[SubstationCandidate] = field(default_factory=list)
-    nearby_lines: list[LineCandidate] = field(default_factory=list)
-    neighbor_feeders: list[NeighborFeeder] = field(default_factory=list)   # v1.2.0
-    coincident_demands: list[CoincidentDemand] = field(default_factory=list)
-    scenarios: list[SupplyScenario] = field(default_factory=list)
-    # کنترل ناسازگاری داده‌ها (Cross Validation) — مقادیر مرجع گزارش
-    reported_total_additional_load_kw: Optional[float] = None   # Reported_Total_Additional_Load
-    demand_used_in_analysis_kw: Optional[float] = None          # Demand used in analysis
-    network_voltage_kv: Optional[float] = None                  # سطح ولتاژ شبکه (برای کنترل جریان)
-    # بررسی توپولوژیکی تأمین مشترک چند نقطه تقاضا
-    joint_supply_feasible: Optional[bool] = None
-    joint_supply_note: str = ""
-    joint_supply_evidence: str = ""            # شاهد مسیر/آرایش شبکه (GIS/PowerFactory)
-    # معیار صریح انتخاب سناریو (در صورت تعریف‌نشدن، موتور توصیه‌ای نمی‌کند)
-    scenario_selection_criterion: str = ""
 
     # متن‌های ویرایش‌شده دستی کارشناس: کلید بخش -> متن
     manual_texts: dict[str, str] = field(default_factory=dict)
@@ -637,7 +978,15 @@ class Project:
 # Serialization helpers
 # ---------------------------------------------------------------------------
 def to_dict(obj: Any) -> Any:
-    """تبدیل بازگشتی dataclass/list/dict به انواع JSON-پذیر."""
+    """تبدیل بازگشتی dataclass/list/dict به انواع JSON-پذیر.
+
+    برای Project، با حفظ Backward Compatibility، report_type نیز در خروجی اضافه می‌شود.
+    """
+    if isinstance(obj, Project):
+        # برای Project، خبر_type را هم شامل می‌شود (Backward Compatibility)
+        data = {k: to_dict(v) for k, v in dataclasses.asdict(obj).items()}
+        data["report_type"] = obj.report_type  # Backward Compatibility
+        return data
     if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
         return {k: to_dict(v) for k, v in dataclasses.asdict(obj).items()}
     if isinstance(obj, dict):
@@ -693,20 +1042,30 @@ _NESTED: dict[type, dict[str, type]] = {
     LineCandidate: {},
     CoincidentDemand: {},
     SupplyScenario: {},
-    Project: {"maneuver": Maneuver, "demand": DemandInfo,
-              "sectionalizer": SectionalizerInfo, "recloser": RecloserInfo},
+    HeavyApplicantStudy: {
+        "demand": DemandInfo,
+        "nearby_substations": SubstationCandidate,
+        "nearby_lines": LineCandidate,
+        "coincident_demands": CoincidentDemand,
+        "neighbor_feeders": NeighborFeeder,
+        "scenarios": SupplyScenario,
+        "feeders": Feeder,
+    },
+    ProtectionReportConfig: {},
+    ReportCenter: {
+        "protection_report": ProtectionReportConfig,
+    },
+    Project: {"maneuver": Maneuver, "heavy_applicant": HeavyApplicantStudy,
+              "sectionalizer": SectionalizerInfo, "recloser": RecloserInfo,
+              "report_center": ReportCenter},
 }
 
 # فیلدهای لیستی که عضو آن‌ها dataclass است — هنگام بازسازی از JSON
 _NESTED_LISTS: dict[type, dict[str, type]] = {
     ForecastResult: {"points": ForecastPoint},
     Feeder: {"manual_forecast": ForecastPoint, "annual_peaks": ForecastPoint},
-    Project: {"feeders": Feeder, "images": ProjectImage,
-              "nearby_substations": SubstationCandidate,
-              "nearby_lines": LineCandidate,
-              "coincident_demands": CoincidentDemand,
-              "scenarios": SupplyScenario,
-              "neighbor_feeders": NeighborFeeder},
+    HeavyApplicantStudy: {"feeders": Feeder},
+    Project: {"images": ProjectImage},
 }
 
 
@@ -718,18 +1077,112 @@ def feeder_from_dict(data: dict) -> Feeder:
 
 
 def project_from_dict(data: dict) -> Project:
+    """بازسازی پروژه از dict — با پشتیبانی از Backward Compatibility.
+
+    اگر داده‌های قدیمی (پروژه‌های پیش از این Refactor) پیدا شوند، به
+    ساختار جدید مهاجرت می‌شوند:
+    - nearby_substations, nearby_lines, ... → heavy_applicant
+    - report_type → تنظیمات report_center
+    """
     p = _build(Project, data, _NESTED[Project])
+
+    # --- برگرداندن feeders و images (listهایی که در _NESTED_LISTS Nevada هستند) ---
     p.feeders = [feeder_from_dict(fd) for fd in (data.get("feeders") or [])]
     p.images = [_build(ProjectImage, im, {}) for im in (data.get("images") or [])]
-    # داده‌های مطالعه مصارف سنگین (v1.1.0)
-    p.nearby_substations = [_build(SubstationCandidate, x, {})
-                            for x in (data.get("nearby_substations") or [])]
-    p.nearby_lines = [_build(LineCandidate, x, {})
-                      for x in (data.get("nearby_lines") or [])]
-    p.coincident_demands = [_build(CoincidentDemand, x, {})
-                            for x in (data.get("coincident_demands") or [])]
-    p.scenarios = [_build(SupplyScenario, x, {})
-                   for x in (data.get("scenarios") or [])]
+
+    # --- داده‌های مطالعه مصارف سنگین (v1.1.0) ---
+    # اگر در ساختار جدید (heavy_applicant) وجود دارند، استفاده شوند
+    # در غیر این صورت از fields قدیمی پروژه مهاجرت کنند
+    ha_data = data.get("heavy_applicant")
+    is_new_format = isinstance(ha_data, dict) and "demand" in ha_data
+
+    if is_new_format:
+        # فرمت جدید — 重建 heavy_applicant
+        p.heavy_applicant = _build(HeavyApplicantStudy, ha_data, _NESTED[HeavyApplicantStudy])
+        p.heavy_applicant.feeders = [feeder_from_dict(fd) for fd in (ha_data.get("feeders") or [])]
+        # 重建auss و sub-lists
+        p.heavy_applicant.nearby_substations = [_build(SubstationCandidate, x, {})
+                                                for x in (ha_data.get("nearby_substations") or [])]
+        p.heavy_applicant.nearby_lines = [_build(LineCandidate, x, {})
+                                          for x in (ha_data.get("nearby_lines") or [])]
+        p.heavy_applicant.coincident_demands = [_build(CoincidentDemand, x, {})
+                                                for x in (ha_data.get("coincident_demands") or [])]
+        p.heavy_applicant.scenarios = [_build(SupplyScenario, x, {})
+                                       for x in (ha_data.get("scenarios") or [])]
+        # reviews برای پروژه جدید در heavy_applicant داده می‌شود — مثل قدیمی
+        # (برای سازگاری، reviews در هر دو جای진보당 ذخیره می‌شود)
+        p.heavy_applicant.reviews = {}
+        for key, rd in (ha_data.get("reviews") or {}).items():
+            if isinstance(rd, dict):
+                dec = _build(ReviewDecision, rd, {})
+                if dec.status not in REVIEW_STATUSES:
+                    dec.status = REVIEW_PENDING
+                p.heavy_applicant.reviews[key] = dec
+    else:
+        # فرمت قدیمی — مهاجرت از fields مستقیم پروژه
+        p.heavy_applicant.nearby_substations = [_build(SubstationCandidate, x, {})
+                                                for x in (data.get("nearby_substations") or [])]
+        p.heavy_applicant.nearby_lines = [_build(LineCandidate, x, {})
+                                          for x in (data.get("nearby_lines") or [])]
+        p.heavy_applicant.coincident_demands = [_build(CoincidentDemand, x, {})
+                                                for x in (data.get("coincident_demands") or [])]
+        p.heavy_applicant.scenarios = [_build(SupplyScenario, x, {})
+                                       for x in (data.get("scenarios") or [])]
+        # مهاجرت داده‌های دیگر از پروژه به heavy_applicant
+        p.heavy_applicant.demand = _build(DemandInfo, data.get("demand") or {}, _NESTED[DemandInfo])
+        p.heavy_applicant.applicant_name = data.get("applicant_name", "")
+        p.heavy_applicant.request_type = data.get("request_type", "increase")
+        p.heavy_applicant.existing_power_kw = data.get("existing_power_kw")
+        p.heavy_applicant.requested_power_kw = data.get("requested_power_kw")
+        p.heavy_applicant.reported_total_additional_load_kw = data.get("reported_total_additional_load_kw")
+        p.heavy_applicant.demand_used_in_analysis_kw = data.get("demand_used_in_analysis_kw")
+        p.heavy_applicant.network_voltage_kv = data.get("network_voltage_kv")
+        p.heavy_applicant.joint_supply_feasible = data.get("joint_supply_feasible")
+        p.heavy_applicant.joint_supply_note = data.get("joint_supply_note", "")
+        p.heavy_applicant.joint_supply_evidence = data.get("joint_supply_evidence", "")
+        p.heavy_applicant.scenario_selection_criterion = data.get("scenario_selection_criterion", "")
+        p.heavy_applicant.notes = data.get("notes", "")
+        # مهاجرت reviews
+        p.heavy_applicant.reviews = {}
+        for key, rd in (data.get("reviews") or {}).items():
+            if isinstance(rd, dict):
+                dec = _build(ReviewDecision, rd, {})
+                if dec.status not in REVIEW_STATUSES:
+                    dec.status = REVIEW_PENDING
+                p.heavy_applicant.reviews[key] = dec
+
+        # --- مهاجرت report_type به ReportCenter ---
+        old_report_type = data.get("report_type", REPORT_TYPE_HEAVY)
+        p.report_center = _build(ReportCenter, data.get("report_center") or {}, _NESTED.get(ReportCenter, {}))
+
+        # مهاجرت report_type به ReportCenter (برای فرمت قدیمی)
+        old_report_type = data.get("report_type", REPORT_TYPE_HEAVY)
+
+    # --- 처리됩니다 report_center (برای هر دو فرمت) ---
+    # 먼저 report_center را از data بساز
+    p.report_center = _build(ReportCenter, data.get("report_center") or {}, _NESTED.get(ReportCenter, {}))
+
+    # بازسازی studiesdict از dicts (اگر وجود دارند)
+    rc_data = data.get("report_center") or {}
+    if "studies" in rc_data and isinstance(rc_data["studies"], dict):
+        for key, value in rc_data["studies"].items():
+            if isinstance(value, dict):
+                p.report_center.studies[key] = _build(StudySelection, value, _NESTED.get(StudySelection, {}))
+
+    # اگر report_center خالی است (پروژه قدیمی)، با استخدام report_type قدیمی تنظیم شود
+    if not p.report_center.studies:
+        p.report_center = ReportCenter()
+        if old_report_type == REPORT_TYPE_HEAVY:
+            p.report_center.studies["heavy"].enabled = True
+            p.report_center.studies["heavy"].include_in_report = True
+        elif old_report_type == REPORT_TYPE_SECTIONALIZER:
+            p.report_center.studies["sectionalizer"].enabled = True
+            p.report_center.studies["sectionalizer"].include_in_report = True
+        elif old_report_type == REPORT_TYPE_RECLOSER:
+            p.report_center.studies["recloser"].enabled = True
+            p.report_center.studies["recloser"].include_in_report = True
+
+    # --- داده‌های Reviews (برای همه مطالعات) ---
     p.reviews = {}
     for key, rd in (data.get("reviews") or {}).items():
         if isinstance(rd, dict):
@@ -737,4 +1190,5 @@ def project_from_dict(data: dict) -> Project:
             if dec.status not in REVIEW_STATUSES:
                 dec.status = REVIEW_PENDING
             p.reviews[key] = dec
+
     return p
