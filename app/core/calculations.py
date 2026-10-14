@@ -151,9 +151,10 @@ def build_project_context(project: Project, settings: AppSettings) -> dict[str, 
     افزایش تلفات به‌تنهایی نیز هیچ‌گاه منجر به نتیجه «مشروط به اقدام اصلاحی» نمی‌شود.
     """
     th = settings.thresholds
-    feeder_ctxs = [build_feeder_context(f, project, settings) for f in project.feeders]
+    active = project.active_feeders        # v1.2.0: فقط فیدرهای روشن (On/Off)
+    feeder_ctxs = [build_feeder_context(f, project, settings) for f in active]
     with_after = [c for c in feeder_ctxs if c["has_after"] and c["has_before"]]
-    has_after = len(with_after) == len(project.feeders) and bool(project.feeders)
+    has_after = len(with_after) == len(active) and bool(active)
 
     any_i_over = any(c["i_over"] for c in with_after)
     caused_v = [c["v_caused_bad"] for c in with_after]
@@ -174,7 +175,7 @@ def build_project_context(project: Project, settings: AppSettings) -> dict[str, 
         "all_v_caused_bad": all_v_caused_bad,
         "any_i_over": any_i_over,
         "any_loss_up": any_loss_up,      # صرفاً اطلاع‌رسانی؛ مبنای اقدام اصلاحی نیست
-        "n_feeders": len(project.feeders),
+        "n_feeders": len(active),
         "n_with_after": len(with_after),
         "voltage_change_max_pct": th.voltage_change_max_pct,
     }
@@ -188,7 +189,7 @@ def issue_summary(project: Project, settings: AppSettings) -> str:
     """
     th = settings.thresholds
     issues: list[str] = []
-    for f in project.feeders:
+    for f in project.active_feeders:
         ctx = build_feeder_context(f, project, settings)
         if not (ctx["has_before"] and ctx["has_after"]):
             continue

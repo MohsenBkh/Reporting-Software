@@ -8,20 +8,29 @@ from __future__ import annotations
 
 FONT_STACK = '"Vazirmatn", "Segoe UI", "Tahoma", "DejaVu Sans", sans-serif'
 
+# تم روشن: آبی-سفید مشابه Microsoft Word (v2.0.0) — آبی #2B579A، ریبون روشن، زمینه خاکستری روشن
 LIGHT = {
-    "bg": "#F3F5F8", "surface": "#FFFFFF", "surface_alt": "#F7F9FC",
-    "border": "#D5DBE3", "text": "#1B2430", "muted": "#5F6B7A",
-    "primary": "#1F5FA8", "primary_hover": "#184E8C", "on_primary": "#FFFFFF",
+    "bg": "#E6E6E6", "surface": "#FFFFFF", "surface_alt": "#F3F3F3",
+    "border": "#C6C6C6", "text": "#262626", "muted": "#605E5C",
+    "primary": "#2B579A", "primary_hover": "#1E3F73", "on_primary": "#FFFFFF",
     "sidebar": "#18283B", "sidebar_text": "#C9D3E0", "sidebar_active": "#27466B",
     "sidebar_hover": "#203650", "sidebar_head": "#FFFFFF",
     "success": "#2E7D32", "success_bg": "#E4F3E5",
     "warning": "#A15C00", "warning_bg": "#FFF1D6",
     "danger": "#B3261E", "danger_bg": "#FBE4E2",
     "review": "#6A3FB5", "review_bg": "#EEE6FA",
-    "info": "#1F5FA8", "info_bg": "#E1ECF9",
+    "info": "#2B579A", "info_bg": "#DCE6F4",
     "done": "#00796B", "done_bg": "#DDF1EE",
-    "table_head": "#E8EDF4", "table_alt": "#F7F9FC", "selection": "#D6E6FA",
-    "input_bg": "#FFFFFF", "disabled": "#9AA5B3",
+    "table_head": "#E1E7F0", "table_alt": "#F7F8FA", "selection": "#C7DAF0",
+    "input_bg": "#FFFFFF", "disabled": "#9A9A9A",
+    # ریبون / نوار عنوان / نوار وضعیت (الهام از Word)
+    "title_bg": "#2B579A", "title_text": "#FFFFFF",
+    "ribbon_bg": "#F3F3F3", "ribbon_border": "#D4D4D4",
+    "ribbon_tab_text": "#FFFFFF", "ribbon_tab_hover": "#3E6DB5",
+    "ribbon_tab_active_bg": "#F3F3F3", "ribbon_tab_active_text": "#2B579A",
+    "file_tab_bg": "#1E4E8C",
+    "ribbon_hover": "#D5E1F2", "ribbon_pressed": "#C1D3EC", "ribbon_hover_border": "#A3BDE3",
+    "status_bg": "#2B579A", "status_text": "#FFFFFF",
 }
 DARK = {
     "bg": "#12171E", "surface": "#1B222C", "surface_alt": "#212A36",
@@ -37,6 +46,13 @@ DARK = {
     "done": "#52C2B2", "done_bg": "#12332F",
     "table_head": "#27313F", "table_alt": "#202936", "selection": "#27466B",
     "input_bg": "#161C25", "disabled": "#5E6A7A",
+    "title_bg": "#0D1218", "title_text": "#E6EBF2",
+    "ribbon_bg": "#1B222C", "ribbon_border": "#323D4B",
+    "ribbon_tab_text": "#C9D3E0", "ribbon_tab_hover": "#1F3A5C",
+    "ribbon_tab_active_bg": "#1B222C", "ribbon_tab_active_text": "#7DB6F2",
+    "file_tab_bg": "#1F3A5C",
+    "ribbon_hover": "#27466B", "ribbon_pressed": "#1F3A5C", "ribbon_hover_border": "#4C97E6",
+    "status_bg": "#0D1218", "status_text": "#C9D3E0",
 }
 THEMES = {"light": LIGHT, "dark": DARK}
 THEME_LABELS = {"light": "روشن (Light)", "dark": "تاریک (Dark)"}
@@ -113,8 +129,8 @@ QLabel#AppTitle {{ font-size: 20pt; font-weight: 700; }}
 
 /* ---- Cards ---- */
 QFrame#Card, QGroupBox {{ background: {t['surface']}; border: 1px solid {t['border']}; border-radius: 8px; }}
-QGroupBox {{ margin-top: 14px; padding: 12px 10px 8px 10px; font-weight: 600; }}
-QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top right; padding: 0 8px; color: {t['text']}; }}
+QGroupBox {{ margin-top: 26px; padding: 22px 12px 10px 12px; font-weight: 600; }}
+QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top right; padding: 2px 10px; margin-right: 10px; color: {t['primary']}; }}
 QFrame#CardAccent {{ background: {t['surface']}; border: 1px solid {t['border']}; border-right: 4px solid {t['primary']}; border-radius: 8px; }}
 
 /* ---- Badges ---- */
@@ -180,6 +196,17 @@ QScrollBar::add-line, QScrollBar::sub-line {{ width: 0; height: 0; }}
 QSplitter::handle {{ background: {t['border']}; }}
 QMenu {{ background: {t['surface']}; color: {t['text']}; border: 1px solid {t['border']}; }}
 QMenu::item:selected {{ background: {t['selection']}; }}
+
+/* ---- کارت‌ها و نوارهای اطلاع‌رسانی (v1.4.0 — الهام از کارت‌های صفحه تنظیمات) ---- */
+QFrame#Card {{ background: {t['surface']}; border: 1px solid {t['border']}; border-radius: 8px; }}
+QLabel#CardTitle {{ font-size: 11pt; font-weight: 700; }}
+QLabel#CardSub {{ color: {t['muted']}; font-size: 9pt; }}
+QFrame#InfoBarInfo {{ background: {t['info_bg']}; border: 1px solid {t['info']}; border-radius: 6px; }}
+QFrame#InfoBarInfo QLabel {{ color: {t['text']}; background: transparent; }}
+QFrame#InfoBarWarn {{ background: {t['warning_bg']}; border: 1px solid {t['warning']}; border-radius: 6px; }}
+QFrame#InfoBarWarn QLabel {{ color: {t['text']}; background: transparent; }}
+QFrame#Pill {{ background: {t['info_bg']}; border-radius: 12px; }}
+QLabel#PillText {{ color: {t['info']}; font-weight: 600; padding: 0 6px; }}
 """
 
 

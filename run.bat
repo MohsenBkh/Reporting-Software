@@ -1,8 +1,13 @@
 @echo off
 rem ============================================================
-rem  ReportForge launcher (v1.0.3)
+rem  ReportForge launcher (v2.1.0)
 rem  ASCII-only batch file - do NOT add non-English text here.
 rem  cmd.exe cannot parse UTF-8 batch files reliably.
+rem
+rem  Usage:   run.bat            start the application
+rem           run.bat --smoke-test   start-up self-check (no window)
+rem  The splash screen (resource\splash.png) stays visible until
+rem  the main window is shown.
 rem ============================================================
 setlocal EnableExtensions
 set "PYTHONIOENCODING=utf-8"
@@ -17,6 +22,7 @@ if not exist "app\main.py" (
     pause
     exit /b 1
 )
+if not exist "resource\splash.png" echo [WARN] resource\splash.png is missing - the splash screen will not be shown.
 
 rem --- Find a Python interpreter that actually runs ---
 set "PY="
@@ -64,6 +70,9 @@ if errorlevel 1 (
 
 echo Starting ReportForge...
 %PY% -m app.main %*
-if errorlevel 1 pause
+if errorlevel 1 (
+    echo.
+    echo [ERROR] ReportForge exited with an error. See the messages above.
+    pause
+)
 endlocal
-

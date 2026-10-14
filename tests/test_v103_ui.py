@@ -120,10 +120,13 @@ def test_generate_in_background_creates_docx(win, app, monkeypatch):
     assert gp._thread is None            # Thread تمیز بسته شده
 
 
-def test_generate_blocked_on_validation_error(win, app):
+def test_generate_allowed_with_validation_error_but_flagged(win, app):
+    # سیاست v2: خطای اعتبارسنجی مانع تولید نیست؛ با هشدار آغازین در گزارش درج می‌شود.
     win.manager.project.feeders = []
     win.navigate("generate")
-    assert not win.generate_page.btn_generate.isEnabled()
+    assert win.generate_page.btn_generate.isEnabled()
+    _badge, msg = win.generate_page.ready_rows["val"]
+    assert "خطا" in msg.text()
 
 
 def test_preview_manual_edit_survives_regeneration(win, app, monkeypatch):

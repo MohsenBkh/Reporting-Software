@@ -4,10 +4,15 @@
 ساختار پوشه پروژه:
     ProjectDir/
         project.json      ← مدل کامل پروژه
+        workspace.json    ← (v2.0.0) انتخاب مطالعات، شبکه مشترک، ترجیحات گزارش
         profiles/         ← پروفیل بار هر فیدر (CSV)
         images/           ← تصاویر کپی‌شده کاربر
         charts/           ← نمودارهای تولیدی
         output/           ← گزارش‌های Word خروجی
+
+سازگاری با نسخه‌های قبل: پروژه‌هایی که ``workspace.json`` ندارند هنگام باز شدن
+به‌طور خودکار از ``report_type`` / فیدرهای پروژه مهاجرت داده می‌شوند و هیچ داده‌ای
+از ``project.json`` حذف نمی‌شود.
 """
 from __future__ import annotations
 
@@ -15,11 +20,13 @@ import json
 import shutil
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 
 from app.core.models import Feeder, Project, project_from_dict, to_dict
 from app.core.settings import AppSettings
+from app.core.workspace import Workspace, load_workspace, workspace_from_project
 
 PROJECT_FILE = "project.json"
 
@@ -29,9 +36,16 @@ class ProjectManager:
         self.settings = settings
         self.project: Project | None = None
         self.project_dir: Path | None = None
+        self.workspace: Optional[Workspace] = None      # v2.0.0
         self.dirty = False
 
     # ------------------------------------------------------------------
+    def _attach_workspace(self, ws: Workspace) -> None:
+        """Workspace را هم روی مدیر و هم (به‌صورت ویژگی گذرا) روی پروژه نگه می‌دارد."""
+        self.workspace = ws
+        if self.project is not None:
+            self.project._workspace = ws  # noqa: SLF001 — گذرا؛ در project.json نمی‌آید
+
     @staticmethod
     def init_project_dir(path: str | Path) -> Path:
         p = Path(path)
@@ -42,6 +56,7 @@ class ProjectManager:
     def new_project(self, path: str | Path, project: Project | None = None) -> Project:
         self.project_dir = self.init_project_dir(path)
         self.project = project or Project()
+        self._attach_workspace(workspace_from_project(self.project))
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         self.project.created_at = now
         self.project.updated_at = now
@@ -56,6 +71,8 @@ class ProjectManager:
         data = json.loads(project_file.read_text(encoding="utf-8"))
         self.project = project_from_dict(data)
         self.project_dir = project_file.parent
+        # v2.0.0: بارگذاری یا مهاجرت Workspace (بدون از دست رفتن داده‌های قدیمی)
+        self._attach_workspace(load_workspace(self.project_dir, self.project))
         self.dirty = False
         self.settings.add_recent(str(project_file))
         return self.project
@@ -85,6 +102,9 @@ class ProjectManager:
         path = self.project_dir / PROJECT_FILE
         path.write_text(json.dumps(to_dict(self.project), ensure_ascii=False, indent=2),
                         encoding="utf-8")
+        # v2.0.0: Workspace (انتخاب مطالعات + شبکه مشترک) کنار project.json
+        if self.workspace is not None:
+            self.workspace.save(self.project_dir)
         self.dirty = False
 
     # ------------------------------------------------------------------
@@ -123,8 +143,14 @@ class ProjectManager:
     # ------------------------------------------------------------------
     # تصاویر
     # ------------------------------------------------------------------
-    def import_image(self, source: str | Path, title: str, kind: str) -> bool:
-        """کپی تصویر به پوشه images پروژه."""
+    def import_image(self, source: str | Path, title: str, kind: str,
+                     section_key: str = "", order: int = 0,
+                     caption: str = "") -> bool:
+        """کپی تصویر به پوشه images پروژه.
+
+        ``section_key``/``order``/``caption`` (v1.2.0) محل قرارگیری، اولویت و کپشن
+        مستقل شکل را ثبت می‌کنند؛ مقدار پیش‌فرض، رفتار نسخه‌های قبل است.
+        """
         from app.core.models import ProjectImage
         if self.project is None or self.project_dir is None:
             return False
@@ -134,7 +160,8 @@ class ProjectManager:
         dst_dir = self.project_dir / "images"
         dst_dir.mkdir(exist_ok=True)
         img = ProjectImage(file_name=f"img_{ProjectImage().uid}{src.suffix.lower()}",
-                           title=title, kind=kind)
+                           title=title, kind=kind, section_key=section_key or "",
+                           order=int(order or 0), caption=caption or "")
         shutil.copy2(src, dst_dir / img.file_name)
         self.project.images.append(img)
         self.dirty = True

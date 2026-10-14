@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Optional
 
 from app.core.models import Project
+from app.core.report_types import (REPORT_TYPE_COMBINED_PROTECTION,
+                                   REPORT_TYPE_HEAVY, REPORT_TYPE_RECLOSER,
+                                   REPORT_TYPE_SECTIONALIZER, booklet_title,
+                                   is_implemented, pending_message)
 from app.core.settings import AppSettings
 from app.core.validation import validate_project
 from app.report.sections import FigureBlock, GeneratedReport, Paragraph, TableSpec
@@ -16,16 +20,63 @@ from app.report.word_generator import WordGenerator
 from app.rules.rule_engine import RuleEngine
 
 
+def make_generator(project: Project, settings: AppSettings,
+                   texts: TemplateManager, engine: RuleEngine,
+                   charts_dir: Path, image_resolver=None,
+                   profile_loader=None):
+    """ساخت مولد گزارش متناسب با «نوع گزارش» پروژه (v2.0.0).
+
+    * متقاضیان سنگین → ``TextGenerator``
+    * ریکلوزر / سکشنالایزر / ترکیبی → ``ProtectionReportGenerator`` (Report Composer مبتنی بر
+      Component + موتور قواعد و موتور متن؛ مستقل از متقاضی سنگین). مولد قدیمی
+      ``SectionalizerGenerator`` (v1.3.0) دیگر در مسیر گزارش استفاده نمی‌شود.
+    """
+    report_type = getattr(project, "report_type", "") or REPORT_TYPE_HEAVY
+    if not is_implemented(report_type):
+        raise NotImplementedError(pending_message(report_type))
+    if report_type in (REPORT_TYPE_RECLOSER, REPORT_TYPE_SECTIONALIZER,
+                       REPORT_TYPE_COMBINED_PROTECTION):
+        from app.core.studies import StudyKind
+        from app.report.composer import ProtectionReportGenerator
+        kinds = {REPORT_TYPE_RECLOSER: [StudyKind.RECLOSER],
+                 REPORT_TYPE_SECTIONALIZER: [StudyKind.SECTIONALIZER]}.get(
+            report_type, [StudyKind.RECLOSER, StudyKind.SECTIONALIZER])
+        return ProtectionReportGenerator(project, settings, texts, engine, charts_dir,
+                                         image_resolver, profile_loader, kinds=kinds)
+    return TextGenerator(project, settings, texts, engine, charts_dir,
+                         image_resolver, profile_loader)
+
+
 def build_sections(project: Project, settings: AppSettings,
                    texts: TemplateManager, engine: RuleEngine,
                    charts_dir: Path, image_resolver=None,
                    profile_loader=None) -> GeneratedReport:
-    gen = TextGenerator(project, settings, texts, engine, charts_dir,
-                        image_resolver, profile_loader)
+    Path(charts_dir).mkdir(parents=True, exist_ok=True)
+    gen = make_generator(project, settings, texts, engine, charts_dir,
+                         image_resolver, profile_loader)
     report = GeneratedReport(sections=gen.build_all())
     report.findings = gen.findings
     report.warnings = list(gen.report_warnings)
+    notice = unresolved_errors_section(project, settings)
+    if notice is not None:                    # گزارش با وجود خطا تولید می‌شود، با هشدار آغازین
+        report.sections.insert(0, notice)
+        report.warnings.append("گزارش با خطاهای رفع‌نشده تولید شد.")
     return report
+
+
+def unresolved_errors_section(project: Project, settings: AppSettings):
+    """بخش «هشدار — نقص‌های رفع‌نشده» (None اگر خطایی نباشد)؛ برای همهٔ انواع گزارش."""
+    from app.core.validation import ERROR
+    from app.report.sections import ReportSection
+    try:
+        errs = [i.message for i in validate_project(project, settings) if i.status == ERROR]
+    except Exception:  # noqa: BLE001
+        return None
+    if not errs:
+        return None
+    return ReportSection("notice_unresolved", "هشدار — نقص‌های رفع‌نشده", [
+        Paragraph("این گزارش با وجود نقص‌های زیر تولید شده است و پیش از استفاده باید بازبینی شود:"),
+        *[Paragraph(f"• {m}", style="item") for m in errs]])
 
 
 def generate_docx(project: Project, settings: AppSettings, report: GeneratedReport,
@@ -70,7 +121,7 @@ def report_to_html(report: GeneratedReport, project: Project,
     parts.append(f"""
     <div style="text-align:center; margin-bottom:18px;">
       <div style="font-size:15pt; font-weight:bold;">{esc(settings.company_name)}</div>
-      <div style="font-size:11pt;">دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر</div>
+      <div style="font-size:11pt;">{esc(booklet_title(getattr(project, "report_type", "")))}</div>
       <div style="font-size:13pt; font-weight:bold; margin-top:14px; color:#1F4E79;">{esc(project.title_text())}</div>
       <div style="font-size:10pt; margin-top:8px; color:#555;">
         شماره گزارش: {esc(project.report_number)} &nbsp;|&nbsp; تاریخ: {esc(project.date_jalali)}
@@ -84,7 +135,9 @@ def report_to_html(report: GeneratedReport, project: Project,
         for block in sec.blocks:
             if isinstance(block, Paragraph):
                 cls = "item" if block.style == "item" else ("note" if block.style == "note" else "body")
-                parts.append(f'<p class="{cls}">{esc(block.text)}</p>')
+                for line in str(block.text).split("\n"):
+                    if line.strip():
+                        parts.append(f'<p class="{cls}">{esc(line)}</p>')
             elif isinstance(block, TableSpec):
                 parts.append(_table_html(block))
             elif isinstance(block, FigureBlock):
@@ -112,13 +165,15 @@ def report_to_html(report: GeneratedReport, project: Project,
 
 def _table_html(spec: TableSpec) -> str:
     esc = html_mod.escape
-    out = [f'<p class="cap">{esc(spec.caption)}</p><table>']
+    cap = f'<p class="cap">{esc(spec.caption)}</p>' if spec.caption else ""
+    out = [f'{cap}<table>']
     for row in spec.header_rows:
         out.append("<tr>" + "".join(
             f"<th>{esc(c)}</th>" if c else "<th></th>" for c in row) + "</tr>")
     for row in spec.body_rows:
         out.append("<tr>" + "".join(
-            f"<td><b>{esc(c)}</b></td>" if i == 0 else f"<td>{esc(c)}</td>"
+            f"<td><b>{esc(c).replace(chr(10), '<br/>')}</b></td>" if i == 0
+            else f"<td>{esc(c).replace(chr(10), '<br/>')}</td>"
             for i, c in enumerate(row)) + "</tr>")
     out.append("</table>")
     return "".join(out)

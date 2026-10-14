@@ -1,0 +1,41 @@
+# -*- coding: utf-8 -*-
+"""تنظیمات دستیار هوش مصنوعی (بدون کلید API)."""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+PROVIDER_ANTHROPIC = "anthropic"
+PROVIDER_OPENAI = "openai"
+PROVIDER_GEMINI = "gemini"
+PROVIDER_CUSTOM = "custom"      # هر سرویس سازگار با OpenAI (OpenRouter، سرور محلی و ...)
+
+DEFAULT_INSTRUCTIONS = (
+    "شما مهندس ارشد مطالعات و حفاظت شبکهٔ توزیع برق هستید. متن بخش‌های گزارش داده‌شده را از نظر "
+    "روانی، انسجام، دقت اصطلاحات فنی و ساختار گزارش‌نویسی فارسی اصلاح و کامل کنید.\n"
+    "قواعد الزامی:\n"
+    "۱) هیچ عدد، تنظیم، Pickup، TMS، جریان یا مقدار مهندسی را تغییر ندهید و هیچ مقدار جدیدی نیفزایید.\n"
+    "۲) اگر داده‌ای «ناموجود» است همان را ذکر کنید و حدس نزنید؛ نتیجه‌گیری قطعی نسازید.\n"
+    "۳) یافته‌های قواعد (findings) را مبنا قرار دهید و ارجاع به منبع قاعده را حفظ کنید.\n"
+    "۴) از تصاویر فقط برای توصیف همان چیزی که دیده می‌شود استفاده کنید.\n"
+    "۵) خروجی فقط یک شیء JSON معتبر با ساختار {\"sections\": {\"<کلید بخش>\": \"<متن اصلاح‌شده>\"}, "
+    "\"notes\": \"<توضیح کوتاه تغییرات و ابهام‌ها>\"} باشد؛ فقط کلیدهای درخواست‌شده را برگردانید."
+)
+
+
+@dataclass
+class AISettings:
+    provider: str = PROVIDER_ANTHROPIC
+    models: dict[str, str] = field(default_factory=lambda: {
+        PROVIDER_ANTHROPIC: "claude-sonnet-5-5", PROVIDER_OPENAI: "gpt-4o",
+        PROVIDER_GEMINI: "gemini-2.0-flash", PROVIDER_CUSTOM: ""})
+    custom_base_url: str = ""            # مثلاً https://openrouter.ai/api/v1
+    send_images: bool = True
+    anonymize_people: bool = True        # نام متقاضی/کارشناس ارسال نشود
+    include_findings: bool = True
+    max_images: int = 8
+    max_image_kb: int = 3000
+    timeout_s: int = 180
+    instructions: str = DEFAULT_INSTRUCTIONS
+
+    def model(self) -> str:
+        return self.models.get(self.provider, "")

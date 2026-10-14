@@ -14,6 +14,7 @@ from app.core.findings import (DOMAIN_LABELS_FA, SEV_ERROR, SEV_NORMAL, SEV_REVI
 from app.core.models import (REVIEW_ACCEPTED, REVIEW_EDITED, REVIEW_OVERRIDDEN,
                              REVIEW_PENDING, REVIEW_REJECTED)
 from app.core.validation import ERROR, OK, WARNING, summary_counts, validate_project
+from app.ui.excel_table import enable_excel_table
 from app.ui.widgets import Card, page_header, state_item
 from app.utils.formatting import fmt
 
@@ -25,6 +26,7 @@ DECISION_STATE = {REVIEW_PENDING: "pending", REVIEW_ACCEPTED: "completed",
 
 class AnalysisPage(QWidget):
     navigate_requested = Signal(str)   # کلید مرحله (project/input/loadflow/profile/review)
+    goto_requested = Signal(str, str)  # (صفحهٔ دقیق، فیلد) — ارجاع به منبع خطا (v2.0.0)
 
     def __init__(self, manager, settings, analysis, parent=None) -> None:
         super().__init__(parent)
@@ -89,10 +91,12 @@ class AnalysisPage(QWidget):
     def _table_defaults(t: QTableWidget) -> None:
         t.setEditTriggers(QTableWidget.NoEditTriggers)
         t.setAlternatingRowColors(True)
-        t.setSelectionBehavior(QTableWidget.SelectRows)
+        t.setSelectionBehavior(QTableWidget.SelectItems)
         t.verticalHeader().setVisible(False)
         t.horizontalHeader().setStretchLastSection(True)
         t.horizontalHeader().setMinimumSectionSize(80)
+        # v1.2.0: انتخاب/کپی مانند Excel (Ctrl+C، Ctrl+A، منوی راست‌کلیک)
+        enable_excel_table(t, editable=False, auto_add_row=False)
 
     def show_tab(self, name: str) -> None:
         self.tabs.setCurrentIndex({"metrics": 0, "findings": 1, "validation": 2, "trace": 3}.get(name, 0))
@@ -118,6 +122,9 @@ class AnalysisPage(QWidget):
                 txt += f"   [{STEP_LABELS.get(it.step, it.step)}]"
             li = QListWidgetItem(txt)
             li.setData(Qt.UserRole, it.step)
+            li.setData(Qt.UserRole + 1, (getattr(it, "target", "") or "", getattr(it, "field", "") or ""))
+            if getattr(it, "target", ""):
+                li.setToolTip(f"محل اصلاح: {it.target}" + (f" ← {it.field}" if it.field else ""))
             self.list_val.addItem(li)
         if errors:
             self.c_normal.set("—", "ابتدا خطاهای اعتبارسنجی را برطرف کنید", "normal")
@@ -187,6 +194,10 @@ class AnalysisPage(QWidget):
         self.tbl_trace.resizeColumnsToContents()
 
     def _val_clicked(self, item: QListWidgetItem) -> None:
+        target, fld = item.data(Qt.UserRole + 1) or ("", "")
+        if target:                                   # ارجاع دقیق به صفحه و فیلد
+            self.goto_requested.emit(target, fld)
+            return
         step = item.data(Qt.UserRole)
         if step:
             self.navigate_requested.emit(step)

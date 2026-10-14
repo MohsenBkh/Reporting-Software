@@ -6,8 +6,9 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (QFrame, QPushButton,
                                QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout,
-                               QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QLayout, QSpinBox, QVBoxLayout, QWidget)
+                               QGridLayout, QHeaderView, QHBoxLayout, QLabel,
+                               QLineEdit, QLayout, QScrollArea, QSpinBox,
+                               QTableWidget, QVBoxLayout, QWidget)
 
 
 def hline() -> QLayout:
@@ -203,6 +204,69 @@ def state_item(text: str, state: str, theme: str = "light"):
     it.setBackground(QBrush(QColor(bg)))
     it.setTextAlignment(Qt.AlignCenter)
     return it
+
+
+class OptionalSpin(QWidget):
+    """ورودی عددی اختیاری — تا وقتی تیک «تعریف‌شده» نخورده باشد مقدار None است.
+
+    مطابق اصل «هیچ آستانه‌ای اختراع نمی‌شود»: مقدار خالی به MISSING_RULE /
+    MISSING_DATA منجر می‌شود، نه به صفر.
+    """
+
+    def __init__(self, value=None, minimum: float = 0.0, maximum: float = 1e9,
+                 decimals: int = 2, suffix: str = "", label: str = "تعریف‌شده",
+                 parent=None) -> None:
+        super().__init__(parent)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(6)
+        self.chk = QCheckBox(label)
+        self.chk.setChecked(value is not None)
+        self.spin = make_spin(minimum, maximum, decimals,
+                              float(value) if value is not None else minimum)
+        self.spin.setSuffix(suffix)
+        self.spin.setEnabled(self.chk.isChecked())
+        self.chk.toggled.connect(self.spin.setEnabled)
+        lay.addWidget(self.chk)
+        lay.addWidget(self.spin, 1)
+
+    # ------------------------------------------------------------------
+    def value(self):
+        """مقدار عددی یا None وقتی کاربر آن را تعریف‌نشده گذاشته است."""
+        return self.spin.value() if self.chk.isChecked() else None
+
+    def setValue(self, value) -> None:
+        self.chk.setChecked(value is not None)
+        if value is not None:
+            self.spin.setValue(float(value))
+
+    def spinbox(self):
+        return self.spin
+
+
+def configure_data_table(table: QTableWidget, cols: list[str],
+                         min_width: int = 92) -> None:
+    """آماده‌سازی جدول داده‌ورودی (RTL) — عرض ستون‌ها بعد از پر شدن محاسبه می‌شود."""
+    table.setHorizontalHeaderLabels(cols)
+    table.setAlternatingRowColors(True)
+    table.setTextElideMode(Qt.ElideNone)
+    table.setWordWrap(True)
+    table.horizontalHeader().setDefaultAlignment(Qt.AlignCenter)
+    table.horizontalHeader().setStretchLastSection(False)
+    table.horizontalHeader().setMinimumSectionSize(min_width)
+    table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+
+
+def fit_columns(table: QTableWidget, min_width: int = 92, max_width: int = 260) -> None:
+    """عرض ستون‌ها = بیشترین مقدار بین «عنوان ستون» و «محتوای سلول‌ها» تا متن بریده نشود."""
+    table.resizeColumnsToContents()
+    fm = table.fontMetrics()
+    hdr_fm = table.horizontalHeader().fontMetrics()
+    for c in range(table.columnCount()):
+        label = table.horizontalHeaderItem(c)
+        need = max(fm.horizontalAdvance(label.text()) if label else 0,
+                   hdr_fm.horizontalAdvance(label.text()) if label else 0) + 34
+        table.setColumnWidth(c, min(max(need, table.columnWidth(c), min_width), max_width))
 
 
 def scrollable(widget: QWidget):

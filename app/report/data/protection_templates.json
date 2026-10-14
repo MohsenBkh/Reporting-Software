@@ -1,0 +1,101 @@
+{
+  "_help": "قالب‌های متن گزارش‌های ریکلوزر/سکشنالایزر. هر قالب: id، when (شرط ساده بر پایهٔ متغیرها)، text (با {متغیر}). ویرایش این فایل بدون تغییر کد ممکن است؛ متغیرها در app/report/protection_narrative.py (build_vars) تعریف شده‌اند. هیچ مقدار مهندسی نباید در قالب ثابت نوشته شود.",
+  "prot_intro": [
+    {"id": "intro.main", "when": "true",
+     "text": "این دفترچه نتایج {studies_text} را برای فیدر {feeders_text}{substation_clause} ارائه می‌کند. بررسی‌ها بر اساس اطلاعات شبکه، تنظیمات حفاظتی موجود و قواعد ثبت‌شده در موتور قواعد انجام شده است و هر مغایرت یا داده ناموجود در متن مشخص و به منبع آن ارجاع داده شده است."},
+    {"id": "intro.report_info", "when": "has_report_number",
+     "text": "گزارش شماره {report_number}{date_clause}."},
+    {"id": "intro.combined", "when": "rec_selected and secz_selected",
+     "text": "با توجه به ارتباط مهندسی ریکلوزر و سکشنالایزر (تنظیم سکشنالایزر وابسته به تنظیمات و تعداد شات ریکلوزر است)، دو مطالعه در یک گزارش ترکیبی ارائه شده است."}
+  ],
+  "prot_network": [
+    {"id": "network.main", "when": "true",
+     "text": "فیدر {feeders_text}{voltage_clause}{substation_from} مورد مطالعه قرار گرفته است."},
+    {"id": "network.sc", "when": "has_sc3",
+     "text": "سطح اتصال کوتاه سه‌فاز پست {sc3} کیلوآمپر{sc1_clause} ثبت شده است."},
+    {"id": "network.sc_missing", "when": "not has_sc3",
+     "text": "سطح اتصال کوتاه پست ثبت نشده است؛ بدون آن بررسی حساسیت و هماهنگی حفاظتی قابل تأیید نیست."},
+    {"id": "network.load", "when": "has_load",
+     "text": "جریان بار فیدر {load} آمپر در نظر گرفته شده است."},
+    {"id": "network.load_missing", "when": "not has_load",
+     "text": "جریان بار فیدر ثبت نشده است؛ بررسی حاشیهٔ Pickup نسبت به بار انجام نشد."},
+    {"id": "network.dg", "when": "dg_known",
+     "text": "{dg_text}"},
+    {"id": "network.dg_missing", "when": "not dg_known",
+     "text": "وضعیت منابع تولید پراکنده روی فیدر مشخص نشده است."}
+  ],
+  "prot_existing": [
+    {"id": "existing.relay", "when": "has_relay",
+     "text": "رله ابتدای فیدر (اضافه جریان و ارت‌فالت) با تنظیمات جدول‌های زیر در شبکه موجود است و مبنای هماهنگی ریکلوزر قرار گرفته است."},
+    {"id": "existing.relay_missing", "when": "not has_relay",
+     "text": "تنظیمات رله ابتدای فیدر ثبت نشده است؛ هماهنگی با رله بالادست بررسی نشد."},
+    {"id": "existing.others", "when": "has_other_devices",
+     "text": "تجهیزات حفاظتی دیگر موجود روی فیدر: {others_text}."}
+  ],
+  "prot_recloser": [
+    {"id": "recloser.main", "when": "rec_selected",
+     "text": "ریکلوزر {rec_name} در محل «{rec_location}» روی فیدر {rec_feeder} مورد مطالعه قرار گرفته است. هدف نصب: {rec_objective}."},
+    {"id": "recloser.cycle", "when": "rec_selected and has_rec_shots",
+     "text": "چرخهٔ وصل مجدد ریکلوزر شامل {rec_shots} شات، زمان‌های مرده {rec_dead_times} و زمان Reclaim برابر {rec_reclaim} است. این پارامترها از ورودی کاربر خوانده شده و حد مجاز واحدی برای آن‌ها در دفترچه‌های مرجع تعریف نشده است."},
+    {"id": "recloser.cycle_missing", "when": "rec_selected and not has_rec_shots",
+     "text": "تعداد شات، زمان‌های مرده و Reclaim ریکلوزر ثبت نشده است."}
+  ],
+  "prot_sectionalizer": [
+    {"id": "sectionalizer.main", "when": "secz_selected",
+     "text": "سکشنالایزر {secz_name} در محل «{secz_location}» روی فیدر {secz_feeder} مورد مطالعه قرار گرفته است. هدف نصب: {secz_objective}."},
+    {"id": "sectionalizer.reference", "when": "secz_selected and has_secz_ref",
+     "text": "تنظیمات سکشنالایزر با ریکلوزر مرجع «{secz_ref}» مقایسه و با نسبت‌های مرجع دفترچهٔ نمونه سنجیده شد؛ این نسبت‌ها الزام استاندارد نیستند و انحراف از آن‌ها نیازمند بازبینی مهندس است."},
+    {"id": "sectionalizer.reference_missing", "when": "secz_selected and not has_secz_ref",
+     "text": "تنظیمات ریکلوزر مرجع ثبت نشده است؛ مقایسهٔ تنظیمات سکشنالایزر انجام نشد."},
+    {"id": "sectionalizer.counter", "when": "secz_selected and has_secz_counter",
+     "text": "شمارندهٔ سکشنالایزر {secz_counter} تنظیم شده است{counter_vs_shots}."}
+  ],
+  "prot_coordination": [
+    {"id": "coordination.intro_rec", "when": "rec_selected",
+     "text": "هماهنگی ریکلوزر با {up_ref}: برای هر تابع، Pickup و زمان عملکرد ریکلوزر با تجهیز بالادست مقایسه شده است."},
+    {"id": "coordination.all_ok_rec", "when": "rec_selected and rec_coord_total > 0 and rec_coord_bad == 0",
+     "text": "در همهٔ {rec_coord_total} تابع بررسی‌شده، Pickup و زمان ریکلوزر کمتر از تجهیز بالادست است و ترتیب عملکرد برقرار است. تأیید نهایی باید با نمودار هماهنگی (TCC) انجام شود."},
+    {"id": "coordination.bad_rec", "when": "rec_selected and rec_coord_bad > 0",
+     "text": "در {rec_coord_bad} تابع از {rec_coord_total} تابع بررسی‌شده، هماهنگی برقرار نیست و تنظیمات باید اصلاح شود."},
+    {"id": "coordination.none_rec", "when": "rec_selected and rec_coord_total == 0",
+     "text": "به‌دلیل نبود تنظیمات بالادست یا ریکلوزر، هماهنگی ریکلوزر قابل بررسی نبود."},
+    {"id": "coordination.intro_secz", "when": "secz_selected",
+     "text": "هماهنگی سکشنالایزر با ریکلوزر مرجع بر مبنای نسبت‌های Pickup، اختلاف TMS، شمارنده و Dead line بررسی شده است."},
+    {"id": "coordination.secz_summary", "when": "secz_selected and secz_total > 0",
+     "text": "از {secz_total} مورد بررسی‌شده، {secz_ok} مورد با نمونهٔ مرجع مطابقت دارد و {secz_dev} مورد انحراف دارد."},
+    {"id": "coordination.none_secz", "when": "secz_selected and secz_total == 0",
+     "text": "به‌دلیل نبود تنظیمات سکشنالایزر یا ریکلوزر مرجع، مقایسهٔ تنظیمات انجام نشد."}
+  ],
+  "prot_placement": [
+    {"id": "placement.main", "when": "has_placement",
+     "text": "مبنای جانمایی تجهیز: {placement_text}."},
+    {"id": "placement.missing", "when": "not has_placement",
+     "text": "مبنای جانمایی (تحلیل خاموشی، انشعاب‌ها و ...) ثبت نشده است."}
+  ],
+  "prot_scenario": [
+    {"id": "scenario.normal", "when": "has_normal",
+     "text": "سناریوی بهره‌برداری عادی: {normal_scenario}"},
+    {"id": "scenario.emergency", "when": "has_emergency",
+     "text": "سناریوی بهره‌برداری اضطراری: {emergency_scenario}"},
+    {"id": "scenario.derived", "when": "has_rec_shots or has_secz_counter",
+     "text": "{derived_scenario} این شرح فقط از تنظیمات ثبت‌شده استخراج شده و باید با شبیه‌سازی تأیید شود."},
+    {"id": "scenario.missing", "when": "not has_normal and not has_emergency and not has_rec_shots and not has_secz_counter",
+     "text": "سناریوهای بهره‌برداری و داده کافی برای شرح سناریوی عملکرد ثبت نشده است."}
+  ],
+  "prot_conclusion": [
+    {"id": "conclusion.counts", "when": "n_total > 0",
+     "text": "از {n_total} یافتهٔ موتور قواعد: {n_pass} مورد منطبق، {n_warn} هشدار، {n_fail} عدم انطباق، {n_missing_data} داده ناموجود و {n_missing_rule} آستانهٔ تعریف‌نشده."},
+    {"id": "conclusion.fail", "when": "n_fail > 0",
+     "text": "موارد عدم انطباق: {fail_text}."},
+    {"id": "conclusion.missing", "when": "n_missing_data > 0",
+     "text": "برای تکمیل مطالعه باید داده‌های زیر ثبت شود: {missing_text}."},
+    {"id": "conclusion.missing_rule", "when": "n_missing_rule > 0",
+     "text": "برای داوری قطعی، آستانه‌های زیر باید توسط مهندس یا دستورالعمل تعیین شود: {missing_rule_text}."},
+    {"id": "conclusion.review", "when": "n_review > 0",
+     "text": "{n_review} مورد نیازمند بازبینی مهندس است؛ نتیجه‌گیری نهایی پس از بازبینی و رفع موارد بالا صادر می‌شود."}
+  ],
+  "prot_recommendation": [
+    {"id": "recommendation.final", "when": "true",
+     "text": "پیشنهاد نهایی منوط به تأیید مهندس مطالعات است و هیچ تنظیم یا الزامی بدون سند مرجع در این گزارش پیشنهاد نشده است."}
+  ]
+}

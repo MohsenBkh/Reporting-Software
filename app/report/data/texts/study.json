@@ -1,0 +1,508 @@
+{
+  "texts": [
+    {
+      "id": "T-STUDY-DEMAND-TITLE",
+      "title": "عنوان بخش اطلاعات تقاضا",
+      "template": "اطلاعات تقاضا",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-DEMAND-INTRO",
+      "title": "مقدمه بخش اطلاعات تقاضا",
+      "template": "اطلاعات تقاضای متقاضی «{APPLICANT}» مطابق جدول اطلاعات تقاضای دفترچه مطالعات مصارف سنگین به‌شرح زیر است.",
+      "vars": [
+        "APPLICANT"
+      ]
+    },
+    {
+      "id": "T-CAP-DEMAND-TABLE",
+      "title": "عنوان جدول اطلاعات تقاضا",
+      "template": "جدول {N}: اطلاعات تقاضا",
+      "vars": [
+        "N"
+      ]
+    },
+    {
+      "id": "T-HDR-ITEM",
+      "title": "سرستون عمومی اطلاعات",
+      "template": "اطلاعات",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-VALUE-KW",
+      "title": "سرستون مقدار (کیلووات)",
+      "template": "مقدار (kW)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-DEMAND-WITH",
+      "title": "ردیف تقاضا با ضریب همزمانی",
+      "template": "میزان تقاضا با ضریب همزمانی",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-DEMAND-WITHOUT",
+      "title": "ردیف تقاضا بدون ضریب همزمانی",
+      "template": "میزان تقاضا بدون ضریب همزمانی",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-EXISTING-DEMAND",
+      "title": "ردیف دیماند موجود",
+      "template": "میزان دیماند موجود",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-SUBSTATION-TITLE",
+      "title": "عنوان بخش ایستگاه‌های نزدیک",
+      "template": "ایستگاه‌های نزدیک به محل تقاضا",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-SUBSTATION-INTRO",
+      "title": "مقدمه بخش ایستگاه‌های نزدیک",
+      "template": "مشخصات ایستگاه‌های نزدیک به محل تقاضا شامل فاصله تقریبی، ظرفیت، درصد بارگیری ترانس‌ها در پیک بار و تعداد فیدر برقرار، در جدول زیر ارائه می‌شود.",
+      "vars": []
+    },
+    {
+      "id": "T-CAP-SUBSTATION-TABLE",
+      "title": "عنوان جدول ایستگاه‌های نزدیک",
+      "template": "جدول {N}: ایستگاه‌های نزدیک به محل تقاضا",
+      "vars": [
+        "N"
+      ]
+    },
+    {
+      "id": "T-ROW-SS-DISTANCE",
+      "title": "ردیف فاصله ایستگاه",
+      "template": "فاصله تقریبی تا محل تقاضا (km)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-SS-CAPACITY",
+      "title": "ردیف ظرفیت ایستگاه",
+      "template": "ظرفیت ایستگاه (MVA)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-SS-T1-LOAD",
+      "title": "ردیف درصد بارگیری T1",
+      "template": "درصد بارگیری ترانس T1 در پیک بار {YEAR}",
+      "vars": [
+        "YEAR"
+      ]
+    },
+    {
+      "id": "T-ROW-SS-T2-LOAD",
+      "title": "ردیف درصد بارگیری T2",
+      "template": "درصد بارگیری ترانس T2 در پیک بار {YEAR}",
+      "vars": [
+        "YEAR"
+      ]
+    },
+    {
+      "id": "T-ROW-SS-T1-PEAK",
+      "title": "ردیف میزان بارگیری T1",
+      "template": "میزان بارگیری ترانس T1 در پیک بار {YEAR} (MVA)",
+      "vars": [
+        "YEAR"
+      ]
+    },
+    {
+      "id": "T-ROW-SS-T2-PEAK",
+      "title": "ردیف میزان بارگیری T2",
+      "template": "میزان بارگیری ترانس T2 در پیک بار {YEAR} (MVA)",
+      "vars": [
+        "YEAR"
+      ]
+    },
+    {
+      "id": "T-ROW-SS-FEEDERS",
+      "title": "ردیف تعداد فیدر",
+      "template": "تعداد فیدر برقرار",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-LINE-TITLE",
+      "title": "عنوان بخش خطوط نزدیک",
+      "template": "خطوط نزدیک به محل تقاضا",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-LINE-INTRO",
+      "title": "مقدمه بخش خطوط نزدیک",
+      "template": "وضعیت خطوط نزدیک به محل تقاضا، پیش و پس از اتصال بار جدید و بر اساس پیک بار گزارش‌شده، در جدول زیر مقایسه می‌شود. تفکیک «افت ولتاژ مطلق» از «تغییر ناشی از متقاضی» در تحلیل رعایت شده است.",
+      "vars": []
+    },
+    {
+      "id": "T-CAP-LINE-TABLE",
+      "title": "عنوان جدول خطوط نزدیک",
+      "template": "جدول {N}: خطوط نزدیک به محل تقاضا",
+      "vars": [
+        "N"
+      ]
+    },
+    {
+      "id": "T-ROW-LN-DISTANCE",
+      "title": "ردیف فاصله خط",
+      "template": "فاصله تقریبی تا محل تقاضا (m)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-LN-PEAK-MVA",
+      "title": "ردیف پیک بار MVA",
+      "template": "پیک بار خط (MVA)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-LN-PEAK-MW",
+      "title": "ردیف پیک بار MW",
+      "template": "پیک بار خط (MW)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-LN-PEAK-A",
+      "title": "ردیف پیک جریان",
+      "template": "پیک جریان خط (A)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-LN-VDROP-BEFORE",
+      "title": "ردیف افت ولتاژ قبل",
+      "template": "افت ولتاژ انتهای خط قبل از اتصال بار جدید بر اساس پیک بار {YEAR}",
+      "vars": [
+        "YEAR"
+      ]
+    },
+    {
+      "id": "T-ROW-LN-VDROP-AFTER",
+      "title": "ردیف افت ولتاژ بعد",
+      "template": "افت ولتاژ انتهای خط بعد از اتصال بار جدید بر اساس پیک بار {YEAR}",
+      "vars": [
+        "YEAR"
+      ]
+    },
+    {
+      "id": "T-ROW-LN-DELTA",
+      "title": "ردیف تغییر افت ولتاژ",
+      "template": "تغییر افت ولتاژ ناشی از بار جدید (واحد درصد)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-LN-SC-MAX",
+      "title": "ردیف حداکثر اتصال کوتاه",
+      "template": "حداکثر جریان اتصال کوتاه (kA)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-LN-SC-MIN",
+      "title": "ردیف حداقل اتصال کوتاه",
+      "template": "حداقل جریان اتصال کوتاه (kA)",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-COINCIDENT-TITLE",
+      "title": "عنوان بخش متقاضیان همزمان",
+      "template": "متقاضیان و تقاضاهای همزمان محدوده",
+      "vars": []
+    },
+    {
+      "id": "T-CAP-COINCIDENT-TABLE",
+      "title": "عنوان جدول متقاضیان همزمان",
+      "template": "جدول {N}: متقاضیان و تقاضاهای همزمان محدوده مطالعاتی",
+      "vars": [
+        "N"
+      ]
+    },
+    {
+      "id": "T-HDR-CD-NAME",
+      "title": "سرستون نام متقاضی",
+      "template": "نام متقاضی",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-CD-EXISTING",
+      "title": "سرستون توان موجود",
+      "template": "توان موجود/درخواستی (kW)",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-CD-NEW",
+      "title": "سرستون توان جدید",
+      "template": "توان جدید (kW)",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-CD-DELTA",
+      "title": "سرستون افزایش بار",
+      "template": "افزایش بار (kW)",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-CD-LOCATION",
+      "title": "سرستون محل",
+      "template": "محل",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-CD-FEASIBILITY",
+      "title": "سرستون امکان تأمین",
+      "template": "امکان تأمین",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-ANALYSIS-TITLE",
+      "title": "عنوان بخش نکات تحلیلی",
+      "template": "نکات تحلیلی و کنترل کیفیت Ruleها",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-ANALYSIS-INTRO",
+      "title": "مقدمه بخش نکات تحلیلی",
+      "template": "نکات زیر حاصل اجرای Ruleهای تحلیلی مطالعه است. هر نتیجه دارای زنجیره ردیابی «ورودی ← محاسبه ← قاعده ← یافته ← شاهد ← متن گزارش» و منبع (کد و صفحه سند) می‌باشد. موارد دارای وضعیت MISSING_RULE یا MISSING_DATA تا تکمیل داده/آستانه، متن گزارش تولید نمی‌کنند.",
+      "vars": []
+    },
+    {
+      "id": "T-CAP-RULE-QUALITY-TABLE",
+      "title": "عنوان جدول کنترل کیفیت Ruleها",
+      "template": "جدول {N}: کنترل کیفیت Ruleها و وضعیت نتایج",
+      "vars": [
+        "N"
+      ]
+    },
+    {
+      "id": "T-HDR-RQ-ID",
+      "title": "سرستون شناسه Rule",
+      "template": "Rule ID",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-RQ-DOMAIN",
+      "title": "سرستون حوزه Rule",
+      "template": "حوزه",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-RQ-STATUS",
+      "title": "سرستون وضعیت Rule",
+      "template": "وضعیت",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-RQ-OWNER",
+      "title": "سرستون مورد",
+      "template": "مورد",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-RQ-FINDING",
+      "title": "سرستون یافته",
+      "template": "یافته",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-SCENARIO-TITLE",
+      "title": "عنوان بخش سناریوها",
+      "template": "سناریوهای پیشنهادی تأمین برق",
+      "vars": []
+    },
+    {
+      "id": "T-CAP-SCENARIO-TABLE",
+      "title": "عنوان جدول سناریوها",
+      "template": "جدول {N}: سناریوهای تأمین برق",
+      "vars": [
+        "N"
+      ]
+    },
+    {
+      "id": "T-ROW-SC-KIND",
+      "title": "ردیف نوع سناریو",
+      "template": "نوع سناریو",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-SC-BASIS",
+      "title": "ردیف مبنای فنی",
+      "template": "مبنای فنی (Technical Basis)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-SC-CHANGES",
+      "title": "ردیف تغییرات لازم شبکه",
+      "template": "تغییرات لازم شبکه (Required Network Changes)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-SC-FEEDER",
+      "title": "ردیف فیدر نامزد",
+      "template": "فیدر نامزد (Candidate Feeder)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-SC-EQUIP",
+      "title": "ردیف تجهیزات موردنیاز",
+      "template": "تجهیزات موردنیاز (Required Equipment)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-SC-EVIDENCE",
+      "title": "ردیف شاهد پشتیبان",
+      "template": "شاهد پشتیبان (Supporting Evidence)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-SC-COST",
+      "title": "ردیف هزینه سناریو",
+      "template": "هزینه ثبت‌شده (میلیون تومان)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-SC-REVIEW",
+      "title": "ردیف وضعیت بازبینی",
+      "template": "وضعیت بازبینی (Review Status)",
+      "vars": []
+    },
+    {
+      "id": "T-REVIEW-REQUIRES_ENGINEER_REVIEW",
+      "title": "وضعیت بازبینی — نیازمند بررسی",
+      "template": "نیازمند بررسی مهندس",
+      "vars": []
+    },
+    {
+      "id": "T-REVIEW-APPROVED",
+      "title": "وضعیت بازبینی — تأییدشده",
+      "template": "تأییدشده",
+      "vars": []
+    },
+    {
+      "id": "T-REVIEW-REJECTED",
+      "title": "وضعیت بازبینی — ردشده",
+      "template": "ردشده",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-ECONOMICS-TITLE",
+      "title": "عنوان بخش بررسی اقتصادی",
+      "template": "بررسی اقتصادی سناریوها",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-ECONOMICS-INTRO",
+      "title": "مقدمه بخش بررسی اقتصادی",
+      "template": "هزینه هر سناریو به‌صورت جداگانه ثبت و نمایش داده می‌شود. پارامترهای هزینه (طول شبکه، درصد خط هوایی/زمینی، پست زمینی و تجهیزات کلیدی) پارامتریک و قابل ویرایش‌اند و در کد هارد‌کد نشده‌اند. در نبود داده هزینه، مقدار MISSING_DATA درج می‌گردد و نه صفر.",
+      "vars": []
+    },
+    {
+      "id": "T-CAP-COST-TABLE",
+      "title": "عنوان جدول بررسی اقتصادی",
+      "template": "جدول {N}: بررسی اقتصادی سناریوها (میلیون تومان)",
+      "vars": [
+        "N"
+      ]
+    },
+    {
+      "id": "T-ROW-EC-LENGTH",
+      "title": "ردیف طول شبکه",
+      "template": "طول شبکه موردنیاز (km)",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-EC-OH",
+      "title": "ردیف درصد خط هوایی",
+      "template": "درصد خط هوایی",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-EC-UG",
+      "title": "ردیف درصد خط زمینی",
+      "template": "درصد خط زمینی",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-EC-COST-ITEMS",
+      "title": "ردیف اقلام هزینه ثبت‌شده",
+      "template": "اقلام هزینه ثبت‌شده",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-EC-GROUND",
+      "title": "ردیف هزینه پست زمینی",
+      "template": "هزینه پست زمینی",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-EC-SWITCH",
+      "title": "ردیف هزینه تجهیزات کلیدزنی/حفاظتی",
+      "template": "هزینه تجهیزات کلیدزنی/حفاظتی",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-EC-EXCLUDED",
+      "title": "ردیف اقلام خارج از برآورد",
+      "template": "اقلام خارج از برآورد",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-EC-COST",
+      "title": "ردیف هزینه سناریو",
+      "template": "هزینه ثبت‌شده سناریو",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-EC-ESTIMATE",
+      "title": "ردیف برآورد پارامتریک",
+      "template": "برآورد پارامتریک",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-EC-MISSING",
+      "title": "ردیف اقلام و پارامترهای ناموجود",
+      "template": "اقلام/پارامترهای ناموجود",
+      "vars": []
+    },
+    {
+      "id": "T-STUDY-CONCLUSION-TITLE",
+      "title": "عنوان بخش نتیجه‌گیری و پیشنهادات",
+      "template": "نتیجه‌گیری و پیشنهادات",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-CONC-NOTES",
+      "title": "ردیف نکات تحلیلی",
+      "template": "نکات تحلیلی",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-CONC-SCENARIOS",
+      "title": "ردیف سناریوهای پیشنهادی",
+      "template": "سناریوهای پیشنهادی",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-CONC-ECON",
+      "title": "ردیف بررسی اقتصادی سناریوها",
+      "template": "بررسی اقتصادی سناریوها",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-SS-NAME-INFO",
+      "title": "سرستون جدول ایستگاه‌ها",
+      "template": "نام ایستگاه / اطلاعات",
+      "vars": []
+    },
+    {
+      "id": "T-HDR-LN-NAME-INFO",
+      "title": "سرستون جدول خطوط",
+      "template": "نام خط / اطلاعات",
+      "vars": []
+    },
+    {
+      "id": "T-ROW-LN-PEAK-ALL",
+      "title": "ردیف پیک بار خط (سال‌دار)",
+      "template": "پیک بار خط در سال {YEAR}",
+      "vars": [
+        "YEAR"
+      ]
+    }
+  ]
+}

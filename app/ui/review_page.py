@@ -7,7 +7,7 @@ Reject و Override بدون ثبت توضیح (Comment) پذیرفته نمی‌
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QListWidget,
+from PySide6.QtWidgets import (QComboBox, QGroupBox, QHBoxLayout, QLabel, QListWidget,
                                QListWidgetItem, QMessageBox, QPlainTextEdit,
                                QPushButton, QSplitter, QTextEdit, QVBoxLayout, QWidget)
 
@@ -17,7 +17,7 @@ from app.core.models import (REVIEW_ACCEPTED, REVIEW_EDITED, REVIEW_OVERRIDDEN,
                              REVIEW_PENDING, REVIEW_REJECTED)
 from app.ui.icons import icon
 from app.ui.theme import tokens
-from app.ui.widgets import StatusBadge, page_header, section_title
+from app.ui.widgets import StatusBadge, page_header, scrollable, section_title
 
 SEV_STATE = {"normal": "normal", "warning": "warning", "error": "error", "review": "review"}
 DEC_STATE = {REVIEW_PENDING: "pending", REVIEW_ACCEPTED: "completed", REVIEW_EDITED: "info",
@@ -76,22 +76,24 @@ class ReviewPage(QWidget):
         self.lbl_rule.setObjectName("Muted")
         rv.addWidget(self.lbl_rule)
 
-        rv.addWidget(QLabel("متن تولیدشده از Rule Engine (فقط‌خواندنی):"))
+        # سه کادر قابل تغییر اندازه (QSplitter عمودی): عنوان هر کادر عنوان GroupBox است، نه یک
+        # QLabel جدا؛ بدین‌ترتیب متن و عنوان با هم تداخل نمی‌کنند و فضای هر کادر با کشیدن
+        # جداکننده تنظیم می‌شود. اگر پنجره کوچک باشد، کل بخش راست اسکرول می‌خورد.
         self.txt_auto = QTextEdit()
         self.txt_auto.setReadOnly(True)
-        self.txt_auto.setMaximumHeight(120)
-        rv.addWidget(self.txt_auto)
-
-        rv.addWidget(QLabel("متن نهایی در گزارش (برای Edit / Override ویرایش کنید):"))
         self.txt_final = QTextEdit()
         self.txt_final.setAcceptRichText(False)
-        self.txt_final.setMaximumHeight(140)
-        rv.addWidget(self.txt_final)
-
-        rv.addWidget(QLabel("توضیح مهندس (Comment — برای Reject و Override الزامی است):"))
         self.txt_comment = QPlainTextEdit()
-        self.txt_comment.setMaximumHeight(70)
-        rv.addWidget(self.txt_comment)
+        boxes = QSplitter(Qt.Vertical)
+        boxes.setChildrenCollapsible(False)
+        boxes.addWidget(self._boxed("متن تولیدشده از Rule Engine (فقط‌خواندنی)", self.txt_auto, 110))
+        boxes.addWidget(self._boxed("متن نهایی در گزارش (برای Edit / Override ویرایش کنید)",
+                                    self.txt_final, 120))
+        boxes.addWidget(self._boxed("توضیح مهندس (Comment — برای Reject و Override الزامی است)",
+                                    self.txt_comment, 90))
+        boxes.setSizes([150, 170, 110])
+        boxes.setMinimumHeight(420)
+        rv.addWidget(boxes, 1)
 
         btns = QHBoxLayout()
         self.b_accept = QPushButton(" تأیید (Accept)")
@@ -112,8 +114,8 @@ class ReviewPage(QWidget):
             btns.addWidget(b)
         btns.addStretch(1)
         rv.addLayout(btns)
-        rv.addStretch(1)
-        splitter.addWidget(right)
+        splitter.addWidget(scrollable(right))
+        splitter.setChildrenCollapsible(False)
         splitter.setSizes([380, 620])
 
         self.b_accept.clicked.connect(lambda: self._decide(REVIEW_ACCEPTED))
@@ -124,6 +126,16 @@ class ReviewPage(QWidget):
         self.b_reset.clicked.connect(self._reset)
         self.apply_icons()
         self._show(None)
+
+    @staticmethod
+    def _boxed(title: str, edit: QWidget, min_height: int) -> QGroupBox:
+        """کادر دارای عنوان؛ ویرایشگر حداقل ارتفاع دارد و با کادر بزرگ می‌شود."""
+        box = QGroupBox(title)
+        lay = QVBoxLayout(box)
+        lay.setContentsMargins(8, 4, 8, 8)
+        edit.setMinimumHeight(min_height)
+        lay.addWidget(edit)
+        return box
 
     def apply_icons(self) -> None:
         c = tokens(self.settings.theme)

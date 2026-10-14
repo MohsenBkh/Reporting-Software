@@ -12,6 +12,9 @@ from collections import Counter
 from dataclasses import dataclass
 
 from app.core.models import Project, REQUEST_INCREASE
+from app.core.report_types import (REPORT_TYPE_COMBINED_PROTECTION,
+                                   REPORT_TYPE_RECLOSER, REPORT_TYPE_SECTIONALIZER,
+                                   normalize)
 from app.core.settings import AppSettings
 
 ERROR = "error"      # خطای ضروری → دکمه تولید غیرفعال
@@ -34,10 +37,22 @@ class ValidationItem:
     message: str
     step: str = ""      # project | input | loadflow | profile | analysis
     hint: str = ""      # راهنمای رفع مشکل
+    # «تغییرات آرنا» v1.1.0 — ردیابی Rule متناظر (مثلاً DATA_INCONSISTENCY)
+    rule_id: str = ""
+    source: str = ""
+    source_page: str = ""
+    # v2.0.0 — ارجاع دقیق به منبع خطا: صفحهٔ ورود داده (کلید ناوبری) + فیلد
+    target: str = ""     # مثلاً "recloser.settings" یا "project"
+    field: str = ""      # مثلاً "f51.pickup_a" یا "ed_number"
 
 
-def _add(items, status, msg, step="", hint=""):
-    items.append(ValidationItem(status, msg, step, hint))
+STEP_ROUTE = {STEP_PROJECT: "project", STEP_INPUT: "input", STEP_LOADFLOW: "loadflow",
+              STEP_PROFILE: "profile", STEP_ANALYSIS: "analysis", "": ""}
+
+
+def _add(items, status, msg, step="", hint="", target="", field=""):
+    items.append(ValidationItem(status, msg, step, hint,
+                                target=target or STEP_ROUTE.get(step, ""), field=field))
 
 
 def _fa_digits_to_en(s: str) -> str:
@@ -45,6 +60,17 @@ def _fa_digits_to_en(s: str) -> str:
 
 
 def validate_project(project: Project, settings: AppSettings) -> list[ValidationItem]:
+    # ---------------- نوع گزارش (v1.3.0 / v2.0.0) ----------------
+    report_type = normalize(getattr(project, "report_type", ""))
+    if report_type == REPORT_TYPE_SECTIONALIZER:
+        return validate_sectionalizer(project, settings)
+    if report_type in (REPORT_TYPE_RECLOSER, REPORT_TYPE_COMBINED_PROTECTION):
+        return validate_protection(project, settings, report_type)
+    return validate_heavy(project, settings)
+
+
+def validate_heavy(project: Project, settings: AppSettings) -> list[ValidationItem]:
+    """اعتبارسنجی مطالعهٔ متقاضی سنگین (مستقل از ``report_type`` پروژه — برای Guided Flow)."""
     th = settings.thresholds
     items: list[ValidationItem] = []
 
@@ -88,27 +114,28 @@ def validate_project(project: Project, settings: AppSettings) -> list[Validation
         _add(items, WARNING, "توان درخواستی کمتر از ۱۰۰۰ کیلووات است (موضوع دستورالعمل مصارف سنگین نیست).", STEP_PROJECT)
 
     # ---------------- فیدرها ----------------
-    if not project.feeders:
+    feeders = project.active_feeders          # v1.2.0: فیدرهای خاموش (On/Off) نادیده گرفته می‌شوند
+    if not feeders:
         _add(items, ERROR, "هیچ فیدری تعریف نشده است.", STEP_INPUT,
              "در صفحه «ورود داده» حداقل یک فیدر اضافه کنید.")
     else:
-        no_name = [i + 1 for i, f in enumerate(project.feeders) if not f.name]
+        no_name = [i + 1 for i, f in enumerate(feeders) if not f.name]
         if no_name:
             _add(items, ERROR, f"نام فیدر(های) شماره {no_name} خالی است.", STEP_INPUT)
-        dup = [n for n, c in Counter(f.name for f in project.feeders if f.name).items() if c > 1]
+        dup = [n for n, c in Counter(f.name for f in feeders if f.name).items() if c > 1]
         if dup:
             _add(items, ERROR, "نام فیدر تکراری است: " + "، ".join(dup), STEP_INPUT,
                  "هر فیدر باید نام یکتا داشته باشد.")
-        no_peak = [f.display_name for f in project.feeders if f.peak_load_mw is None]
+        no_peak = [f.display_name for f in feeders if f.peak_load_mw is None]
         if no_peak:
             _add(items, ERROR, "پیک بار فیدرهای " + "، ".join(no_peak) + " وارد نشده است.", STEP_INPUT,
                  "پیک بار را وارد کنید یا پروفیل بار را Import نمایید.")
-        no_cap = [f.display_name for f in project.feeders if f.capacity_mw is None]
+        no_cap = [f.display_name for f in feeders if f.capacity_mw is None]
         if no_cap:
             _add(items, WARNING, "معیار بارگذاری فیدرهای " + "، ".join(no_cap) +
                  " ثبت نشده (طبقه‌بندی بارگذاری «نیازمند بررسی» خواهد بود).", STEP_INPUT)
 
-        for f in project.feeders:
+        for f in feeders:
             n = f.display_name
             if f.peak_load_mw is not None:
                 if f.peak_load_mw <= 0:
@@ -127,10 +154,10 @@ def validate_project(project: Project, settings: AppSettings) -> list[Validation
                 _add(items, WARNING, f"پیک بار فیدر {n} از معیار بارگذاری آن بیشتر است.", STEP_INPUT)
             if (f.max_current_a and f.peak_current_a and f.peak_current_a > f.max_current_a):
                 _add(items, WARNING, f"پیک جریان فیدر {n} از جریان مجاز هادی بیشتر است.", STEP_INPUT)
-        _add(items, OK, f"اطلاعات {len(project.feeders)} فیدر", STEP_INPUT)
+        _add(items, OK, f"اطلاعات {len(feeders)} فیدر", STEP_INPUT)
 
     # ---------------- نتایج پخش بار ----------------
-    for f in project.feeders:
+    for f in feeders:
         n = f.display_name
         for label, res in (("قبل", f.before), ("بعد", f.after)):
             if not res.is_complete():
@@ -158,29 +185,29 @@ def validate_project(project: Project, settings: AppSettings) -> list[Validation
                     _add(items, WARNING, f"جریان فیدر {n} پس از افزودن بار کاهش یافته؛ ترتیب قبل/بعد یا سناریو بررسی شود.", STEP_LOADFLOW)
                 if f.after.min_voltage_pu > f.before.min_voltage_pu + 0.005:
                     _add(items, WARNING, f"حداقل ولتاژ فیدر {n} پس از افزودن بار افزایش یافته؛ نتایج بررسی شود.", STEP_LOADFLOW)
-    if project.feeders and all(f.before.is_complete() and f.after.is_complete() for f in project.feeders):
+    if feeders and all(f.before.is_complete() and f.after.is_complete() for f in feeders):
         _add(items, OK, "نتایج پخش بار قبل و بعد", STEP_LOADFLOW)
 
     # ---------------- پروفیل و پیش‌بینی ----------------
-    no_profile = [f.display_name for f in project.feeders if not f.profile_stats.n_points]
+    no_profile = [f.display_name for f in feeders if not f.profile_stats.n_points]
     if no_profile:
         _add(items, WARNING, "پروفیل بار برای فیدرهای " + "، ".join(no_profile) + " وارد نشده است.", STEP_PROFILE)
     else:
         _add(items, OK, "پروفیل بار", STEP_PROFILE)
-    for f in project.feeders:
+    for f in feeders:
         st = f.profile_stats
         if st.n_points and st.peak_p_mw is not None and f.peak_load_mw is not None and f.peak_load_mw > 0:
             diff = abs(st.peak_p_mw - f.peak_load_mw) / f.peak_load_mw * 100
             if diff > 10:
                 _add(items, WARNING, f"پیک پروفیل فیدر {f.display_name} ({st.peak_p_mw:g}) با پیک واردشده ({f.peak_load_mw:g}) {diff:.0f}٪ اختلاف دارد.", STEP_PROFILE)
-    no_fc = [f.display_name for f in project.feeders if not f.forecast.available]
+    no_fc = [f.display_name for f in feeders if not f.forecast.available]
     if no_fc:
         _add(items, WARNING, "پیش‌بینی برای فیدرهای " + "، ".join(no_fc) + " موجود نیست.", STEP_PROFILE)
-    review_fc = [f for f in project.feeders if f.forecast.needs_review and f.forecast.method != "none"]
+    review_fc = [f for f in feeders if f.forecast.needs_review and f.forecast.method != "none"]
     for f in review_fc:
         _add(items, WARNING, f"پیش‌بینی فیدر {f.display_name} نیازمند بررسی مهندس است: {f.forecast.note}",
              STEP_ANALYSIS, "در صفحه «بازبینی مهندس» نتیجه را تأیید، ویرایش یا رد کنید.")
-    if project.feeders and not no_fc and not review_fc:
+    if feeders and not no_fc and not review_fc:
         _add(items, OK, "پیش‌بینی بار", STEP_PROFILE)
 
     # ---------------- تصاویر / مانور ----------------
@@ -196,8 +223,180 @@ def validate_project(project: Project, settings: AppSettings) -> list[Validation
                 _add(items, WARNING, f"فیدر {label} مانور («{v}») در فهرست فیدرها نیست.", STEP_PROJECT)
         if man.transferred_mw is not None and man.transferred_mw <= 0:
             _add(items, WARNING, "مقدار بار منتقل‌شده در مانور باید مثبت باشد.", STEP_PROJECT)
+    # ---------------- کنترل ناسازگاری داده‌های مطالعه (Cross Validation) ----------------
+    items.extend(study_validation_items(project, settings))
+
     items.append(ValidationItem(OK, "قالب گزارش", ""))
     return items
+
+
+def _validate_general_info(items: list, project: Project) -> None:
+    """اطلاعات عمومی پروژه برای مطالعات حفاظتی — «نام متقاضی» لازم نیست (v2.0.0).
+
+    فقط فیلدهایی که واقعاً در صفحهٔ «اطلاعات پروژه» وجود دارند بررسی می‌شوند؛ هر خطا
+    به فیلد دقیق ارجاع دارد (``target`` + ``field``) تا با یک کلیک به منبع خطا بروید.
+    """
+    problems = []
+    if not project.report_number:
+        problems.append(("شماره گزارش", "ed_number"))
+    if not project.date_jalali:
+        problems.append(("تاریخ گزارش", "ed_date"))
+    for label, fld in problems:
+        _add(items, ERROR, f"{label} ثبت نشده است.", STEP_PROJECT,
+             "در صفحهٔ «اطلاعات پروژه» تکمیل کنید.", target="project", field=fld)
+    if not problems:
+        _add(items, OK, "اطلاعات پروژه", STEP_PROJECT)
+
+
+# ---------------------------------------------------------------------------
+# v1.3.0 — اعتبارسنجی گزارش نوع «سکشنالایزر» (اسکلت)
+# ---------------------------------------------------------------------------
+def validate_sectionalizer(project: Project, settings: AppSettings) -> list[ValidationItem]:
+    """اعتبارسنجی سبک برای گزارش سکشنالایزر.
+
+    تا ارسال جزئیات تکمیلی توسط کارفرما، فقط فیلدهای اصلی گزارش بررسی می‌شوند؛
+    کمبود داده‌های فنی (جریان خطا و تنظیمات) «هشدار» است نه خطا، تا ساخت گزارش
+    ممکن بماند و مقادیر ناموجود در جدول با وضعیت «ناموجود» درج شوند.
+    """
+    items: list[ValidationItem] = []
+    sz = project.sectionalizer
+
+    _validate_general_info(items, project)
+
+    if not sz.feeder_name and not sz.installation_location:
+        _add(items, WARNING, "فیدر هدف یا محل نصب سکشنالایزر مشخص نشده است.",
+             STEP_INPUT, "در صفحه «پروژه» مشخصات سکشنالایزر را تکمیل کنید.")
+    else:
+        _add(items, OK, "محل نصب سکشنالایزر", STEP_INPUT)
+
+    if not sz.is_complete():
+        _add(items, WARNING,
+             "سطح اتصال کوتاه/تنظیمات حفاظتی سکشنالایزر ناقص است؛ مقادیر ناموجود "
+             "در گزارش با وضعیت «ناموجود» درج می‌شوند.", STEP_INPUT,
+             "جریان اتصال کوتاه و جریان پیکاپ را تکمیل کنید.")
+    else:
+        _add(items, OK, "تنظیمات حفاظتی سکشنالایزر", STEP_INPUT)
+
+    items.append(ValidationItem(OK, "قالب گزارش", ""))
+    return items
+
+
+# ---------------------------------------------------------------------------
+# v2.0.0 — اعتبارسنجی گزارش «ریکلوزر» و «ترکیبی ریکلوزر + سکشنالایزر»
+# ---------------------------------------------------------------------------
+def _device_is_ready(info) -> bool:
+    """تجهیز زمانی «داده دارد» که یا فیلدهای پایه‌ی قدیمی یا تنظیمات توابع کامل‌اند."""
+    settings = getattr(info, "settings", None)
+    has_settings = bool(settings is not None and settings.any_function_set())
+    return has_settings or info.is_complete()
+
+
+def validate_protection(project: Project, settings: AppSettings,
+                        report_type: str) -> list[ValidationItem]:
+    """اعتبارسنجی سبک مطالعات حفاظتی (مستقل از متقاضی سنگین).
+
+    مانند سکشنالایزر، کمبود داده‌های فنی «هشدار» است نه «خطا»؛ جزئیات هر مورد را
+    Rule Engine حفاظتی (``app/rules/domains.py``) با MISSING_DATA / MISSING_RULE
+    گزارش می‌کند و هیچ مقدار مهندسی حدس زده نمی‌شود.
+    """
+    items: list[ValidationItem] = []
+    devices = [("ریکلوزر", project.recloser)]
+    if report_type == REPORT_TYPE_COMBINED_PROTECTION:
+        devices.append(("سکشنالایزر", project.sectionalizer))
+
+    _validate_general_info(items, project)
+
+    for label, info in devices:
+        key = "recloser" if info is project.recloser else "sectionalizer"
+        if not info.feeder_name and not info.installation_location:
+            _add(items, WARNING, f"فیدر هدف یا محل نصب {label} مشخص نشده است.",
+                 STEP_INPUT, f"مشخصات {label} را در صفحه «حفاظت و اتوماسیون» تکمیل کنید.",
+                 target=f"{key}.device", field="installation_location")
+        else:
+            _add(items, OK, f"محل نصب {label}", STEP_INPUT)
+        if not _device_is_ready(info):
+            _add(items, WARNING,
+                 f"تنظیمات حفاظتی {label} ناقص است؛ مقادیر ناموجود در گزارش با وضعیت "
+                 "«ناموجود» درج می‌شوند.", STEP_INPUT,
+                 "در تب «تنظیمات حفاظتی» توابع ۵۱/۵۰/۵۱N/۵۰N را تکمیل کنید.",
+                 target=f"{key}.settings", field="f51.pickup_a")
+        else:
+            _add(items, OK, f"تنظیمات حفاظتی {label}", STEP_INPUT)
+
+    items.append(ValidationItem(OK, "قالب گزارش", ""))
+    return items
+
+
+# ---------------------------------------------------------------------------
+# «تغییرات آرنا» v1.1.0 — کنترل ناسازگاری داده‌ها با Rule Engine
+# ---------------------------------------------------------------------------
+_RULE_STATUS_MAP = {
+    "PASS": OK,
+    "INFO": OK,
+    "WARNING": WARNING,
+    "FAIL": WARNING,
+    "DATA_ERROR": WARNING,
+    "REQUIRES_ENGINEER_REVIEW": WARNING,
+    "MISSING_RULE": WARNING,
+    "MISSING_DATA": WARNING,
+}
+
+
+def study_validation_items(project: Project, settings: AppSettings,
+                           engine=None) -> list[ValidationItem]:
+    """آیتم‌های اعتبارسنجی حاصل از Ruleهای کنترل ناسازگاری/توپولوژی.
+
+    مطابق بند ۵ صورت‌مسئله: مغایرت‌ها با Rule ID = DATA_INCONSISTENCY و وضعیت
+    REQUIRES_ENGINEER_REVIEW ثبت می‌شوند؛ موتور مقدار صحیح را حدس نمی‌زند و
+    هیچ‌کدام از دو مقدار را خودکار جایگزین نمی‌کند.
+    """
+    from app.core.study import collect_study_results, has_study_data
+    from app.rules.rule_engine import RuleEngine
+
+    if not has_study_data(project):
+        return []
+    eng = engine or RuleEngine()
+    results = collect_study_results(project, settings, eng)
+    out: list[ValidationItem] = []
+    for r in results:
+        if r.category not in ("study_crosscheck", "study_topology"):
+            continue
+        status = _RULE_STATUS_MAP.get(r.status, WARNING)
+        hint = ""
+        if r.status == "MISSING_RULE":
+            hint = "برای رفع: آستانه‌های تعریف‌نشده را در صفحه «تنظیمات» تعیین کنید."
+        elif r.status in ("DATA_ERROR", "REQUIRES_ENGINEER_REVIEW"):
+            hint = "داده ورودی را بازبینی کنید؛ نرم‌افزار هیچ مقداری را خودکار اصلاح/جایگزین نمی‌کند."
+        out.append(ValidationItem(
+            status=status,
+            message=r.finding or f"{r.rule_id}: {r.status}",
+            step=STEP_INPUT if r.category == "study_crosscheck" else STEP_ANALYSIS,
+            hint=hint,
+            rule_id=r.rule_id,
+            source=r.source,
+            source_page=r.source_page))
+    return out
+
+
+def missing_rule_items(project: Project, settings: AppSettings, engine=None) -> list[ValidationItem]:
+    """Ruleهایی که به آستانه تعریف‌نشده وابسته‌اند (MISSING_RULE) — برای شفافیت."""
+    from app.core.study import collect_study_results, has_study_data
+    from app.rules.rule_engine import RuleEngine
+
+    if not has_study_data(project):
+        return []
+    eng = engine or RuleEngine()
+    results = collect_study_results(project, settings, eng)
+    missing = sorted({(r.rule_id, tuple(r.missing)) for r in results if r.status == "MISSING_RULE"})
+    out: list[ValidationItem] = []
+    for rule_id, keys in missing:
+        out.append(ValidationItem(
+            WARNING,
+            f"Rule «{rule_id}» نیازمند آستانه تعریف‌نشده است: {'، '.join(keys)}",
+            STEP_ANALYSIS,
+            "مقدار آستانه را در صفحه «تنظیمات» وارد کنید تا داوری مهندسی انجام شود (هیچ مقدار پیش‌فرضی فرض نمی‌شود).",
+            rule_id=rule_id))
+    return out
 
 
 def has_errors(items: list[ValidationItem]) -> bool:

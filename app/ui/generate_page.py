@@ -20,7 +20,7 @@ from app.core.validation import has_errors, summary_counts, validate_project
 from app.report import pipeline
 from app.report.template_manager import TemplateManager
 from app.rules.rule_engine import RuleEngine
-from app.ui.widgets import StatusBadge, page_header
+from app.ui.widgets import StatusBadge, page_header, scrollable
 from app.utils.errors import friendly_error, log_exception
 
 TEMPLATES = {"standard": "قالب استاندارد دفترچه مطالعات (TAV111-10/00 — اردبیل)"}
@@ -44,9 +44,7 @@ class GenerateWorker(QObject):
         t0 = time.time()
         try:
             self.progress.emit(10, "اعتبارسنجی نهایی ورودی‌ها…")
-            items = validate_project(project, settings)
-            if has_errors(items):
-                raise ValueError("اعتبارسنجی ناموفق است.")
+            items = validate_project(project, settings)    # خطاها مانع تولید نیست (v2.0.0)
             self.progress.emit(30, "تولید متن، جدول‌ها و نمودارها…")
             Path(charts_dir).mkdir(parents=True, exist_ok=True)
             report = pipeline.build_sections(project, settings, texts, engine, charts_dir,
@@ -74,7 +72,11 @@ class GeneratePage(QWidget):
         self._worker: GenerateWorker | None = None
         self.last_path: Path | None = None
 
-        root = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        inner = QWidget()
+        outer.addWidget(scrollable(inner))
+        root = QVBoxLayout(inner)
         root.setContentsMargins(24, 16, 24, 16)
         root.setSpacing(10)
         root.addWidget(page_header("تولید گزارش",
@@ -102,6 +104,7 @@ class GeneratePage(QWidget):
             row.addWidget(btn)
             gl.addLayout(row)
             self.ready_rows[key] = (badge, msg)
+        self.grp_ready.setMinimumHeight(150)
         root.addWidget(self.grp_ready)
 
         # --- تنظیمات خروجی ---
@@ -187,6 +190,7 @@ class GeneratePage(QWidget):
         self.res_text.setTextInteractionFlags(Qt.TextSelectableByMouse)
         rl.addWidget(self.res_text)
         self.result.setVisible(False)
+        self.result.setMinimumHeight(96)
         root.addWidget(self.result)
         root.addStretch(1)
 
@@ -297,7 +301,7 @@ class GeneratePage(QWidget):
         b, m = self.ready_rows["val"]
         if errors:
             b.set_state("error", "Error")
-            m.setText(f"{errors} خطا و {warns} هشدار — ابتدا خطاها را برطرف کنید.")
+            m.setText(f"{errors} خطا و {warns} هشدار — تولید ممکن است؛ نقص‌ها در ابتدای گزارش درج می‌شود.")
         elif warns:
             b.set_state("warning", "Warning")
             m.setText(f"{warns} هشدار (تولید مجاز است).")
@@ -323,7 +327,7 @@ class GeneratePage(QWidget):
         n_rev = len([d for d in project.reviews.values() if d.status != "pending"])
         b.set_state("info" if (n_manual or n_rev) else "pending", "ثبت شده" if (n_manual or n_rev) else "—")
         m.setText(f"{n_manual} بخش با متن دستی، {n_rev} تصمیم مهندس — با تولید مجدد حفظ می‌شود.")
-        self.btn_generate.setEnabled(not errors and self._thread is None)
+        self.btn_generate.setEnabled(self._thread is None)
 
     # ------------------------------------------------------------------
     def generate(self) -> None:
@@ -332,9 +336,20 @@ class GeneratePage(QWidget):
             return
         items = validate_project(project, self.settings)
         if has_errors(items):
-            QMessageBox.warning(self, "تولید گزارش", "ابتدا خطاهای اعتبارسنجی را برطرف کنید.")
-            return
-        report = self.analysis.get()
+            n_err = summary_counts(items)[0]
+            ret = QMessageBox.question(
+                self, "خطاهای رفع‌نشده",
+                f"{n_err} خطای اعتبارسنجی هنوز رفع نشده است.\n"
+                "گزارش با همین وضعیت تولید می‌شود و نقص‌ها در ابتدای گزارش با عنوان "
+                "«هشدار — نقص‌های رفع‌نشده» درج می‌شود.\nادامه می‌دهید؟",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if ret != QMessageBox.Yes:
+                return
+        try:
+            report = self.analysis.get()
+        except Exception as exc:  # noqa: BLE001 — با داده ناقص تحلیل ممکن است ناموفق باشد
+            log_exception(exc, "تحلیل پیش از تولید")
+            report = None
         pending = unresolved(report.findings) if report else []
         if pending:
             ret = QMessageBox.question(
