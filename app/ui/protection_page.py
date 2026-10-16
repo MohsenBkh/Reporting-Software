@@ -88,10 +88,13 @@ class ProtectionPage(QWidget):
         feeder = QLineEdit()
         location = QLineEdit()
         location.setPlaceholderText("مثال: تیر شماره ۱۲۳، تقاطع بلوار کشاورز")
+        coordinates = QLineEdit()
+        coordinates.setPlaceholderText("مثال: 48.283541, 38.561204 یا UTM: 39S 612345 4268900")
         objective = QLineEdit()
         objective.setPlaceholderText("مثال: ایزوله‌سازی سریع منطقه خطا و کاهش خاموشی")
         f1.addRow("فیدر هدف:", feeder)
         f1.addRow("محل نصب:", location)
+        f1.addRow("مختصات محل نصب:", coordinates)
         f1.addRow("هدف نصب:", objective)
         v1.addLayout(f1)
         v.addWidget(card1)
@@ -131,12 +134,13 @@ class ProtectionPage(QWidget):
         v.addStretch(1)
 
         fields = {"feeder_name": feeder, "installation_location": location,
-                  "objective": objective, "fault_current_ka": fault,
+                  "coordinates": coordinates, "objective": objective,
+                  "fault_current_ka": fault,
                   "min_fault_current_ka": minfault, "pickup_current_a": pickup,
                   "tms": tms, "upstream_device": upstream,
                   "coordination_note": coordination}
         setattr(self, f"{prefix}_fields", fields)
-        for w in (feeder, location, objective, upstream, coordination):
+        for w in (feeder, location, coordinates, objective, upstream, coordination):
             w.textChanged.connect(self._on_change)
         for w in (fault, minfault, pickup, tms):
             w.valueChanged.connect(self._on_change)

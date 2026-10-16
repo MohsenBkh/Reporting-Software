@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """ویرایشگر «فیدرهای محدودهٔ مطالعه و شبکه» برای مطالعات ریکلوزر و سکشنالایزر.
 
-هر مطالعه ورودی‌های خودش را در همین ویرایشگر وارد می‌کند (محدودهٔ فیدرها مستقل است)،
-ولی داده‌ی هر فیدر یک‌بار در «شبکه مشترک» (``Workspace.common_network``) ذخیره می‌شود؛
-اگر دو مطالعه فیدر یکسانی داشته باشند، اطلاعات آن دوباره‌خوانی/تکراری نمی‌شود.
+v2.3.0 — صفحهٔ مشترک: فیدرهای محدودهٔ مطالعه یک‌بار وارد می‌شوند (``kind=None``)
+و برای هر دو مطالعهٔ ریکلوزر و سکشنالایزر استفاده می‌شوند؛ داده‌ی هر فیدر در
+«شبکه مشترک» (``Workspace.common_network``) ذخیره می‌شود.
 
-ورودی‌ها (به ترتیب جدول «اصلاحات»):
-  ۱) سطح اتصال کوتاه سه‌فاز و تکفاز پست  ۲) تنظیمات رله‌های اضافه جریان و ارت‌فالت ابتدای فیدر
-  ۳) تنظیمات سایر تجهیزات موجود در فیدر  ۴) وجود منابع تولید پراکنده
-  ۵) سناریوهای بهره‌برداری عادی و اضطراری
+ورودی‌ها:
+  ۱) مشخصات فیدر و سطح اتصال کوتاه سه‌فاز و تکفاز پست
+  ۲) وجود منابع تولید پراکنده  ۳) سناریوهای بهره‌برداری عادی و اضطراری
+تنظیمات رلهٔ ابتدای فیدر و سایر تجهیزات حفاظتی دیگر اینجا وارد نمی‌شوند؛
+آن‌ها با «ورود از IDMT» (بسته خروجی گزارش‌ساز ابزار IDMT) منتقل می‌شوند.
 نبود داده = ``None`` (هیچ مقدار پیش‌فرضی ساخته نمی‌شود).
 """
 from __future__ import annotations
@@ -16,41 +17,40 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QInputDialog,
+from PySide6.QtWidgets import (QComboBox, QFormLayout, QGroupBox, QInputDialog,
                                QLabel, QLineEdit, QListWidget, QListWidgetItem,
                                QPlainTextEdit, QPushButton, QSplitter, QVBoxLayout, QWidget)
 
-from app.core.protection_models import ProtectionSettings
 from app.core.studies import STUDY_LABELS_FA, StudyKind
-from app.core.workspace import (DEVICE_FEEDER_RELAY, DEVICE_FUSE, DEVICE_RECLOSER,
-                                DEVICE_SECTIONALIZER, ExistingProtectionDevice,
-                                FeederNetworkData, Workspace)
-from app.ui.shell.settings_editor import OptionalNumberEdit, ProtectionSettingsEditor
+from app.core.workspace import FeederNetworkData, Workspace
+from app.ui.shell.settings_editor import OptionalNumberEdit
 from app.ui.widgets import page_header, scrollable
 
-DEVICE_OTHER = "other"
-DEVICE_TYPE_LABELS = [(DEVICE_RECLOSER, "ریکلوزر"), (DEVICE_SECTIONALIZER, "سکشنالایزر"),
-                      (DEVICE_FUSE, "فیوز"), (DEVICE_OTHER, "سایر")]
 DG_CHOICES = [(None, "نامشخص"), (False, "ندارد"), (True, "دارد")]
+# صفحهٔ مشترک محدودهٔ فیدرها روی هر دو مطالعهٔ حفاظتی اعمال می‌شود
+PROTECTION_KINDS = (StudyKind.RECLOSER, StudyKind.SECTIONALIZER)
 
 
 class NetworkEditor(QWidget):
     changed = Signal()
 
     def __init__(self, manager, get_workspace: Callable[[], Optional[Workspace]],
-                 kind: StudyKind, parent=None) -> None:
+                 kind: Optional[StudyKind] = None, parent=None) -> None:
         super().__init__(parent)
-        self.manager, self._ws, self.kind = manager, get_workspace, StudyKind(kind)
+        self.manager, self._ws = manager, get_workspace
+        self.kind = StudyKind(kind) if kind is not None else None
         self._feeder: Optional[FeederNetworkData] = None
-        self._device: Optional[ExistingProtectionDevice] = None
         self._loading = False
 
+        title = ("فیدرهای محدودهٔ مطالعه و اطلاعات شبکه" if self.kind is None else
+                 f"فیدرهای محدودهٔ مطالعه {STUDY_LABELS_FA[self.kind]} و اطلاعات شبکه")
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 16, 24, 16)
         root.addWidget(page_header(
-            f"فیدرهای محدودهٔ مطالعه {STUDY_LABELS_FA[self.kind]} و اطلاعات شبکه",
-            "فیدرهای محدودهٔ این مطالعه را اضافه کنید و برای هر فیدر اطلاعات شبکه و حفاظت موجود را "
-            "وارد کنید. داده‌ی هر فیدر یک‌بار ذخیره می‌شود و بین مطالعات مشترک است."))
+            title,
+            "فیدرهای محدودهٔ مطالعه را یک‌بار اینجا وارد کنید؛ همین فهرست برای هر دو مطالعهٔ "
+            "ریکلوزر و سکشنالایزر استفاده می‌شود. تنظیمات رلهٔ ابتدای فیدر و سایر تجهیزات "
+            "حفاظتی از «ورود از IDMT» منتقل می‌شوند."))
         split = QSplitter(Qt.Horizontal)
         split.setChildrenCollapsible(False)
         root.addWidget(split, 1)
@@ -99,41 +99,13 @@ class NetworkEditor(QWidget):
         f1.addRow("توپولوژی / توضیح:", self.ed_topology)
         bv.addWidget(g1)
 
-        g2 = QGroupBox("تنظیمات رله‌های اضافه جریان و ارت‌فالت ابتدای فیدر")
-        v2 = QVBoxLayout(g2)
-        self.relay_editor = ProtectionSettingsEditor(reclosing=False, counter=False)
-        v2.addWidget(self.relay_editor)
-        bv.addWidget(g2)
-
-        g3 = QGroupBox("تنظیمات سایر تجهیزات حفاظتی موجود در فیدر (ریکلوزر، سکشنالایزر، فیوز و ...)")
-        v3 = QVBoxLayout(g3)
-        self.dev_list = QListWidget()
-        self.dev_list.setMaximumHeight(110)
-        self.dev_list.currentRowChanged.connect(self._on_select_device)
-        v3.addWidget(self.dev_list)
-        bar = QHBoxLayout()
-        self.btn_dev_add = QPushButton("+ تجهیز")
-        self.btn_dev_del = QPushButton("حذف تجهیز")
-        self.btn_dev_del.setObjectName("danger")
-        bar.addWidget(self.btn_dev_add)
-        bar.addWidget(self.btn_dev_del)
-        bar.addStretch(1)
-        v3.addLayout(bar)
-        f3 = QFormLayout()
-        self.ed_dev_name = QLineEdit()
-        self.cb_dev_type = QComboBox()
-        for code, label in DEVICE_TYPE_LABELS:
-            self.cb_dev_type.addItem(label, code)
-        self.ed_dev_loc = QLineEdit()
-        f3.addRow("نام تجهیز:", self.ed_dev_name)
-        f3.addRow("نوع:", self.cb_dev_type)
-        f3.addRow("محل نصب:", self.ed_dev_loc)
-        v3.addLayout(f3)
-        self.dev_editor = ProtectionSettingsEditor(reclosing=True, counter=True)
-        v3.addWidget(self.dev_editor)
-        bv.addWidget(g3)
-        self.btn_dev_add.clicked.connect(self._add_device)
-        self.btn_dev_del.clicked.connect(self._del_device)
+        # v2.3.0 — تنظیمات رلهٔ ابتدای فیدر و سایر تجهیزات حفاظتی از این صفحه حذف
+        # شدند؛ این داده‌ها از «ورود از IDMT» (بسته خروجی گزارش‌ساز) منتقل می‌شوند.
+        note_idmt = QLabel("تنظیمات رلهٔ ابتدای فیدر و سایر تجهیزات حفاظتی موجود، با "
+                           "«Studies ← ورود از IDMT» از بسته خروجی ابزار IDMT وارد می‌شوند.")
+        note_idmt.setObjectName("Muted")
+        note_idmt.setWordWrap(True)
+        bv.addWidget(note_idmt)
 
         g4 = QGroupBox("منابع تولید پراکنده (DG)")
         f4 = QFormLayout(g4)
@@ -167,12 +139,21 @@ class NetworkEditor(QWidget):
         self.cb_dg.currentIndexChanged.connect(self._on_edit)
         for t in (self.txt_normal, self.txt_emergency):
             t.textChanged.connect(self._on_edit)
-        self.relay_editor.changed.connect(self._on_edit)
-        for w in (self.ed_dev_name, self.ed_dev_loc):
-            w.textChanged.connect(self._on_device_edit)
-        self.cb_dev_type.currentIndexChanged.connect(self._on_device_edit)
-        self.dev_editor.changed.connect(self._on_device_edit)
         self._set_form_enabled(False)
+
+    # ------------------------------------------------------------------
+    # محدودهٔ فیدرها — حالت مشترک (kind=None): اجتماع محدودهٔ هر دو مطالعه؛
+    # افزودن/حذف روی هر دو اعمال می‌شود تا فیدرها فقط یک‌بار وارد شوند.
+    def _scope_kinds(self) -> tuple[StudyKind, ...]:
+        return PROTECTION_KINDS if self.kind is None else (self.kind,)
+
+    def _scope_names(self, ws: Workspace) -> list[str]:
+        names: list[str] = []
+        for k in self._scope_kinds():
+            for n in ws.scope(k):
+                if all(n.casefold() != m.casefold() for m in names):
+                    names.append(n)
+        return names
 
     # ------------------------------------------------------------------
     def _set_form_enabled(self, on: bool) -> None:
@@ -188,7 +169,7 @@ class NetworkEditor(QWidget):
         if ws is None or project is None:
             self._loading = False
             return
-        names = ws.scope(self.kind)
+        names = self._scope_names(ws)
         for n in names:
             self.list.addItem(QListWidgetItem(n))
         for f in getattr(project, "feeders", []):
@@ -205,12 +186,11 @@ class NetworkEditor(QWidget):
             self._set_form_enabled(False)
 
     def focus_field(self, key: str) -> bool:
-        """Focus روی ورودی: sc3 | sc1 | load | feeders | relay | dg | scenarios | topology."""
+        """Focus روی ورودی: sc3 | sc1 | load | feeders | dg | scenarios | topology."""
         target = {"sc3": self.ed_sc3, "sc1": self.ed_sc1, "load": self.ed_load,
                   "feeders": self.list, "dg": self.cb_dg, "scenarios": self.txt_normal,
-                  "topology": self.ed_topology, "voltage": self.ed_voltage}.get(key)
-        if key == "relay":
-            return self.relay_editor.focus_field("f51.pickup_a")
+                  "topology": self.ed_topology, "voltage": self.ed_voltage,
+                  "relay": self.list}.get(key)   # «relay» از IDMT وارد می‌شود → فهرست فیدرها
         if target is None:
             return False
         target.setFocus()
@@ -224,14 +204,15 @@ class NetworkEditor(QWidget):
         if self._loading:
             return
         ws = self._ws()
-        names = ws.scope(self.kind) if ws else []
+        names = self._scope_names(ws) if ws else []
         if ws is None or not (0 <= row < len(names)):
             self._feeder = None
             self._set_form_enabled(False)
             return
         self._feeder = ws.common_network.feeder(names[row])
         if self._feeder is None:                 # حفاظت در برابر ناسازگاری Scope و شبکه
-            ws.add_to_scope(self.kind, names[row])
+            for k in self._scope_kinds():
+                ws.add_to_scope(k, names[row])
             self._feeder = ws.common_network.feeder(names[row])
         self._load_feeder()
 
@@ -246,14 +227,11 @@ class NetworkEditor(QWidget):
             self.ed_sc3.set_value(f.max_fault_current_ka)
             self.ed_sc1.set_value(f.sc_1ph_ka)
             self.ed_topology.setText(f.topology_note)
-            relay = f.device(DEVICE_FEEDER_RELAY)
-            self.relay_editor.load(relay.settings if relay else ProtectionSettings())
             idx = self.cb_dg.findData(f.has_dg)
             self.cb_dg.setCurrentIndex(max(idx, 0))
             self.ed_dg_note.setText(f.dg_note)
             self.txt_normal.setPlainText(f.normal_scenario)
             self.txt_emergency.setPlainText(f.emergency_scenario)
-            self._fill_devices()
         self._loading = False
 
     def _store(self) -> None:
@@ -266,14 +244,6 @@ class NetworkEditor(QWidget):
         f.max_fault_current_ka = self.ed_sc3.value()
         f.sc_1ph_ka = self.ed_sc1.value()
         f.topology_note = self.ed_topology.text().strip()
-        s = ProtectionSettings()
-        self.relay_editor.store(s)
-        relay = f.device(DEVICE_FEEDER_RELAY)
-        if relay is None and not s.is_empty():
-            relay = ExistingProtectionDevice(name="رله ابتدای فیدر", device_type=DEVICE_FEEDER_RELAY)
-            f.existing_protection.insert(0, relay)
-        if relay is not None:
-            relay.settings = s
         f.has_dg = self.cb_dg.currentData()
         f.dg_note = self.ed_dg_note.text().strip()
         f.normal_scenario = self.txt_normal.toPlainText().strip()
@@ -286,88 +256,15 @@ class NetworkEditor(QWidget):
         self.changed.emit()
 
     # ------------------------------------------------------------------
-    def _others(self) -> list[ExistingProtectionDevice]:
-        f = self._feeder
-        return [d for d in (f.existing_protection if f else []) if d.device_type != DEVICE_FEEDER_RELAY]
-
-    def _fill_devices(self) -> None:
-        self.dev_list.clear()
-        for d in self._others():
-            label = dict(DEVICE_TYPE_LABELS).get(d.device_type, d.device_type)
-            self.dev_list.addItem(QListWidgetItem(f"{d.name or '(بی‌نام)'} — {label}"))
-        if self.dev_list.count():
-            self.dev_list.setCurrentRow(0)
-            self._on_select_device(0)
-        else:
-            self._device = None
-            self._set_device_enabled(False)
-
-    def _set_device_enabled(self, on: bool) -> None:
-        for w in (self.ed_dev_name, self.cb_dev_type, self.ed_dev_loc, self.dev_editor,
-                  self.btn_dev_del):
-            w.setEnabled(on)
-
-    def _on_select_device(self, row: int) -> None:
-        devs = self._others()
-        if not (0 <= row < len(devs)):
-            self._device = None
-            self._set_device_enabled(False)
-            return
-        was = self._loading
-        self._loading = True
-        self._device = devs[row]
-        self._set_device_enabled(True)
-        self.ed_dev_name.setText(self._device.name)
-        self.cb_dev_type.setCurrentIndex(max(self.cb_dev_type.findData(self._device.device_type), 0))
-        self.ed_dev_loc.setText(self._device.location)
-        self.dev_editor.load(self._device.settings)
-        self._loading = was
-
-    def _on_device_edit(self, *_a) -> None:
-        d = self._device
-        if d is None or self._loading:
-            return
-        d.name = self.ed_dev_name.text().strip()
-        d.device_type = self.cb_dev_type.currentData() or DEVICE_OTHER
-        d.location = self.ed_dev_loc.text().strip()
-        self.dev_editor.store(d.settings)
-        row = self.dev_list.currentRow()
-        label = dict(DEVICE_TYPE_LABELS).get(d.device_type, d.device_type)
-        if self.dev_list.item(row) is not None:
-            self.dev_list.item(row).setText(f"{d.name or '(بی‌نام)'} — {label}")
-        self.changed.emit()
-
-    def _add_device(self) -> None:
-        if self._feeder is None:
-            return
-        self._feeder.existing_protection.append(
-            ExistingProtectionDevice(name="تجهیز جدید", device_type=DEVICE_RECLOSER))
-        self._loading = True
-        self._fill_devices()
-        self._loading = False
-        self.dev_list.setCurrentRow(self.dev_list.count() - 1)
-        self._on_select_device(self.dev_list.count() - 1)
-        self.changed.emit()
-
-    def _del_device(self) -> None:
-        if self._feeder is None or self._device is None:
-            return
-        self._feeder.existing_protection.remove(self._device)
-        self._device = None
-        self._loading = True
-        self._fill_devices()
-        self._loading = False
-        self.changed.emit()
-
-    # ------------------------------------------------------------------
     def _add_to_scope(self, name: str) -> None:
         ws = self._ws()
         name = (name or "").strip()
         if ws is None or not name:
             return
-        ws.add_to_scope(self.kind, name)
+        for k in self._scope_kinds():
+            ws.add_to_scope(k, name)
         self.refresh()
-        names = ws.scope(self.kind)
+        names = self._scope_names(ws)
         self.list.setCurrentRow(next((i for i, n in enumerate(names)
                                       if n.casefold() == name.casefold()), 0))
         self.changed.emit()
@@ -394,7 +291,8 @@ class NetworkEditor(QWidget):
         ws = self._ws()
         if ws is None or self._feeder is None:
             return
-        ws.remove_from_scope(self.kind, self._feeder.name)    # داده‌ی شبکه مشترک پاک نمی‌شود
+        for k in self._scope_kinds():
+            ws.remove_from_scope(k, self._feeder.name)        # داده‌ی شبکه مشترک پاک نمی‌شود
         self._feeder = None
         self.refresh()
         self.changed.emit()

@@ -130,6 +130,12 @@ def _with_images(p, images):
     return p
 
 
+def _strip_fig_num(caption):
+    """v2.3.0 — شکل‌ها مانند جدول‌ها شماره سراسری می‌گیرند («شکل n: ...»)."""
+    import re
+    return re.sub(r"^شکل \d+(: )?", "", caption).strip()
+
+
 def test_images_are_placed_by_explicit_section_with_order_and_caption():
     from app.report.sections import FigureBlock
     p, ws = _salut()
@@ -142,10 +148,12 @@ def test_images_are_placed_by_explicit_section_with_order_and_caption():
                                       image_resolver=lambda img: f"/x/{img.caption}.png")
     coord = next(s for s in report.sections if s.key == "prot_coordination")
     caps = [b.caption for b in coord.blocks if isinstance(b, FigureBlock)]
+    assert all(c.startswith("شکل ") for c in caps)               # شماره‌گذاری مانند جدول‌ها
     # نمودارهای پیش‌فرض جریان–زمان (TCC) جدا از شکل‌های کاربر شمرده می‌شوند
-    assert [c for c in caps if "جریان–زمان" not in c] == ["اول", "دوم"]
+    assert [_strip_fig_num(c) for c in caps if "جریان–زمان" not in c] == ["اول", "دوم"]
     concl = next(s for s in report.sections if s.key == "prot_conclusion")
-    assert [b.caption for b in concl.blocks if isinstance(b, FigureBlock)] == ["جمع‌بندی"]
+    assert [_strip_fig_num(b.caption) for b in concl.blocks
+            if isinstance(b, FigureBlock)] == ["جمع‌بندی"]
 
 
 def test_images_default_section_by_kind_and_off_images_skipped():
@@ -155,8 +163,10 @@ def test_images_default_section_by_kind_and_off_images_skipped():
                          _Img(kind="network", caption="خاموش", enabled=False)])
     report = ReportComposer().compose(p, ws, [StudyKind.RECLOSER], image_resolver=lambda i: "/x.png")
     placement = next(s for s in report.sections if s.key == "prot_placement")
-    assert [b.caption for b in placement.blocks if isinstance(b, FigureBlock)] == ["محل"]
-    all_caps = [b.caption for s in report.sections for b in s.blocks if isinstance(b, FigureBlock)]
+    assert [_strip_fig_num(b.caption) for b in placement.blocks
+            if isinstance(b, FigureBlock)] == ["محل"]
+    all_caps = [_strip_fig_num(b.caption) for s in report.sections for b in s.blocks
+                if isinstance(b, FigureBlock)]
     assert "پروفیل" not in all_caps and "خاموش" not in all_caps   # نوع غیرمرتبط / خاموش درج نمی‌شود
 
 

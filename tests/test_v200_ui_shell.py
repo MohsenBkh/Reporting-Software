@@ -155,23 +155,25 @@ def test_network_editor_roundtrip_and_scope():
     ed.ed_sc1.set_value(2.0)
     ed.cb_dg.setCurrentIndex(2)                                   # «دارد»
     ed.txt_normal.setPlainText("عادی")
-    ed.relay_editor._rows["f51"][3].setText("300")
     ed._on_edit()
     f = ws.common_network.feeder("F4")
     assert (f.max_fault_current_ka, f.sc_1ph_ka, f.has_dg, f.normal_scenario) == (6.5, 2.0, True, "عادی")
-    relay = f.device("feeder_relay")
-    assert relay is not None and relay.settings.f51.pickup_a == 300.0
+    # v2.3.0 — تنظیمات رلهٔ ابتدای فیدر دیگر از این صفحه وارد نمی‌شود (ورود از IDMT)
+    assert not hasattr(ed, "relay_editor") and not hasattr(ed, "dev_editor")
+    assert f.device("feeder_relay") is None
 
 
-def test_network_editor_empty_relay_is_not_created():
-    from app.core.studies import StudyKind
+def test_network_editor_shared_mode_applies_to_both_scopes():
+    """v2.3.0 — حالت مشترک (kind=None): فیدر یک‌بار وارد و به محدودهٔ هر دو مطالعه می‌رود."""
     from app.ui.shell.network_editor import NetworkEditor
     p, ws = _project()
-    ed = NetworkEditor(_Mgr(p), lambda: ws, StudyKind.RECLOSER)
-    ed._add_to_scope("F9")
-    ed._on_edit()
-    assert ws.common_network.feeder("F9").device("feeder_relay") is None
+    ed = NetworkEditor(_Mgr(p), lambda: ws, None)
+    ed._add_to_scope("F9")                       # scope ریکلوزر از قبل F4 را دارد
+    assert "F9" in ws.scope("recloser") and ws.scope("sectionalizer") == ["F9"]
     assert ws.common_network.feeder("F9").has_dg is None           # نامشخص می‌ماند
+    ed._remove()                                 # فیدر انتخاب‌شده (F9) از هر دو محدوده حذف
+    assert "F9" not in ws.scope("recloser") and ws.scope("sectionalizer") == []
+    assert ws.common_network.feeder("F9") is not None              # دادهٔ شبکه حفظ می‌شود
 
 
 def test_project_page_has_only_the_six_general_fields_and_no_report_type():

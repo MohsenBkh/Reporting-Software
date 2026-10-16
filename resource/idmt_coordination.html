@@ -8047,7 +8047,7 @@ ${xref}
     const valid = pos(X0) && pos(X1) && pos(Y0) && pos(Y1) && X1 > X0 && Y1 > Y0, plotW = W2 - margin.left - margin.right, plotH = H2;
     const x = (v) => margin.left + (Math.log10(v) - Math.log10(X0)) / (Math.log10(X1) - Math.log10(X0)) * plotW;
     const y = (v) => margin.top + plotH - (Math.log10(v) - Math.log10(Y0)) / (Math.log10(Y1) - Math.log10(Y0)) * plotH;
-    const legend = [...series, ...references].map((s) => ({ ...s, nameLines: wrapText(s.name, 53), descLines: wrapText(s.desc, 62) })), colW = (W2 - 70) / 2, lineH = Math.max(78, ...legend.map((s) => 14 + 18 * (s.nameLines.length + s.descLines.length))), legendY = margin.top + plotH + margin.bottom + 28, totalH = legendY + Math.ceil(legend.length / 2) * lineH + 20;
+    const legend = [...series, ...references].map((s) => ({ ...s, nameLines: wrapText(s.name, 42), descLines: wrapText(s.desc, 46) })), colW = (W2 - 70) / 2, lineH = Math.max(50, ...legend.map((s) => 12 + 21 * s.nameLines.length + 18 * s.descLines.length)), legendY = margin.top + plotH + margin.bottom + 30, totalH = legendY + Math.ceil(legend.length / 2) * lineH + 20;
     const points = (0, import_react.useMemo)(() => {
       if (!valid) return [];
       let a = logspace(X0, X1, 650);
@@ -8129,7 +8129,7 @@ ${xref}
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "محدوده نمودار فقط نمایش را تغییر می‌دهد، نه محاسبات زمان و کنترل‌ها." })
         ] })
       ] }),
-      !valid ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "callout fail", children: "محدوده محورها نامعتبر است؛ حدود مثبت و بیشینه بزرگ‌تر از کمینه وارد کنید." }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "chart-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { id: "tcc-svg", ref: svgRef, viewBox: `0 0 ${W2} ${totalH}`, width: W2, height: totalH, role: "img", "aria-label": "نمودار log-log زمان جریان با لجند همه تنظیمات", style: { background: "#fff", fontFamily: "Vazirmatn,Arial,sans-serif", fontSize: 14, fontWeight: 700, direction: "ltr" }, onPointerMove: (ev) => {
+      !valid ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "callout fail", children: "محدوده محورها نامعتبر است؛ حدود مثبت و بیشینه بزرگ‌تر از کمینه وارد کنید." }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "chart-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { id: "tcc-svg", ref: svgRef, viewBox: `0 0 ${W2} ${totalH}`, width: W2, height: totalH, role: "img", "aria-label": "نمودار log-log زمان جریان با لجند همه تنظیمات", style: { background: "#fff", fontFamily: "Vazirmatn,Arial,sans-serif", fontSize: 16, fontWeight: 700, direction: "ltr" }, onPointerMove: (ev) => {
         const rect = ev.currentTarget.getBoundingClientRect(), xx = (ev.clientX - rect.left) / rect.width * W2, yy = (ev.clientY - rect.top) / rect.height * totalH;
         if (xx >= margin.left && xx <= W2 - margin.right && yy >= margin.top && yy <= margin.top + plotH) setPointer({ I: Math.pow(10, Math.log10(X0) + (xx - margin.left) / plotW * (Math.log10(X1) - Math.log10(X0))), x: xx });
         else setPointer(null);
@@ -8140,8 +8140,8 @@ ${xref}
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "0", y: "0", width: W2, height: totalH, fill: "#fff" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { fill: "#000", fontWeight: "700", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: W2 / 2, y: "26", textAnchor: "middle", fontSize: "17", children: "Time–Current Coordination · IEC IDMT · Log–Log" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("text", { x: W2 / 2, y: "48", textAnchor: "middle", fontSize: "13", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: W2 / 2, y: "26", textAnchor: "middle", fontSize: "21", children: "Time–Current Coordination · IEC IDMT · Log–Log" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("text", { x: W2 / 2, y: "48", textAnchor: "middle", fontSize: "15", children: [
             p.meta.feeder || p.meta.title || "Study example — replace input data",
             p.meta.sample ? " · DEMONSTRATION DATA" : ""
           ] })
@@ -8151,7 +8151,7 @@ ${xref}
           ticks(Y0, Y1).map((t) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: margin.left, x2: W2 - margin.right, y1: y(t.v), y2: y(t.v), stroke: t.major ? "#9ca3af" : "#e5e7eb", strokeWidth: t.major ? 0.9 : 0.6 }, "y" + t.v))
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { "data-axis": "frame", x: margin.left, y: margin.top, width: plotW, height: plotH, fill: "none", stroke: "#000", strokeWidth: "1.7" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { className: "chart-axes", fill: "#000", fontWeight: "800", fontSize: "14", "data-scale-x": "log", "data-scale-y": "log", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { className: "chart-axes", fill: "#000", fontWeight: "800", fontSize: "16", "data-scale-x": "log", "data-scale-y": "log", children: [
           ticks(X0, X1, true).map((t) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: x(t.v), x2: x(t.v), y1: margin.top + plotH, y2: margin.top + plotH + 7, stroke: "#000", strokeWidth: "1.4" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: x(t.v), y: margin.top + plotH + 27, textAnchor: "middle", children: labelNum(t.v) })
@@ -8160,8 +8160,8 @@ ${xref}
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: margin.left - 7, x2: margin.left, y1: y(t.v), y2: y(t.v), stroke: "#000", strokeWidth: "1.4" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: margin.left - 13, y: y(t.v) + 5, textAnchor: "end", children: labelNum(t.v) })
           ] }, "yt" + t.v)),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: margin.left + plotW / 2, y: margin.top + plotH + 56, textAnchor: "middle", fontSize: "17", children: "Primary current I (A) — Log scale" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { transform: `translate(25 ${margin.top + plotH / 2}) rotate(-90)`, textAnchor: "middle", fontSize: "17", children: "Operating / detection time t (s) — Log scale" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: margin.left + plotW / 2, y: margin.top + plotH + 58, textAnchor: "middle", fontSize: "20", children: "Primary current I (A) — Log scale" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { transform: `translate(25 ${margin.top + plotH / 2}) rotate(-90)`, textAnchor: "middle", fontSize: "20", children: "Operating / detection time t (s) — Log scale" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { clipPath: "url(#plot-clip)", "data-series-count": series.length, children: [
           references.map((r) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { "data-reference": r.id, x1: x(r.I), x2: x(r.I), y1: margin.top, y2: margin.top + plotH, stroke: r.color, strokeDasharray: r.dash, strokeWidth: "1.3" }, r.id)),
@@ -8176,7 +8176,7 @@ ${xref}
             fmt(pointer.I, 2),
             " A"
           ] }),
-          series.slice(0, 14).map((s, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("text", { x: Math.min(Math.max(pointer.x + 22, margin.left + 12), W2 - 353), y: margin.top + 60 + i * 22, fill: "#000", fontSize: "12", fontWeight: "700", children: [
+          series.slice(0, 14).map((s, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("text", { x: Math.min(Math.max(pointer.x + 22, margin.left + 12), W2 - 353), y: margin.top + 60 + i * 23, fill: "#000", fontSize: "13", fontWeight: "700", children: [
             s.id,
             ": ",
             fmt(s.fn(pointer.I), 5),
@@ -8185,14 +8185,14 @@ ${xref}
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { "data-legend": "complete", fill: "#000", fontWeight: "700", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "35", x2: W2 - 35, y1: legendY - 14, y2: legendY - 14, stroke: "#d1d5db" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: W2 - 40, y: legendY + 6, textAnchor: "start", direction: "rtl", fontSize: "16", children: "لجند کامل منحنی‌ها و خطوط مرجع" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: W2 - 40, y: legendY + 6, textAnchor: "start", direction: "rtl", fontSize: "18", children: "لجند منحنی‌ها و خطوط مرجع" }),
           legend.map((s, i) => {
-            const col = 1 - i % 2, row = Math.floor(i / 2), xx = 35 + col * colW, yy = legendY + 30 + row * lineH;
+            const col = 1 - i % 2, row = Math.floor(i / 2), xx = 35 + col * colW, yy = legendY + 32 + row * lineH;
             return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { "data-legend-id": s.id, children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("title", { children: s.name + " — " + s.desc }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: xx + colW - 47, x2: xx + colW - 12, y1: yy + 4, y2: yy + 4, stroke: s.color, strokeWidth: s.width ?? (s.kind === "ref" ? 1.3 : 2.7), strokeDasharray: s.dash || void 0 }),
-              s.nameLines.map((line, j) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: xx + colW - 57, y: yy + 8 + j * 18, textAnchor: "start", direction: "rtl", fontSize: "13.3", children: line }, "name" + j)),
-              s.descLines.map((line, j) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: xx + colW - 14, y: yy + 11 + (s.nameLines.length + j) * 18, textAnchor: "end", direction: "ltr", fontSize: "12", children: line }, j))
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: xx + colW - 52, x2: xx + colW - 10, y1: yy + 4, y2: yy + 4, stroke: s.color, strokeWidth: s.width ?? (s.kind === "ref" ? 1.8 : 3.4), strokeDasharray: s.dash || void 0 }),
+              s.nameLines.map((line, j) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: xx + colW - 62, y: yy + 9 + j * 21, textAnchor: "start", direction: "rtl", fontSize: "15.5", children: line }, "name" + j)),
+              s.descLines.map((line, j) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: xx + colW - 10, y: yy + 12 + s.nameLines.length * 21 + j * 18, textAnchor: "end", direction: "ltr", fontSize: "13", fontWeight: "500", children: line }, j))
             ] }, s.id);
           })
         ] })
@@ -8525,12 +8525,12 @@ ${xref}
         /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("defs", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("style", { children: document.getElementById("offline-font")?.textContent || "" }) }),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("rect", { width: W2, height: H2, fill: "#fff" }),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("g", { fill: "#000", fontWeight: "700", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: W2 / 2, y: "26", textAnchor: "middle", fontSize: "18", direction: "rtl", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: W2 / 2, y: "26", textAnchor: "middle", fontSize: "21", direction: "rtl", children: [
             "ولتاژ و جریان محل نصب · ",
             MODE_LABEL[mode],
             " · نمایش توضیحی RMS"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: W2 / 2, y: "50", textAnchor: "middle", fontSize: "12", direction: "rtl", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: W2 / 2, y: "50", textAnchor: "middle", fontSize: "14", direction: "rtl", children: [
             p.meta.sample ? "داده‌های نمونه؛ تنظیم اجرایی نیست · " : "",
             "Ifault = ",
             fmt(sim.faultI),
@@ -8542,7 +8542,7 @@ ${xref}
             fmt(options.openDelay),
             " s"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: W2 / 2, y: "70", textAnchor: "middle", fontSize: "11.5", direction: "rtl", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: W2 / 2, y: "70", textAnchor: "middle", fontSize: "13", direction: "rtl", children: [
             "خطای ",
             sim.kind === "temporary" ? "گذرا" : "ماندگار",
             " · محل: ",
@@ -8551,9 +8551,9 @@ ${xref}
           ] }),
           [["uin", "U ورودی"], ["uout", "U خروجی"], ["current", mode === "earth" ? "I زمین / اولیه" : "I عبوری / اولیه"], ["counter", "شمارنده"]].map(([k, label], i) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("g", { transform: `translate(${160 + i * 250} 89)`, children: [
             /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("line", { x1: "0", x2: "37", y1: "0", y2: "0", stroke: C[k], strokeWidth: "3", strokeDasharray: k === "uout" ? "6 3" : void 0 }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: "47", y: "5", fontSize: "13", children: label })
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: "47", y: "5", fontSize: "15", children: label })
           ] }, k)),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: W2 - 40, y: "114", textAnchor: "start", direction: "rtl", fontSize: "12", children: axis.compressed ? "محور زمان رویدادمحور است؛ طول بازه‌ها متناسب با زمان واقعی نیست. علامت // یعنی فشرده‌سازی." : "محور زمان خطی بر حسب ثانیه واقعی؛ برای دیدن قطع‌های کوتاه، نمای رویدادمحور را انتخاب کنید." }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: W2 - 40, y: "114", textAnchor: "start", direction: "rtl", fontSize: "13", children: axis.compressed ? "محور زمان رویدادمحور است؛ طول بازه‌ها متناسب با زمان واقعی نیست. علامت // یعنی فشرده‌سازی." : "محور زمان خطی بر حسب ثانیه واقعی؛ برای دیدن قطع‌های کوتاه، نمای رویدادمحور را انتخاب کنید." }),
           eventGroups.map((g, i) => {
             const xx = axis.x(g.time), prev = i ? axis.x(eventGroups[i - 1].time) : -100;
             return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("g", { children: [
@@ -8564,7 +8564,7 @@ ${xref}
                 " s"
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("line", { x1: xx, x2: xx, y1: top - 13, y2: top + sim.devices.length * lane - 8, stroke: C[g.type] || "#94a3b8", strokeWidth: "0.8", strokeDasharray: "3 4" }),
-              xx - prev > 38 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: xx, y: top - 20, textAnchor: "middle", fontSize: "11", children: [
+              xx - prev > 38 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: xx, y: top - 20, textAnchor: "middle", fontSize: "13", children: [
                 "E",
                 g.n.join("/")
               ] })
@@ -8578,7 +8578,7 @@ ${xref}
             const countMax = Math.max(2, num(e.cycle.sections[i - 1]?.settings.counter) || 0, ...sim.intervals.map((iv) => iv.state.values[d.id].counter || 0)), cy = (v) => base + 224 - v / countMax * 14;
             return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("g", { "data-wave-device": d.id, children: [
               /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("rect", { x: "20", y: base, width: W2 - 40, height: lane - 9, rx: "5", fill: "#fff", stroke: "#a8b3c4" }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: W2 - 38, y: base + 22, direction: "rtl", textAnchor: "start", fontSize: "14", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: W2 - 38, y: base + 22, direction: "rtl", textAnchor: "start", fontSize: "16", children: [
                 d.id,
                 " · ",
                 d.name.length > 35 ? d.name.slice(0, 34) + "…" : d.name,
@@ -8593,37 +8593,37 @@ ${xref}
                 times.map((t, j) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("line", { x1: axis.x(t), x2: axis.x(t), y1: uTop, y2: iTop + iH, stroke: "#dde3ec", strokeWidth: "0.7" }, j)),
                 [0, 0.5, 1].map((v) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("g", { children: [
                   /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("line", { x1: left, x2: left + width, y1: yU(v), y2: yU(v), stroke: "#ccd5e1", strokeWidth: "0.8" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: left - 10, y: yU(v) + 4, textAnchor: "end", fontSize: "11", children: fmt(uScale(v), 2) })
+                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: left - 10, y: yU(v) + 4, textAnchor: "end", fontSize: "12.5", children: fmt(uScale(v), 2) })
                 ] }, v)),
                 [0, iMax / 2, iMax].map((v) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("g", { children: [
                   /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("line", { x1: left, x2: left + width, y1: iTop + iH - v / iMax * iH, y2: iTop + iH - v / iMax * iH, stroke: "#ccd5e1", strokeWidth: "0.8" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: left - 10, y: iTop + iH - v / iMax * iH + 4, textAnchor: "end", fontSize: "11", children: fmt(v, 2) })
+                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: left - 10, y: iTop + iH - v / iMax * iH + 4, textAnchor: "end", fontSize: "12.5", children: fmt(v, 2) })
                 ] }, v)),
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: "31", y: uTop + 31, fontSize: "12", children: physical ? "U(kV)" : "U/Un" }),
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: "31", y: iTop + 31, fontSize: "12", children: physical ? "I(A)" : "I/If" }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: "31", y: uTop + 31, fontSize: "14", children: physical ? "U(kV)" : "U/Un" }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: "31", y: iTop + 31, fontSize: "14", children: physical ? "I(A)" : "I/If" }),
                 /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: `M${left},${uTop}V${uTop + uH}H${left + width}M${left},${iTop}V${iTop + iH}H${left + width}`, fill: "none", stroke: "#000", strokeWidth: "1.2" })
               ] }),
               eventGroups.map((g, j) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("line", { "data-wave-event": g.type, x1: axis.x(g.time), x2: axis.x(g.time), y1: uTop - 3, y2: iTop + iH + 2, stroke: C[g.type] || "#94a3b8", strokeWidth: "0.7", strokeDasharray: "3 4" }, j)),
               /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { "data-wave-signal": "uin", "data-wave-of": d.id, d: waveformPath(sim, d.id, "uin", axis.x, yU), fill: "none", stroke: C.uin, strokeWidth: "2.6" }),
               /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { "data-wave-signal": "uout", "data-wave-of": d.id, d: waveformPath(sim, d.id, "uout", axis.x, yU), fill: "none", stroke: C.uout, strokeWidth: "2.6", strokeDasharray: "6 3" }),
               /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { "data-wave-signal": "current", "data-wave-of": d.id, d: waveformPath(sim, d.id, "current", axis.x, yI), fill: "none", stroke: C.current, strokeWidth: "2.6" }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: left - 13, y: base + 198, textAnchor: "start", fontSize: "10", direction: "rtl", children: "کلید" }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: left - 13, y: base + 198, textAnchor: "start", fontSize: "12", direction: "rtl", children: "کلید" }),
               sim.intervals.map((iv, j) => {
                 const xx = axis.x(iv.start), ww = axis.x(iv.end) - xx, closed = iv.state.values[d.id].closed;
                 return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("g", { children: [
                   /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("rect", { x: xx, y: base + 184, width: Math.max(0.01, ww), height: "17", fill: closed ? "#e6f5ed" : "#fce9e9", stroke: "#becad6", strokeWidth: "0.5" }),
-                  ww > 29 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: xx + ww / 2, y: base + 196, textAnchor: "middle", fontSize: "10", direction: "rtl", children: closed ? "بسته" : "باز" })
+                  ww > 29 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: xx + ww / 2, y: base + 196, textAnchor: "middle", fontSize: "12", direction: "rtl", children: closed ? "بسته" : "باز" })
                 ] }, j);
               }),
               d.id !== "R" ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_jsx_runtime3.Fragment, { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: left - 13, y: base + 221, textAnchor: "start", fontSize: "10", direction: "rtl", children: "شمارنده" }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: left - 13, y: base + 221, textAnchor: "start", fontSize: "12", direction: "rtl", children: "شمارنده" }),
                 /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("line", { x1: left, x2: left + width, y1: base + 224, y2: base + 224, stroke: "#cbd5e1" }),
                 /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { "data-wave-signal": "counter", "data-wave-of": d.id, d: waveformPath(sim, d.id, "counter", axis.x, cy), fill: "none", stroke: "#000", strokeWidth: "2" }),
                 sim.intervals.map((iv, j) => {
                   const xx = axis.x(iv.start), ww = axis.x(iv.end) - xx;
-                  return ww > 36 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: xx + ww / 2, y: cy(iv.state.values[d.id].counter) - 3, textAnchor: "middle", fontSize: "10", children: iv.state.values[d.id].counter }, j);
+                  return ww > 36 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: xx + ww / 2, y: cy(iv.state.values[d.id].counter) - 3, textAnchor: "middle", fontSize: "12", children: iv.state.values[d.id].counter }, j);
                 })
-              ] }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: left, y: base + 220, fontSize: "11", children: [
+              ] }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: left, y: base + 220, fontSize: "12.5", children: [
                 FN[mode].join(" / "),
                 " · Counter at sectionalizers only"
               ] })
@@ -8631,15 +8631,15 @@ ${xref}
           }),
           times.map((t, i) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("g", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("line", { x1: axis.x(t), x2: axis.x(t), y1: H2 - 91, y2: H2 - 84, stroke: "#000" }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: axis.x(t), y: H2 - 68, fontSize: "11", textAnchor: "middle", children: fmt(t, 3) })
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: axis.x(t), y: H2 - 68, fontSize: "13", textAnchor: "middle", children: fmt(t, 3) })
           ] }, i)),
           axis.compressed && sim.intervals.filter((iv) => iv.end - iv.start > 3).map((iv, i) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: axis.x((iv.start + iv.end) / 2), y: H2 - 88, textAnchor: "middle", fontSize: "16", children: "//" }, i)),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: W2 / 2, y: H2 - 46, textAnchor: "middle", fontSize: "12", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("text", { x: W2 / 2, y: H2 - 46, textAnchor: "middle", fontSize: "14", children: [
             "t (s) · ",
             axis.compressed ? "EVENT-COMPRESSED — see event times" : "LINEAR REAL TIME"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: W2 - 40, y: H2 - 25, textAnchor: "start", direction: "rtl", fontSize: "11", children: "RMS توضیحی؛ افت ولتاژ و تأخیر مکانیکی مفروض‌اند. عدم قطع سرخط فرض شده است. نمودار، شبیه‌سازی گذرا یا پخش بار نیست." }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: W2 - 40, y: H2 - 9, textAnchor: "start", direction: "rtl", fontSize: "10.5", children: mode === "earth" ? "در زمین: جریان باقیمانده عادی صفر فرض شده؛ U ولتاژ شبکه است، نه 3U0." : "در فاز: دامنه بار بر اساس ورودی‌های مطالعه است؛ تقسیم جریان و امپدانس مسیرها حل نشده است." })
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: W2 - 40, y: H2 - 25, textAnchor: "start", direction: "rtl", fontSize: "12", children: "RMS توضیحی؛ افت ولتاژ و تأخیر مکانیکی مفروض‌اند. عدم قطع سرخط فرض شده است. نمودار، شبیه‌سازی گذرا یا پخش بار نیست." }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("text", { x: W2 - 40, y: H2 - 9, textAnchor: "start", direction: "rtl", fontSize: "11.5", children: mode === "earth" ? "در زمین: جریان باقیمانده عادی صفر فرض شده؛ U ولتاژ شبکه است، نه 3U0." : "در فاز: دامنه بار بر اساس ورودی‌های مطالعه است؛ تقسیم جریان و امپدانس مسیرها حل نشده است." })
         ] })
       ] }) }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "panel-head sequence-title", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { children: [

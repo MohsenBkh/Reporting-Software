@@ -13,7 +13,7 @@ from app.core.report_types import (REPORT_TYPE_COMBINED_PROTECTION,
                                    is_implemented, pending_message)
 from app.core.settings import AppSettings
 from app.core.validation import validate_project
-from app.report.sections import FigureBlock, GeneratedReport, Paragraph, TableSpec
+from app.report.sections import FigureBlock, GeneratedReport, Paragraph, TableSpec, number_figures
 from app.report.template_manager import TemplateManager
 from app.report.text_generator import TextGenerator
 from app.report.word_generator import WordGenerator
@@ -55,6 +55,7 @@ def build_sections(project: Project, settings: AppSettings,
     gen = make_generator(project, settings, texts, engine, charts_dir,
                          image_resolver, profile_loader)
     report = GeneratedReport(sections=gen.build_all())
+    number_figures(report.sections)           # شماره‌گذاری سراسری شکل‌ها مانند جدول‌ها
     report.findings = gen.findings
     report.warnings = list(gen.report_warnings)
     notice = unresolved_errors_section(project, settings)

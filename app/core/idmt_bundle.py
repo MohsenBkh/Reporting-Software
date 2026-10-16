@@ -226,6 +226,13 @@ def apply_bundle_to_project(project, bundle: dict) -> IdmtImportResult:
             rec.upstream_device = "رله سر خط فیدر"
         res.applied.append("تنظیمات رله سرخط (مرجع هماهنگی)")
 
+    # --- شبکه مشترک: فیدر محدوده + رله ابتدای فیدر (v2.3.0) --------------
+    # ورود دستی «تنظیمات حفاظتی رله ابتدای فیدر» از UI حذف شده است؛ همین‌جا
+    # دادهٔ فیدر و رله سرخط روی Workspace نشانده می‌شود تا فصل «وضعیت حفاظتی
+    # موجود» و قواعد هماهنگی بدون ورود دوباره کار کنند.
+    _apply_to_workspace(project, feeder, voltage, load_a, in_phase, in_earth,
+                        head_ps if head_ps.any_function_set() else None, res)
+
     # --- سکشنالایزر (اولین تجهیز بسته) ------------------------------------
     p_secs = r_phase.get("sections") or []
     e_secs = r_earth.get("sections") or []
@@ -282,6 +289,44 @@ def apply_bundle_to_project(project, bundle: dict) -> IdmtImportResult:
             "ابزار IDMT برای برخی قواعد وضعیت «ناموفق» گزارش کرده است؛ پیش از تولید "
             "گزارش، تنظیمات را در خود ابزار بازبینی کنید.")
     return res
+
+
+def _apply_to_workspace(project, feeder: str, voltage, load_a, in_phase: dict,
+                        in_earth: dict, head_ps: Optional[ProtectionSettings],
+                        res: "IdmtImportResult") -> None:
+    """نشاندن داده‌های فیدر و رله سرخط روی شبکه مشترک Workspace (در صورت وجود)."""
+    ws = getattr(project, "_workspace", None)
+    if ws is None or not feeder:
+        return
+    try:
+        from app.core.workspace import (DEVICE_FEEDER_RELAY, ExistingProtectionDevice,
+                                        FeederNetworkData)
+        fd = ws.common_network.feeder(feeder)
+        if fd is None:
+            fd = ws.common_network.upsert(FeederNetworkData(name=feeder, source="IDMT"))
+        # فیدر به محدودهٔ هر دو مطالعهٔ حفاظتی اضافه می‌شود (صفحهٔ مشترک فیدرها)
+        for kind in ("recloser", "sectionalizer"):
+            ws.add_to_scope(kind, feeder)
+        if voltage is not None:
+            fd.voltage_kv = voltage
+        if load_a is not None:
+            fd.load_current_a = load_a
+        sc3 = _div(_num(in_phase.get("faultMax")), 1000.0)
+        if sc3 is not None:
+            fd.max_fault_current_ka = sc3
+        sc1 = _div(_num(in_earth.get("faultMax")), 1000.0)
+        if sc1 is not None:
+            fd.sc_1ph_ka = sc1
+        if head_ps is not None:
+            relay = fd.device(DEVICE_FEEDER_RELAY)
+            if relay is None:
+                relay = ExistingProtectionDevice(name="رله ابتدای فیدر",
+                                                 device_type=DEVICE_FEEDER_RELAY)
+                fd.existing_protection.insert(0, relay)
+            relay.settings = head_ps
+        res.applied.append("شبکه مشترک (فیدر محدوده مطالعه + رله ابتدای فیدر)")
+    except Exception:  # noqa: BLE001 — نبود Workspace نباید ورود بسته را متوقف کند
+        pass
 
 
 def _div(v: Optional[float], by: float) -> Optional[float]:

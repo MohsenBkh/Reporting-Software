@@ -24,7 +24,7 @@ from app.core.workspace import (OUTPUT_COMBINED, OUTPUT_SEPARATE, Workspace,
 from app.core.report_sections import PROTECTION_DEFAULT_SECTION_BY_KIND
 from app.report.protection_narrative import NarrativeEngine, RefParagraph
 from app.report.sections import (FigureBlock, GeneratedReport, Paragraph, ReportSection,
-                                 TableSpec)
+                                 TableSpec, number_figures)
 from app.rules.trace import trace_link
 from app.rules.domains import build_protection_engine, evaluate_study
 from app.rules.outcome import STATUS_LABELS_FA
@@ -332,9 +332,11 @@ def _placement(ctx: ComposeContext) -> ReportSection:
     sec.blocks.extend(ctx.text("prot_placement"))
     for kind in ctx.kinds:
         info = ctx.info(kind)
+        coords = (getattr(info, "coordinates", "") or "").strip()
         sec.blocks.append(Paragraph(
             f"{STUDY_LABELS_FA[kind]} ({getattr(info, 'name', '')}): "
-            f"{getattr(info, 'installation_location', '') or MISSING}", style="item"))
+            f"{getattr(info, 'installation_location', '') or MISSING}"
+            + (f" — مختصات محل نصب: {coords}" if coords else ""), style="item"))
         sec.blocks.extend(_lines(ctx.results_for(kind, ("REC-PLACEMENT",))))
     return sec
 
@@ -508,6 +510,7 @@ class ReportComposer:
                 continue
             sections.append(sec)
         apply_manual_texts(project, sections)
+        number_figures(sections)              # شماره‌گذاری سراسری شکل‌ها مانند جدول‌ها
         report = GeneratedReport(sections=sections)
         report.warnings = list(ctx.warnings)
         report.findings = []

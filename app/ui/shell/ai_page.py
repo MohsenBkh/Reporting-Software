@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Optional
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, QGroupBox, QHBoxLayout,
                                QLabel, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
                                QPlainTextEdit, QPushButton, QSpinBox, QSplitter, QTextEdit,
@@ -56,6 +56,12 @@ class AIPage(QWidget):
         self._worker: Optional[_Worker] = None
         self._proposal: Optional[Proposal] = None
         self._loading = False
+        # ذخیرهٔ ماندگار تنظیمات (مدل/آدرس پایه/ارائه‌دهنده) با تأخیر کوتاه؛
+        # تا با هر کلید تایپ‌شده فایل تنظیمات بازنویسی نشود.
+        self._persist_timer = QTimer(self)
+        self._persist_timer.setSingleShot(True)
+        self._persist_timer.setInterval(800)
+        self._persist_timer.timeout.connect(self._persist)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(24, 16, 24, 16)
@@ -264,6 +270,7 @@ class AIPage(QWidget):
         ai.send_images, ai.anonymize_people = self.chk_images.isChecked(), self.chk_anon.isChecked()
         ai.include_findings, ai.max_images = self.chk_find.isChecked(), self.sp_images.value()
         ai.instructions = self.txt_instr.toPlainText().strip() or DEFAULT_INSTRUCTIONS
+        self._persist_timer.start()          # ماندگاری مدل/آدرس پایه پس از بستن برنامه
 
     def _on_provider(self, _i: int) -> None:
         if self._loading:
@@ -273,6 +280,7 @@ class AIPage(QWidget):
         self.ed_model.setText(self.settings.ai.model())
         self._loading = False
         self._update_provider_ui()
+        self._persist()                      # انتخاب ارائه‌دهنده بلافاصله ذخیره می‌شود
 
     def _save_key(self) -> None:
         keystore.set_key(self.settings.ai.provider, self.ed_key.text())

@@ -206,6 +206,13 @@ class AppSettings:
                         if isinstance(getattr(sub, f.name), dict) and isinstance(value, dict):
                             value = {**getattr(sub, f.name), **value}      # ادغام (مثلاً models)
                         setattr(sub, f.name, value)
+        # ارتقای دستورالعمل پیش‌فرض قدیمی دستیار AI به نسخهٔ جدید (تحلیل تصاویر و جدول‌ها)
+        try:
+            from app.ai.settings import DEFAULT_INSTRUCTIONS, LEGACY_INSTRUCTIONS
+            if (self.ai.instructions or "").strip() in ("", LEGACY_INSTRUCTIONS.strip()):
+                self.ai.instructions = DEFAULT_INSTRUCTIONS
+        except Exception:  # noqa: BLE001
+            pass
         for name in ("company_name", "unit_name", "office_name", "report_prefix", "output_dir",
                      "company_logo", "template_file"):
             if name in data:

@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox, QFontComboBox,
                                QFormLayout, QGridLayout, QGroupBox, QHBoxLayout,
                                QLabel, QLineEdit, QPushButton, QScrollArea,
-                               QSpinBox, QVBoxLayout, QWidget)
+                               QSpinBox, QTabWidget, QVBoxLayout, QWidget)
 
 from app.ui.widgets import OptionalSpin
 
@@ -208,22 +208,41 @@ class SettingsPage(QWidget):
 
         # ------------------------------------------------------------------
         # v1.2.0 — بخش‌های گزارش (On/Off)
+        # v2.3.0 — تفکیک بر اساس نوع مطالعه: سه تب جدا تا بخش‌ها مخلوط نشوند
         # ------------------------------------------------------------------
         from app.core.report_sections import REPORT_SECTIONS
         grp6 = QGroupBox("بخش‌های گزارش — کدام بخش‌ها در گزارش بیایند؟ (On/Off)")
-        g6 = QGridLayout(grp6)
+        v6 = QVBoxLayout(grp6)
+        tabs6 = QTabWidget()
         self.chk_sections: dict[str, QCheckBox] = {}
-        for i, (key, label) in enumerate(REPORT_SECTIONS):
-            chk = QCheckBox(label)
-            chk.setChecked(settings.section_enabled(key))
-            self.chk_sections[key] = chk
-            g6.addWidget(chk, i // 2, i % 2)
+
+        def _section_tab(items: list[tuple[str, str]]) -> QWidget:
+            page = QWidget()
+            grid = QGridLayout(page)
+            for i, (key, label) in enumerate(items):
+                chk = QCheckBox(label)
+                chk.setChecked(settings.section_enabled(key))
+                self.chk_sections[key] = chk
+                grid.addWidget(chk, i // 2, i % 2)
+            grid.setRowStretch((len(items) + 1) // 2, 1)
+            return page
+
+        heavy_items = [(k, l) for k, l in REPORT_SECTIONS
+                       if not k.startswith(("secz_", "prot_"))]
+        prot_items = [(k, l.replace("حفاظت — ", "")) for k, l in REPORT_SECTIONS
+                      if k.startswith("prot_")]
+        secz_items = [(k, l) for k, l in REPORT_SECTIONS if k.startswith("secz_")]
+        tabs6.addTab(_section_tab(heavy_items), "متقاضی سنگین")
+        tabs6.addTab(_section_tab(prot_items), "ریکلوزر و سکشنالایزر")
+        tabs6.addTab(_section_tab(secz_items), "قالب قدیمی سکشنالایزر")
+        v6.addWidget(tabs6)
         note6 = QLabel("بخش خاموش، در گزارش و در پیوست ردیابی نمی‌آید؛ داده‌های آن حذف "
-                       "نمی‌شود و با روشن‌کردن دوباره بازمی‌گردد. (On/Off تک‌تک ردیف‌های "
-                       "ورودی در جدول‌های همان صفحه قابل تنظیم است.)")
+                       "نمی‌شود و با روشن‌کردن دوباره بازمی‌گردد. هر تب بخش‌های گزارش همان "
+                       "نوع مطالعه را نشان می‌دهد. (On/Off تک‌تک ردیف‌های ورودی در جدول‌های "
+                       "همان صفحه قابل تنظیم است.)")
         note6.setObjectName("Muted")
         note6.setWordWrap(True)
-        g6.addWidget(note6, (len(REPORT_SECTIONS) + 1) // 2, 0, 1, 2)
+        v6.addWidget(note6)
         root.addWidget(grp6)
 
 

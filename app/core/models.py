@@ -69,6 +69,7 @@ class SectionalizerInfo:
     """
 
     installation_location: str = ""              # شرح محل نصب / نقطه نصب
+    coordinates: str = ""                        # مختصات محل نصب (UTM یا طول/عرض جغرافیایی) — v2.3.0
     feeder_name: str = ""                        # فیدر هدف
     objective: str = ""                          # هدف نصب (مثلاً ایزوله‌سازی منطقه خطا)
     fault_current_ka: Optional[float] = None     # جریان اتصال کوتاه در محل نصب (kA)
@@ -102,6 +103,7 @@ class RecloserInfo:
     """اطلاعات مطالعه نصب ریکلوزر."""
 
     installation_location: str = ""
+    coordinates: str = ""                        # مختصات محل نصب (UTM یا طول/عرض جغرافیایی) — v2.3.0
     feeder_name: str = ""
     objective: str = ""
     fault_current_ka: Optional[float] = None

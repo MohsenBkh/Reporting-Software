@@ -50,6 +50,7 @@ from app.ui.shell.new_project_dialog import NewProjectDialog
 from app.ui.shell.report_center import PLAN_TO_REPORT_TYPE, ReportCenter
 from app.ui.shell.report_center_page import ReportCenterPage
 from app.ui.shell.ribbon import RibbonBar, ribbon_qss
+from app.ui.shell.network_editor import NetworkEditor
 from app.ui.shell.study_pages import HeavyStudyPage, ProtectionStudyPage
 from app.ui.study_page import StudyPage
 from app.ui.widgets import StatusBadge, scrollable
@@ -61,13 +62,15 @@ ROUTES: dict[str, tuple[str, Optional[str]]] = {
     "applicant": ("heavy", "applicant"), "study": ("heavy", "study"),
     "input": ("heavy", "feeders:input"), "profile": ("heavy", "feeders:profile"),
     "loadflow": ("heavy", "feeders:loadflow"),
-    "recloser": ("recloser", "network"), "recloser.network": ("recloser", "network"),
+    # v2.3.0 — «فیدرهای محدودهٔ مطالعه» صفحهٔ مشترک و جداگانه است (protnet)
+    "protnet": ("protnet", None),
+    "recloser": ("recloser", "device"), "recloser.network": ("protnet", None),
     "recloser.device": ("recloser", "device"), "recloser.settings": ("recloser", "settings"),
-    "sectionalizer": ("sectionalizer", "network"),
-    "sectionalizer.network": ("sectionalizer", "network"),
+    "sectionalizer": ("sectionalizer", "device"),
+    "sectionalizer.network": ("protnet", None),
     "sectionalizer.device": ("sectionalizer", "device"),
     "sectionalizer.settings": ("sectionalizer", "settings"),
-    "protection": ("recloser", "network"),
+    "protection": ("protnet", None),
     "images": ("images", None), "analysis": ("analysis", "metrics"),
     "validation": ("analysis", "validation"),
     "review": ("review", None), "settings": ("settings", None),
@@ -77,6 +80,7 @@ ROUTES: dict[str, tuple[str, Optional[str]]] = {
 # کلید ناوبری ← گام Guided Flow که آن را قفل می‌کند (بدون ورودی = همیشه آزاد)
 ROUTE_STEP = {"project": "project", "applicant": "input", "study": "input", "input": "input",
               "profile": "input", "loadflow": "input", "recloser": "input", "sectionalizer": "input",
+              "protnet": "input",
               "recloser.network": "input", "recloser.device": "input", "recloser.settings": "input",
               "sectionalizer.network": "input", "sectionalizer.device": "input",
               "sectionalizer.settings": "input", "protection": "input", "images": "input",
@@ -98,7 +102,8 @@ NODE_ROUTE = {
 }
 ROUTE_NODE = {v: k for k, v in NODE_ROUTE.items()}
 TITLES = {"dashboard": "داشبورد", "home": "خانه", "project": "اطلاعات پروژه",
-          "heavy": "متقاضی سنگین", "recloser": "ریکلوزر", "sectionalizer": "سکشنالایزر",
+          "heavy": "متقاضی سنگین", "protnet": "فیدرهای محدوده مطالعه",
+          "recloser": "ریکلوزر", "sectionalizer": "سکشنالایزر",
           "images": "تصاویر گزارش", "analysis": "اعتبارسنجی و تحلیل", "review": "بازبینی مهندس",
           "reportcenter": "Report Center", "settings": "تنظیمات"}
 
@@ -128,6 +133,8 @@ class EngineeringWindow(MainWindow):
         self.generate_page = GeneratePage(self.manager, self.settings, self.analysis)
         self.settings_page = SettingsPage(self.settings)
         self.heavy_page = HeavyStudyPage(self.applicant_page, self.feeder_page, self.study_page)
+        # v2.3.0 — صفحهٔ مشترک «فیدرهای محدودهٔ مطالعه» (یک‌بار ورود برای هر دو مطالعه)
+        self.prot_network_page = NetworkEditor(self.manager, self._ws)
         self.rec_page = ProtectionStudyPage(self.manager, self.settings, StudyKind.RECLOSER,
                                             self._ws, lambda: self.settings.theme)
         self.secz_page = ProtectionStudyPage(self.manager, self.settings, StudyKind.SECTIONALIZER,
@@ -140,7 +147,8 @@ class EngineeringWindow(MainWindow):
                                           ai_page=self.ai_page)
         self.pages: dict[str, QWidget] = {
             "home": self.home_page, "dashboard": self.dashboard_page, "project": self.project_page,
-            "heavy": self.heavy_page, "recloser": self.rec_page, "sectionalizer": self.secz_page,
+            "heavy": self.heavy_page, "protnet": self.prot_network_page,
+            "recloser": self.rec_page, "sectionalizer": self.secz_page,
             "images": self.images_page, "analysis": self.analysis_page, "review": self.review_page,
             "reportcenter": self.report_center, "settings": self.settings_page}
 
@@ -221,7 +229,7 @@ class EngineeringWindow(MainWindow):
         hp.continue_requested.connect(lambda k: self.navigate(STEP_TO_PAGE.get(k, "dashboard")))
         hp.open_file_requested.connect(GeneratePage._open)
         for pg in (self.project_page, self.applicant_page, self.feeder_page, self.images_page,
-                   self.study_page, self.rec_page, self.secz_page):
+                   self.study_page, self.prot_network_page, self.rec_page, self.secz_page):
             pg.changed.connect(self._data_changed)
         self.selection_page.changed.connect(self._on_selection_changed)
         self.ai_page.changed.connect(self._data_changed_keep_cache)
@@ -301,6 +309,8 @@ class EngineeringWindow(MainWindow):
               lambda k=kind: self._toggle_study(k), checkable=True,
               tip=f"درج مطالعهٔ {STUDY_LABELS_FA[kind]} در پروژه")
         A("study", "مطالعه مصارف سنگین", self._nav("study"))
+        A("prot_network", "فیدرهای محدوده", self._nav("protnet"),
+          tip="فیدرهای محدودهٔ مطالعه و اطلاعات شبکه — یک‌بار ورود برای ریکلوزر و سکشنالایزر")
         A("recloser", "ریکلوزر", self._nav("recloser"))
         A("sectionalizer", "سکشنالایزر", self._nav("sectionalizer"))
         A("validate", "اعتبارسنجی", self._nav("validation"), "F5")
@@ -351,8 +361,8 @@ class EngineeringWindow(MainWindow):
         for kind in StudyKind:
             g.add_action(a[f"sel_{kind.value}"], "study" if kind is StudyKind.HEAVY else "protection")
         g = p.add_group("ورود داده مطالعات")
-        g.add_action(a["study"], "study"); g.add_action(a["recloser"], "protection")
-        g.add_action(a["sectionalizer"], "protection")
+        g.add_action(a["study"], "study"); g.add_action(a["prot_network"], "input")
+        g.add_action(a["recloser"], "protection"); g.add_action(a["sectionalizer"], "protection")
         g = p.add_group("هماهنگی حفاظتی (IDMT)")
         g.add_action(a["idmt_tool"], "analysis"); g.add_action(a["idmt_import"], "input")
 
@@ -381,7 +391,7 @@ class EngineeringWindow(MainWindow):
         R.set_current("file")
         self._project_actions = [a[k] for k in (
             "save", "import", "project", "applicant", "input", "profile", "loadflow", "images",
-            "study", "recloser", "sectionalizer", "validate", "analysis", "run", "review",
+            "study", "prot_network", "recloser", "sectionalizer", "validate", "analysis", "run", "review",
             "rc_select", "rc_preview", "rc_generate", "rc_ai", "dashboard",
             "sel_heavy", "sel_recloser", "sel_sectionalizer", "idmt_import")]
         a["import"].setEnabled(True)
@@ -493,8 +503,10 @@ class EngineeringWindow(MainWindow):
             self.project_page.focus_field(field)
         elif page_key == "heavy":
             self.applicant_page.focus_field(field)
+        elif page_key == "protnet":
+            self.prot_network_page.focus_field(field)
         elif page_key in ("recloser", "sectionalizer"):
-            self.pages[page_key].focus_field(sub or "network", field)
+            self.pages[page_key].focus_field(sub or "device", field)
 
     def _current_report(self):
         """گزارش فعلی (متن‌های تولیدشده) برای دستیار هوش مصنوعی؛ None اگر در دسترس نباشد."""
@@ -549,10 +561,12 @@ class EngineeringWindow(MainWindow):
             self.heavy_page.show_tab(tab)
             if section:
                 self.feeder_page.show_section(section)
+        elif page_key == "protnet":
+            self.prot_network_page.refresh()
         elif page_key in ("recloser", "sectionalizer"):
             page = self.pages[page_key]
             page.refresh()
-            page.show_tab(sub or "network")
+            page.show_tab(sub or "device")
         elif page_key == "images":
             self.images_page.refresh()
         elif page_key == "analysis":
@@ -594,6 +608,8 @@ class EngineeringWindow(MainWindow):
                 self.applicant_page.save_to(project)
                 self.study_page.save_to_project()
                 self.feeder_page._save_current()  # noqa: SLF001
+            elif page == "protnet":
+                self.prot_network_page.save_to_project()
             elif page in ("recloser", "sectionalizer"):
                 self.pages[page].save_to_project()
         except Exception as exc:  # noqa: BLE001

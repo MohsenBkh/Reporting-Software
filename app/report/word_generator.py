@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from docx import Document
-from docx.enum.section import WD_SECTION
+from docx.enum.section import WD_ORIENT, WD_SECTION
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
 from docx.oxml import OxmlElement
@@ -207,13 +207,19 @@ class WordGenerator:
         return 11 if self.protection else self.f.body_size - 1
 
     # ------------------------------------------------------------------
+    # بخش‌هایی که در Word به‌صورت افقی (Landscape) صفحه‌بندی می‌شوند —
+    # برگه تنظیمات هماهنگی (خروجی A4 افقی ابزار IDMT) در پیوست پایانی.
+    LANDSCAPE_SECTIONS = {"prot_settings_sheet"}
+
     def generate(self, report: GeneratedReport, out_path: str | Path) -> Path:
         doc = Document()
+        self._landscape = False
         self._setup_styles(doc)
         self._setup_page(doc)
         self._cover(doc)
         self._toc(doc, [self._heading_text(sec, i + 1) for i, sec in enumerate(report.sections)])
         for i, sec in enumerate(report.sections):
+            self._set_orientation(doc, sec.key in self.LANDSCAPE_SECTIONS)
             self._section(doc, sec, number=i + 1)
         self._set_properties(doc)
         self._update_fields_on_open(doc)
@@ -276,6 +282,24 @@ class WordGenerator:
         sec.top_margin = sec.bottom_margin = Cm(2.0)
         sec.left_margin = sec.right_margin = Cm(2.0)
         self._header_footer(sec)
+
+    def _set_orientation(self, doc: Document, landscape: bool) -> None:
+        """شروع Section جدید Word با جهت صفحه خواسته‌شده (A4 عمودی/افقی).
+
+        سربرگ و پاورقی به‌صورت «پیوند به قبلی» حفظ می‌شوند؛ حاشیه‌ها ۲ سانتی‌متر.
+        """
+        if landscape == self._landscape:
+            return
+        sec = doc.add_section(WD_SECTION.NEW_PAGE)
+        if landscape:
+            sec.orientation = WD_ORIENT.LANDSCAPE
+            sec.page_width, sec.page_height = Cm(29.7), Cm(21.0)
+        else:
+            sec.orientation = WD_ORIENT.PORTRAIT
+            sec.page_width, sec.page_height = Cm(21.0), Cm(29.7)
+        sec.top_margin = sec.bottom_margin = Cm(2.0)
+        sec.left_margin = sec.right_margin = Cm(2.0)
+        self._landscape = landscape
 
     def _header_footer(self, sec) -> None:
         if self.protection:
@@ -597,7 +621,16 @@ class WordGenerator:
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         try:
             run = p.add_run()
-            run.add_picture(str(path), width=Cm(15.0))
+            pic = run.add_picture(str(path))
+            # بزرگ‌ترین اندازهٔ ممکن در محدودهٔ حاشیه‌ها (A4 با حاشیه ۲cm):
+            # عمودی → عرض ۱۷cm؛ افقی → عرض ۲۵٫۷cm — با حفظ نسبت و سقف ارتفاع صفحه.
+            if getattr(self, "_landscape", False):
+                max_w, max_h = Cm(25.7), Cm(16.2)
+            else:
+                max_w, max_h = Cm(17.0), Cm(23.5)
+            scale = min(max_w / pic.width, max_h / pic.height)
+            pic.width = int(pic.width * scale)
+            pic.height = int(pic.height * scale)
         except Exception:  # noqa: BLE001 — تصویر خراب نباید کل گزارش را متوقف کند
             return
         p.paragraph_format.keep_with_next = True
