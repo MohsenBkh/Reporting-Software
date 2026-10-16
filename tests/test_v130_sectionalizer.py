@@ -53,7 +53,9 @@ def test_sectionalizer_report_uses_protection_composer(tmp_path):
     keys = [s.key for s in report.sections]
     assert keys[0] == "prot_intro" and "prot_sectionalizer" in keys
     assert "prot_recloser" not in keys and not any(k.startswith("secz_") for k in keys)
-    assert keys[-1] == "prot_recommendation"
+    # پیش‌فرض ۷ فصلی دفترچه نمونه: پایان با سناریوی عملکرد (جمع‌بندی/پیشنهادها خاموش)
+    assert keys[-1] == "prot_scenario"
+    assert "prot_conclusion" not in keys and "prot_recommendation" not in keys
 
 
 def test_sectionalizer_report_shows_recorded_base_values_and_no_unfilled_vars(tmp_path):
@@ -85,7 +87,7 @@ def test_sectionalizer_missing_fields_show_missing_not_zero(tmp_path):
 def test_sectionalizer_section_on_off(tmp_path):
     p = make_sectionalizer_project()
     ws = workspace_from_project(p)
-    ws.report_prefs.disabled_sections = ["prot_trace", "prot_scenario"]
+    ws.report_prefs.disabled_sections = ["prot_trace", "prot_scenario"]   # جمع‌بندی روشن
     p._workspace = ws
     settings = AppSettings(include_appendices=False)
     report = build_sections(p, settings, TemplateManager(), RuleEngine(), tmp_path)
@@ -103,11 +105,11 @@ def test_sectionalizer_word_generation(tmp_path):
     generate_docx(p, settings, report, out)
     assert out.exists()
     doc = Document(str(out))
-    assert doc.core_properties.subject == "گزارش مطالعه نصب سکشنالایزر"
+    assert doc.core_properties.subject == "دفترچه مطالعات جایابی تجهیزات و هماهنگی حفاظتی"
     joined = "\n".join(para.text for para in doc.paragraphs)
     assert "سکشنالایزر" in joined
     html = report_to_html(report, p, settings)
-    assert "گزارش مطالعه نصب سکشنالایزر" in html
+    assert "دفترچه مطالعات جایابی تجهیزات و هماهنگی حفاظتی" in html
 
 
 # ---------------------------------------------------------------------------
@@ -162,9 +164,9 @@ def test_recloser_report_type_builds_protection_sections(tmp_path):
     keys = [s.key for s in report.sections]
     assert keys[0] == "prot_intro"
     assert "prot_recloser" in keys and "prot_sectionalizer" not in keys
-    assert keys[-1] == "prot_recommendation"
+    assert keys[-1] == "prot_scenario"
     # هیچ مقدار مهندسی ساخته نشده: تنظیمات ثبت‌نشده با «ناموجود» نمایش داده می‌شود
-    assert report.warnings or any(s.key == "prot_conclusion" for s in report.sections)
+    assert report.warnings or any(s.key == "prot_scenario" for s in report.sections)
 
 
 def test_recloser_validation_is_light_and_has_no_heavy_errors():

@@ -40,8 +40,9 @@ def test_report_type_registry_labels_and_booklets():
     assert report_type_label(REPORT_TYPE_SECTIONALIZER) == "مطالعه سکشنالایزر"
     assert report_type_label(REPORT_TYPE_RECLOSER) == "مطالعه ریکلوزر"
     assert booklet_title(REPORT_TYPE_HEAVY).startswith("دفترچه مطالعات تأمین برق")
-    assert booklet_title(REPORT_TYPE_SECTIONALIZER) == "گزارش مطالعه نصب سکشنالایزر"
-    assert booklet_title(REPORT_TYPE_RECLOSER) == "گزارش مطالعه نصب ریکلوزر"
+    # v2.1.2: عنوان سری دفترچه حفاظتی مطابق دفترچه نمونه
+    assert booklet_title(REPORT_TYPE_SECTIONALIZER) == "دفترچه مطالعات جایابی تجهیزات و هماهنگی حفاظتی"
+    assert booklet_title(REPORT_TYPE_RECLOSER) == "دفترچه مطالعات جایابی تجهیزات و هماهنگی حفاظتی"
     # کلید خالی/ناشناخته → پیش‌فرض متقاضیان سنگین
     assert normalize("") == REPORT_TYPE_HEAVY
     assert normalize("unknown") == REPORT_TYPE_HEAVY

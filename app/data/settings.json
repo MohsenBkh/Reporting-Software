@@ -1,17 +1,12 @@
 {
   "company_name": "شرکت توزیع نیروی برق استان اردبیل",
-  "unit_name": "معاونت مهندسی و برنامه‌ریزی و مطالعات فنی",
-  "office_name": "گروه هدف‌گذاری مهندسی و نظارت",
+  "unit_name": "معاونت مهندسی و برنامه‌ریزی",
+  "office_name": "دفتر مهندسی و نظارت – گروه GIS و مطالعات فنی سیستم",
   "company_logo": "",
   "template_file": "",
   "report_prefix": "DM-18-",
   "output_dir": "",
-  "recent_projects": [
-    "D:\\My apps\\Report Generator\\Sonnet\\پروژه_مطالعه\\project.json",
-    "C:\\Users\\Mohsen\\Desktop\\مطالعه درخواست دیماند 1000kW متقاضي گلخانه آقاي مجيد دهقاني دهنو\\project.json",
-    "D:\\My apps\\Report Generator\\Sonnet\\پروژه_مطالعه\\پروژه_مطالعه\\project.json",
-    "/tmp/pytest-of-user/pytest-13/test_forecast_flag_survives_re0/proj/project.json"
-  ],
+  "recent_projects": [],
   "theme": "light",
   "template_name": "standard",
   "include_appendices": true,

@@ -141,6 +141,8 @@ def test_narrative_sectionalizer_reference_and_counter():
 
 def test_narrative_conclusion_lists_failures_missing_data_and_thresholds():
     p, ws = _khalkhal()
+    # جمع‌بندی به‌صورت پیش‌فرض خاموش است (دفترچه نمونه ۷ فصلی) — برای آزمون روشن می‌شود
+    ws.report_prefs.disabled_sections = ["prot_trace"]
     p.recloser.settings.f51 = F("NI", 320, 5, "percent")
     text = " ".join(b.text for b in _texts(_compose(p, ws, [StudyKind.RECLOSER]), "prot_conclusion"))
     assert "عدم انطباق" in text and "حداقل زمان Reclaim" in text

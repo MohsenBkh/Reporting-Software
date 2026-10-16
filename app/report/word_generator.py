@@ -17,7 +17,7 @@ from docx.shared import Cm, Pt, RGBColor
 
 from app.core.models import Project, REQUEST_INCREASE
 from app import APP_VERSION
-from app.core.report_types import booklet_title
+from app.core.report_types import booklet_title, header_title, is_protection_report
 from app.core.settings import AppSettings
 from app.report.sections import FigureBlock, GeneratedReport, Paragraph, ReportSection, TableSpec
 from app.utils.jalali import jalali_month_year
@@ -28,9 +28,25 @@ BORDER_COLOR = "7F7F7F"
 
 
 def default_logo_path() -> Path | None:
-    """لوگوی پیش‌فرض همراه برنامه (resource/logo.png) در صورت وجود."""
-    p = resource_path("logo.png")
-    return p if p.exists() else None
+    """لوگوی پیش‌فرض همراه برنامه در صورت وجود.
+
+    اولویت با لوگوی دفترچه نمونه (آرم توانیر — ``tavanir_logo.png``) است؛
+    در نبود آن ``logo.png`` قدیمی استفاده می‌شود.
+    """
+    for name in ("tavanir_logo.png", "logo.png"):
+        p = resource_path(name)
+        if p.exists():
+            return p
+    return None
+
+
+def header_logo_path() -> Path | None:
+    """لوگوی کوچک سربرگ صفحات (مطابق سربرگ دفترچه نمونه)."""
+    for name in ("tavanir_logo_header.png", "tavanir_logo.png", "logo.png"):
+        p = resource_path(name)
+        if p.exists():
+            return p
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -181,6 +197,14 @@ class WordGenerator:
         self.project = project
         self.settings = settings
         self.f = settings.fonts
+        # قالب‌های حفاظتی (ریکلوزر/سکشنالایزر/ترکیبی): چیدمان جلد و سربرگ
+        # دقیقاً مطابق «نمونه دفترچه مطالعه ریکلوزر و سکشنالایزر»
+        self.protection = is_protection_report(getattr(project, "report_type", ""))
+
+    @property
+    def _caption_size(self) -> int:
+        """اندازه عنوان شکل/جدول — دفترچه نمونه حفاظتی: ۱۱ پوینت."""
+        return 11 if self.protection else self.f.body_size - 1
 
     # ------------------------------------------------------------------
     def generate(self, report: GeneratedReport, out_path: str | Path) -> Path:
@@ -254,6 +278,87 @@ class WordGenerator:
         self._header_footer(sec)
 
     def _header_footer(self, sec) -> None:
+        if self.protection:
+            self._protection_header(sec)
+        else:
+            self._heavy_header(sec)
+        self._footer(sec)
+        # صفحه جلد بدون سربرگ/پاورقی
+        sec.different_first_page_header_footer = True
+
+    def _protection_header(self, sec) -> None:
+        """سربرگ دفترچه نمونه: [لوگو + نام شرکت | عنوان گزارش | شماره و تاریخ] + خط ممتد.
+
+        جدول سه‌ستونه بدون حاشیه و راست‌به‌چپ — ستون اول (راست): آرم توانیر و نام
+        شرکت؛ ستون میانی: عنوان سری گزارش؛ ستون چپ: شماره گزارش و تاریخ.
+        """
+        f = self.f
+        p = self.project
+        header = sec.header
+        hp0 = header.paragraphs[0]
+        ht = header.add_table(rows=1, cols=3, width=Cm(17.0))
+        ht.alignment = WD_TABLE_ALIGNMENT.CENTER
+        ht.autofit = False
+        tblPr = ht._tbl.tblPr
+        tblPr.append(_el("w:bidiVisual"))
+        tblPr.append(_el("w:tblLayout", type="fixed"))
+        tblPr.append(_el("w:tblW", w="9638", type="dxa"))
+        borders = _el("w:tblBorders")
+        for side in ("top", "left", "bottom", "right", "insideH", "insideV"):
+            borders.append(_el(f"w:{side}", val="none", sz="0", space="0", color="auto"))
+        tblPr.append(borders)
+        logo_cell, mid_cell, info_cell = ht.rows[0].cells   # bidiVisual: اولی سمت راست
+        logo_cell.width, mid_cell.width, info_cell.width = Cm(3.55), Cm(9.62), Cm(3.85)
+        hp0._p.getparent().remove(hp0._p)
+        # ستون راست: لوگوی کوچک + نام شرکت (مطابق نمونه: آرم ۰٫۳ اینچ و متن ریز)
+        lp = logo_cell.paragraphs[0]
+        lp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_rtl(lp)
+        lp.paragraph_format.space_after = Pt(0)
+        logo = header_logo_path()
+        if logo is not None:
+            try:
+                lp.add_run().add_picture(str(logo), height=Cm(0.76))
+                lp.add_run().add_break()
+            except Exception:  # noqa: BLE001
+                pass
+        r = lp.add_run(self.settings.company_name)
+        style_run(r, f.body_font, 6, bold=True)
+        # ستون میانی: عنوان سری گزارش (دفترچه نمونه)
+        mp = mid_cell.paragraphs[0]
+        mp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_rtl(mp)
+        mv = mid_cell._tc.get_or_add_tcPr()
+        mv.append(_el("w:vAlign", val="center"))
+        r = mp.add_run(header_title(getattr(p, "report_type", "")))
+        style_run(r, f.body_font, 10, bold=True)
+        # ستون چپ: شماره گزارش و تاریخ (دو سطر)
+        ip = info_cell.paragraphs[0]
+        ip.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        set_rtl(ip)
+        ip.paragraph_format.space_after = Pt(0)
+        r = ip.add_run(f"شماره گزارش: {p.report_number}")
+        style_run(r, f.body_font, 10, bold=True)
+        ip2 = info_cell.add_paragraph()
+        ip2.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        set_rtl(ip2)
+        r = ip2.add_run(f"تاریخ: {jalali_month_year(p.date_jalali)}")
+        style_run(r, f.body_font, 10, bold=True)
+        self._header_rule(header)
+
+    @staticmethod
+    def _header_rule(header) -> None:
+        """خط ممتد زیر سربرگ (پاراگراف جدا با حاشیه پایین)."""
+        hline = header.add_paragraph()
+        hline.paragraph_format.space_before = Pt(0)
+        hline.paragraph_format.space_after = Pt(0)
+        pPr = hline._p.get_or_add_pPr()
+        pBdr = _el("w:pBdr")
+        pBdr.append(_el("w:bottom", val="single", sz="8", space="1",
+                        color=BORDER_COLOR))
+        pPr.append(pBdr)
+
+    def _heavy_header(self, sec) -> None:
         f = self.f
         p = self.project
         # --- سربرگ صفحات ۲ به بعد: «دفترچه…» راست | «شماره گزارش / تاریخ» چپ + خط ممتد ---
@@ -288,16 +393,11 @@ class WordGenerator:
         set_rtl(cp2)
         r = cp2.add_run(f"شماره گزارش: {p.report_number}        تاریخ: {jalali_month_year(p.date_jalali)}")
         style_run(r, f.body_font, 10, bold=True)
-        # خط ممتد زیر سربرگ (پاراگراف جدا با حاشیه پایین)
-        hline = header.add_paragraph()
-        hline.paragraph_format.space_before = Pt(0)
-        hline.paragraph_format.space_after = Pt(0)
-        pPr = hline._p.get_or_add_pPr()
-        pBdr = _el("w:pBdr")
-        pBdr.append(_el("w:bottom", val="single", sz="8", space="1",
-                        color=BORDER_COLOR))
-        pPr.append(pBdr)
+        self._header_rule(header)
+
+    def _footer(self, sec) -> None:
         # --- پاورقی: «صفحه X از Y» ---
+        f = self.f
         footer = sec.footer
         fp = footer.paragraphs[0]
         fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -308,8 +408,6 @@ class WordGenerator:
         r = fp.add_run(" از ")
         style_run(r, f.body_font, 10)
         self._simple_field(fp, " NUMPAGES ", f.body_font)
-        # صفحه جلد بدون سربرگ/پاورقی
-        sec.different_first_page_header_footer = True
 
     @staticmethod
     def _simple_field(paragraph, instr: str, font: str) -> None:
@@ -366,19 +464,32 @@ class WordGenerator:
                 align=WD_ALIGN_PARAGRAPH.CENTER, space_after=30,
                 color=RGBColor(0x1F, 0x4E, 0x79))
 
-        add_par(doc, p.title_text(), font_fa=f.heading_font, size=16, bold=True,
-                align=WD_ALIGN_PARAGRAPH.CENTER, space_after=40)
+        if self.protection:
+            # جلد دفترچه نمونه: عنوان پروژه ۱۸pt، سپس ماه/سال و شماره گزارش —
+            # بدون سطر جداگانه «تاریخ:» (تاریخ کامل فقط در سربرگ صفحات می‌آید)
+            add_par(doc, p.title_text(), font_fa=f.heading_font, size=18, bold=True,
+                    align=WD_ALIGN_PARAGRAPH.CENTER, space_after=60)
+            add_par(doc, jalali_month_year(p.date_jalali), font_fa=f.heading_font,
+                    size=14, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=60)
+            add_par(doc, f"شماره گزارش: {p.report_number}", font_fa=f.body_font,
+                    size=12, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
+            if p.expert_name:
+                add_par(doc, f"کارشناس مطالعات: {p.expert_name}", font_fa=f.body_font,
+                        size=12, align=WD_ALIGN_PARAGRAPH.CENTER)
+        else:
+            add_par(doc, p.title_text(), font_fa=f.heading_font, size=16, bold=True,
+                    align=WD_ALIGN_PARAGRAPH.CENTER, space_after=40)
 
-        add_par(doc, jalali_month_year(p.date_jalali), font_fa=f.heading_font,
-                size=14, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=60)
+            add_par(doc, jalali_month_year(p.date_jalali), font_fa=f.heading_font,
+                    size=14, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=60)
 
-        add_par(doc, f"شماره گزارش: {p.report_number}", font_fa=f.body_font,
-                size=12, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
-        add_par(doc, f"تاریخ: {p.date_jalali}", font_fa=f.body_font,
-                size=12, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
-        if p.expert_name:
-            add_par(doc, f"کارشناس مطالعات: {p.expert_name}", font_fa=f.body_font,
-                    size=12, align=WD_ALIGN_PARAGRAPH.CENTER)
+            add_par(doc, f"شماره گزارش: {p.report_number}", font_fa=f.body_font,
+                    size=12, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
+            add_par(doc, f"تاریخ: {p.date_jalali}", font_fa=f.body_font,
+                    size=12, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
+            if p.expert_name:
+                add_par(doc, f"کارشناس مطالعات: {p.expert_name}", font_fa=f.body_font,
+                        size=12, align=WD_ALIGN_PARAGRAPH.CENTER)
 
         pb = doc.add_paragraph()
         pb.add_run().add_break(WD_BREAK.PAGE)
@@ -437,7 +548,7 @@ class WordGenerator:
         f = self.f
         # عنوان جدول — بالای جدول (مطابق نمونه‌ها)؛ خالی = جدول بدون عنوان
         if spec.caption:
-            cap = add_par(doc, spec.caption, font_fa=f.body_font, size=f.body_size - 1,
+            cap = add_par(doc, spec.caption, font_fa=f.body_font, size=self._caption_size,
                           bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4,
                           color=RGBColor(0, 0, 0))
             cap.style = doc.styles["Caption"]
@@ -490,7 +601,7 @@ class WordGenerator:
         except Exception:  # noqa: BLE001 — تصویر خراب نباید کل گزارش را متوقف کند
             return
         p.paragraph_format.keep_with_next = True
-        cap = add_par(doc, fig.caption, font_fa=f.body_font, size=f.body_size - 1,
+        cap = add_par(doc, fig.caption, font_fa=f.body_font, size=self._caption_size,
                       bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=10,
                       color=RGBColor(0, 0, 0))
         cap.style = doc.styles["Caption"]

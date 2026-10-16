@@ -161,8 +161,8 @@ class ReportSectionsSettings:
 @dataclass
 class AppSettings:
     company_name: str = "شرکت توزیع نیروی برق استان اردبیل"
-    unit_name: str = "معاونت مهندسی و برنامه‌ریزی و مطالعات فنی"
-    office_name: str = "گروه هدف‌گذاری مهندسی و نظارت"
+    unit_name: str = "معاونت مهندسی و برنامه‌ریزی"
+    office_name: str = "دفتر مهندسی و نظارت – گروه GIS و مطالعات فنی سیستم"
     company_logo: str = ""                # مسیر لوگوی صفحه جلد؛ خالی = resource/logo.png همراه برنامه
     template_file: str = ""               # فایل قالب متن کاربر؛ خالی = پیش‌فرض‌های داخلی
     report_prefix: str = "DM-18-"         # پیشوند شماره گزارش

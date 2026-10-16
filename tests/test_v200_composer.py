@@ -9,11 +9,18 @@ from app.report.composer import (ProtectionReportGenerator, ReportComponent,
 from app.report.sections import Paragraph, ReportSection
 from test_v200_protection_rules import _khalkhal, _salut
 
-# ترتیب فصل‌ها مطابق دفترچه نمونه «احداث ریکلوزر — فیدر ۴ خلخال»:
-# جانمایی پیش از مطالعه، و سناریوی عملکرد پس از هماهنگی حفاظتی
+# ترتیب فصل‌ها مطابق «نمونه دفترچه مطالعه ریکلوزر و سکشنالایزر»:
+# پیش‌فرض ۷ فصل (برای گزارش ترکیبی، فصل سکشنالایزر هم افزوده می‌شود)؛
+# جمع‌بندی/پیشنهادها به‌صورت پیش‌فرض خاموش‌اند و از Report Center فعال می‌شوند
 COMBINED_KEYS = ["prot_intro", "prot_network", "prot_existing", "prot_placement",
                  "prot_recloser", "prot_sectionalizer", "prot_coordination",
-                 "prot_scenario", "prot_conclusion", "prot_recommendation"]
+                 "prot_scenario"]
+# حالت کامل با جمع‌بندی و پیشنهادها (وقتی در Report Center فعال شوند)
+FULL_KEYS = COMBINED_KEYS + ["prot_conclusion", "prot_recommendation"]
+
+
+def _enable_all_sections(ws):
+    ws.report_prefs.disabled_sections = ["prot_trace"]
 
 
 def test_plan_single_studies():
@@ -33,11 +40,19 @@ def test_plan_heavy_is_always_separate_from_protection():
     assert [p.key for p in plan_reports(sel, OUTPUT_COMBINED)] == ["heavy", "combined_protection"]
 
 
-def test_combined_report_has_the_ten_specified_sections_in_order():
+def test_combined_report_has_the_specified_sections_in_order():
     p, ws = _salut()
     plan = plan_reports(StudySelection(recloser=True, sectionalizer=True))[0]
     report = ReportComposer().build(plan, p, ws)
     assert [s.key for s in report.sections] == COMBINED_KEYS
+
+
+def test_conclusion_and_recommendation_can_be_enabled_from_report_center():
+    p, ws = _salut()
+    _enable_all_sections(ws)
+    plan = plan_reports(StudySelection(recloser=True, sectionalizer=True))[0]
+    report = ReportComposer().build(plan, p, ws)
+    assert [s.key for s in report.sections] == FULL_KEYS
 
 
 def test_single_study_reports_skip_the_other_study_section():
@@ -58,6 +73,7 @@ def test_section_order_and_disable_are_extensible_via_prefs():
 
 def test_register_custom_component():
     p, ws = _salut()
+    _enable_all_sections(ws)
     comp = ReportComposer()
     comp.register(ReportComponent("prot_custom", "بخش سفارشی",
                                   lambda ctx: ReportSection("prot_custom", "بخش سفارشی",
@@ -69,6 +85,7 @@ def test_register_custom_component():
 
 def test_missing_data_is_reported_not_invented():
     p, ws = _khalkhal()                      # Counter/Shot سکشنالایزر ثبت نشده است
+    _enable_all_sections(ws)
     report = ReportComposer().compose(p, ws, [StudyKind.RECLOSER, StudyKind.SECTIONALIZER])
     scenario = next(s for s in report.sections if s.key == "prot_scenario")
     text = " ".join(b.text for b in scenario.blocks if isinstance(b, Paragraph))
@@ -116,6 +133,7 @@ def _with_images(p, images):
 def test_images_are_placed_by_explicit_section_with_order_and_caption():
     from app.report.sections import FigureBlock
     p, ws = _salut()
+    _enable_all_sections(ws)
     imgs = [_Img("prot_coordination", order=2, caption="دوم"),
             _Img("prot_coordination", order=1, caption="اول"),
             _Img("prot_conclusion", order=0, caption="جمع‌بندی")]

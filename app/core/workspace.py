@@ -97,8 +97,10 @@ class CommonNetwork:
 class ReportPreferences:
     output_mode: str = OUTPUT_COMBINED          # برای مطالعات حفاظتی
     section_order: list[str] = field(default_factory=list)   # خالی = ترتیب پیش‌فرض Composer
-    # پیوست ردیابی به‌صورت پیش‌فرض خاموش است (در Report Center روشن می‌شود)
-    disabled_sections: list[str] = field(default_factory=lambda: ["prot_trace"])
+    # پیش‌فرض مطابق دفترچه نمونه: ۷ فصل — پیوست ردیابی، جمع‌بندی و پیشنهادها
+    # خاموش‌اند (در Report Center قابل فعال‌سازی هستند)
+    disabled_sections: list[str] = field(
+        default_factory=lambda: ["prot_trace", "prot_conclusion", "prot_recommendation"])
 
 
 @dataclass
@@ -153,7 +155,9 @@ class Workspace:
         ws.report_prefs = ReportPreferences(
             output_mode=prefs.get("output_mode", OUTPUT_COMBINED),
             section_order=list(prefs.get("section_order", [])),
-            disabled_sections=list(prefs.get("disabled_sections", ["prot_trace"])))
+            disabled_sections=list(prefs.get(
+                "disabled_sections",
+                ["prot_trace", "prot_conclusion", "prot_recommendation"])))
         for fd in (data.get("common_network") or {}).get("feeders", []):
             ws.common_network.feeders.append(_feeder_from_dict(fd))
         ws.flow_done = [str(x) for x in (data.get("flow_done") or [])]
