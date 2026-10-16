@@ -306,6 +306,13 @@ class EngineeringWindow(MainWindow):
         A("validate", "اعتبارسنجی", self._nav("validation"), "F5")
         A("analysis", "تحلیل مهندسی", self._nav("analysis"))
         A("run", "اجرای قواعد حفاظتی", self._run_protection, "F6")
+        A("idmt_tool", "ابزار هماهنگی IDMT", self._open_idmt_tool,
+          tip="باز کردن نرم‌افزار «هماهنگی حفاظت فیدر (IDMT Coordination)» در مرورگر — "
+              "داده‌ها را یک‌بار آنجا وارد کنید")
+        A("idmt_import", "ورود از IDMT", self._import_idmt, "Ctrl+Shift+I",
+          tip="ورود تنظیمات نهایی ریکلوزر/سکشنالایزر و نمودارهای TCC، توالی و برگه "
+              "تنظیمات از بسته «خروجی گزارش‌ساز» ابزار IDMT")
+
         A("review", "بازبینی مهندس", self._nav("review"))
         A("rc_select", "انتخاب مطالعات", self._nav("reportcenter"), "Ctrl+R")
         A("rc_preview", "پیش‌نمایش", self._nav("preview"))
@@ -346,6 +353,8 @@ class EngineeringWindow(MainWindow):
         g = p.add_group("ورود داده مطالعات")
         g.add_action(a["study"], "study"); g.add_action(a["recloser"], "protection")
         g.add_action(a["sectionalizer"], "protection")
+        g = p.add_group("هماهنگی حفاظتی (IDMT)")
+        g.add_action(a["idmt_tool"], "analysis"); g.add_action(a["idmt_import"], "input")
 
         p = R.add_tab("analysis", "Analysis")
         g = p.add_group("اعتبارسنجی و تحلیل")
@@ -374,7 +383,7 @@ class EngineeringWindow(MainWindow):
             "save", "import", "project", "applicant", "input", "profile", "loadflow", "images",
             "study", "recloser", "sectionalizer", "validate", "analysis", "run", "review",
             "rc_select", "rc_preview", "rc_generate", "rc_ai", "dashboard",
-            "sel_heavy", "sel_recloser", "sel_sectionalizer")]
+            "sel_heavy", "sel_recloser", "sel_sectionalizer", "idmt_import")]
         a["import"].setEnabled(True)
 
     # ------------------------------------------------------------------
@@ -670,6 +679,62 @@ class EngineeringWindow(MainWindow):
         review = sum(1 for k in kinds for r in self._results.get(k, []) if r.engineer_review_required)
         self.statusBar().showMessage(f"{total} یافته · {review} مورد نیازمند بازبینی مهندس", 6000)
         self.navigate(f"{kinds[0].value}.settings")
+
+    # ------------------------------------------------------------------
+    # پیوند با نرم‌افزار «هماهنگی حفاظت فیدر (IDMT Coordination)»
+    # ------------------------------------------------------------------
+    def _open_idmt_tool(self) -> None:
+        """باز کردن ابزار IDMT همراه برنامه در مرورگر پیش‌فرض."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        from app.utils.resources import resource_path
+        path = resource_path("idmt_coordination.html")
+        if not path.exists():
+            QMessageBox.warning(self, "ابزار IDMT",
+                                "فایل ابزار هماهنگی (idmt_coordination.html) در پوشه resource یافت نشد.")
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+        self.statusBar().showMessage(
+            "ابزار IDMT در مرورگر باز شد؛ پس از مطالعه، با دکمه «خروجی گزارش‌ساز» بسته JSON بگیرید.", 8000)
+
+    def _import_idmt(self) -> None:
+        """ورود بسته «خروجی گزارش‌ساز» ابزار IDMT: داده‌ها + نمودارها، بدون ورود دوباره."""
+        if self.manager.project is None:
+            QMessageBox.information(self, "ورود از IDMT", "ابتدا یک پروژه باز یا ایجاد کنید.")
+            return
+        from app.core.idmt_bundle import IdmtBundleError, import_idmt_file
+        fname, _ = QFileDialog.getOpenFileName(
+            self, "انتخاب بسته خروجی گزارش‌ساز (IDMT)", "",
+            "بسته IDMT (*.json);;همه فایل‌ها (*)")
+        if not fname:
+            return
+        try:
+            res = import_idmt_file(self.manager, fname)
+        except IdmtBundleError as exc:
+            QMessageBox.warning(self, "ورود از IDMT", str(exc))
+            return
+        except Exception as exc:  # noqa: BLE001 — خطای غیرمنتظره نباید برنامه را ببندد
+            QMessageBox.critical(self, "ورود از IDMT", f"ورود بسته ناموفق بود: {exc}")
+            return
+        self._data_changed()
+        self._refresh_dashboard()
+        lines = ["داده‌های زیر از IDMT منتقل شد:"]
+        lines += [f"• {a}" for a in res.applied]
+        if res.images:
+            lines.append(f"• {len(res.images)} تصویر (TCC، توالی عملکرد، برگه تنظیمات) به شکل‌های گزارش افزوده شد.")
+        if res.warnings:
+            lines.append("")
+            lines.append("هشدارها:")
+            lines += [f"⚠ {w}" for w in res.warnings]
+        if res.failures:
+            lines.append("")
+            lines.append("قواعد ناموفق در خود IDMT:")
+            lines += [f"✗ {f}" for f in res.failures[:8]]
+            if len(res.failures) > 8:
+                lines.append(f"… و {len(res.failures) - 8} مورد دیگر")
+        QMessageBox.information(self, "ورود از IDMT", "\n".join(lines))
+        self.statusBar().showMessage(f"ورود از IDMT انجام شد ({res.summary}).", 8000)
+        self.navigate("recloser")
 
     def _refresh_dashboard(self) -> None:
         project, ws = self.manager.project, self._ws()

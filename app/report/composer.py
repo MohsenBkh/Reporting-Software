@@ -12,13 +12,11 @@
 """
 from __future__ import annotations
 
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 from app.core.protection_models import FUNCTION_KEYS, FUNCTION_LABELS_FA, ProtectionSettings
-from app.core.tcc import device_curves
 from app.core.studies import (PROTECTION_KINDS, STUDY_LABELS_FA, StudyKind,
                               StudySelection)
 from app.core.workspace import (OUTPUT_COMBINED, OUTPUT_SEPARATE, Workspace,
@@ -299,53 +297,6 @@ def _relay_devices(ctx: ComposeContext) -> list[tuple[str, ProtectionSettings]]:
     return devices
 
 
-def _tcc_figures(ctx: ComposeContext) -> list[FigureBlock]:
-    """نمودارهای پیش‌فرض جریان–زمان (TCC) توابع فاز و زمین همهٔ رله‌های جریانی.
-
-    مطابق شکل‌های ۳ و ۴ دفترچه نمونه فیدر ۴ خلخال؛ منحنی‌های NI/VI/EI با TMS
-    درصدی و جریان بر حسب آمپر رسم می‌شوند. اگر دادهٔ تنظیمی ثبت نشده باشد،
-    نموداری تولید نمی‌شود (بدون مقدار ساختگی).
-    """
-    devices = _relay_devices(ctx)
-    if not devices:
-        return []
-    try:
-        from app.report.chart_generator import tcc_chart
-    except Exception:  # noqa: BLE001 — نبود matplotlib نباید گزارش را متوقف کند
-        return []
-    markers: dict[str, float] = {}
-    if ctx.kinds:
-        inp = resolve_study_inputs(ctx.project, ctx.workspace, ctx.kinds[0])
-        max_ka, min_ka = inp["fault_current_ka"].value, inp["min_fault_current_ka"].value
-        if min_ka is not None:
-            markers["Isc حداقل"] = min_ka * 1000.0
-        if max_ka is not None:
-            markers["Isc حداکثر"] = max_ka * 1000.0
-    out_dir = Path(ctx.charts_dir) if ctx.charts_dir else (
-        Path(tempfile.gettempdir()) / "reportforge_charts")
-    out: list[FigureBlock] = []
-    groups = (
-        ("phase", "tcc_phase.png",
-         "نمودار هماهنگی جریان–زمان حفاظت جریان زیاد زمان‌دار (۵۱) و آنی (۵۰)"),
-        ("ground", "tcc_ground.png",
-         "نمودار هماهنگی جریان–زمان حفاظت خطای زمین زمان‌دار (۵۱N) و آنی (۵۰N)"),
-    )
-    for group, filename, title in groups:
-        curves = [c for name, s in devices for c in device_curves(name, s, group)]
-        if not curves:
-            continue
-        try:
-            path = tcc_chart(curves, out_dir / filename, title="",
-                             fault_markers=markers or None)
-        except Exception:  # noqa: BLE001
-            ctx.warnings.append(f"تولید نمودار جریان–زمان ({group}) ممکن نشد.")
-            continue
-        if path is not None:
-            out.append(FigureBlock(path=str(path),
-                                   caption=f"شکل {ctx.next_figure()}: {title}"))
-    return out
-
-
 def _coordination(ctx: ComposeContext) -> ReportSection:
     sec = ReportSection("prot_coordination", "هماهنگی حفاظتی")
     sec.blocks.extend(ctx.text("prot_coordination"))
@@ -356,15 +307,24 @@ def _coordination(ctx: ComposeContext) -> ReportSection:
         rows = ctx.results_for(kind, ("REC-COORD", "REC-CURVE", "SECZ-PK", "SECZ-TMS",
                                       "SECZ-COUNTER", "SECZ-DEADLINE"))
         sec.blocks.extend(_lines(rows))
-    # نمودارهای پیش‌فرض جریان–زمان (TCC) — شکل‌های ۳ و ۴ دفترچه نمونه
-    figures = _tcc_figures(ctx)
-    if figures:
+    # v2.2.0: نمودارهای TCC از نرم‌افزار «هماهنگی حفاظت فیدر (IDMT)» وارد می‌شوند
+    # (ورود از IDMT → شکل‌های بخش هماهنگی)؛ گزارش‌ساز دیگر نمودار TCC نمی‌سازد.
+    if _has_section_images(ctx.project, "prot_coordination", kind="tcc"):
         sec.blocks.append(Paragraph(
-            "منحنی‌های جریان–زمان (TCC) رله‌های جریانی ثبت‌شده — بر اساس منحنی‌های "
-            "استاندارد IEC (NI/VI/EI)، جریان بر حسب آمپر و TMS بر حسب درصد — در "
-            "شکل‌های زیر مقایسه شده‌اند."))
-        sec.blocks.extend(figures)
+            "منحنی‌های هماهنگی جریان–زمان (TCC) حفاظت فاز و ارت‌فالت — خروجی "
+            "نرم‌افزار هماهنگی حفاظت فیدر (IDMT) بر اساس دستورالعمل TAV111-02/00 — "
+            "در شکل‌های زیر ارائه شده‌اند."))
     return sec
+
+
+def _has_section_images(project: Any, section_key: str, kind: str = "") -> bool:
+    """آیا شکلی فعال برای این بخش ثبت شده است؟ (پیش از درج figures_for_section)"""
+    for img in getattr(project, "active_images", []) or []:
+        key = (getattr(img, "section_key", "") or "").strip() \
+            or PROTECTION_DEFAULT_SECTION_BY_KIND.get(getattr(img, "kind", ""), "")
+        if key == section_key and (not kind or getattr(img, "kind", "") == kind):
+            return True
+    return False
 
 
 def _placement(ctx: ComposeContext) -> ReportSection:
@@ -431,6 +391,21 @@ def _trace(ctx: ComposeContext) -> ReportSection:
     return sec
 
 
+def _settings_sheet(ctx: ComposeContext) -> ReportSection:
+    """پیوست «برگه تنظیمات» — برگه A4 تنظیمات نهایی خروجی نرم‌افزار IDMT.
+
+    فقط وقتی ساخته می‌شود که شکل برگه (ورود از IDMT) در پروژه ثبت شده باشد؛
+    در غیر این صورت بخش خالی می‌ماند و از گزارش حذف می‌شود.
+    """
+    sec = ReportSection("prot_settings_sheet", "پیوست — برگه تنظیمات هماهنگی")
+    if _has_section_images(ctx.project, "prot_settings_sheet"):
+        sec.blocks.append(Paragraph(
+            "برگه تنظیمات نهایی هماهنگی حفاظتی فاز و زمین (خروجی نرم‌افزار هماهنگی "
+            "حفاظت فیدر — IDMT) در ادامه پیوست شده است. این برگه شامل تنظیمات نهایی "
+            "رله سرخط، ریکلوزر و سکشنالایزر به همراه توالی مشترک وصل مجدد است."))
+    return sec
+
+
 @dataclass
 class ReportComponent:
     key: str
@@ -462,6 +437,7 @@ DEFAULT_COMPONENTS: list[ReportComponent] = [
     ReportComponent("prot_conclusion", "جمع‌بندی", _conclusion),
     ReportComponent("prot_recommendation", "پیشنهاد نهایی", _recommendation),
     ReportComponent("prot_trace", "پیوست — ردیابی یافته‌ها", _trace),
+    ReportComponent("prot_settings_sheet", "پیوست — برگه تنظیمات هماهنگی", _settings_sheet),
 ]
 
 
@@ -528,6 +504,8 @@ class ReportComposer:
                 continue
             sec = comp.build(ctx)
             sec.blocks.extend(figures_for_section(project, image_resolver, sec.key))
+            if not sec.blocks:          # بخش بدون هیچ متن/جدول/شکلی درج نمی‌شود
+                continue
             sections.append(sec)
         apply_manual_texts(project, sections)
         report = GeneratedReport(sections=sections)

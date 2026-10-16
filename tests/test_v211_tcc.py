@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""v2.1.1 — منحنی جریان–زمان (TCC): محاسبات IEC، نمودار پیش‌فرض و Rule هماهنگی منحنی.
+"""v2.1.1/v2.2.0 — منحنی جریان–زمان (TCC): محاسبات IEC و Rule هماهنگی منحنی.
+
+از v2.2.0 تولید نمودار TCC حذف شد (نمودارها از نرم‌افزار IDMT وارد می‌شوند)؛
+محاسبات IEC برای قواعد REC-CURVE همچنان اینجاست.
 
 مقادیر مرجع از دفترچه نمونه «احداث ریکلوزر — فیدر ۴ خلخال»:
     رله سر فیدر: 51 → 300 A / NI / TMS 9٪ — ریکلوزر R2: 51 → 250 A / NI / TMS 5٪
@@ -85,57 +88,26 @@ def test_device_curves_phase_and_ground_groups():
 
 
 # ---------------------------------------------------------------------------
-# نمودار TCC
-# ---------------------------------------------------------------------------
-def test_tcc_chart_renders_png(tmp_path):
-    from app.report.chart_generator import tcc_chart
-    curves = [RelayCurve("رله سر خط", "۵۱", 300, tms=0.09, curve="NI"),
-              RelayCurve("ریکلوزر R2", "۵۱", 250, tms=0.05, curve="NI"),
-              RelayCurve("ریکلوزر R2", "۵۰", 600, fixed_time_s=0.05)]
-    out = tcc_chart(curves, tmp_path / "tcc.png",
-                    fault_markers={"Isc حداکثر": 6600, "Isc حداقل": 5600})
-    assert out is not None and out.exists() and out.stat().st_size > 0
-
-
-def test_tcc_chart_without_data_returns_none(tmp_path):
-    from app.report.chart_generator import tcc_chart
-    assert tcc_chart([], tmp_path / "none.png") is None
-
-
-# ---------------------------------------------------------------------------
-# درج پیش‌فرض در گزارش ریکلوزر و سکشنالایزر
+# v2.2.0 — تولید نمودار TCC حذف شد: نمودارها از نرم‌افزار IDMT وارد می‌شوند
 # ---------------------------------------------------------------------------
 def _figures(report, key):
-    sec = next(s for s in report.sections if s.key == key)
-    return [b for b in sec.blocks if isinstance(b, FigureBlock)]
+    sec = next((s for s in report.sections if s.key == key), None)
+    return [] if sec is None else [b for b in sec.blocks if isinstance(b, FigureBlock)]
 
 
-def test_recloser_report_includes_default_tcc_figures(tmp_path):
+def test_tcc_chart_generation_removed_from_chart_generator():
+    import app.report.chart_generator as cg
+    assert not hasattr(cg, "tcc_chart")
+
+
+def test_reports_have_no_builtin_tcc_figures(tmp_path):
+    """گزارش‌ساز دیگر نمودار TCC نمی‌سازد؛ منحنی‌ها با «ورود از IDMT» می‌آیند."""
     p, ws = _khalkhal()
     report = ReportComposer().compose(p, ws, [StudyKind.RECLOSER], charts_dir=tmp_path)
-    figs = _figures(report, "prot_coordination")
-    assert len(figs) == 2                               # فاز (۵۱/۵۰) و زمین (۵۱N/۵۰N)
-    assert all("جریان–زمان" in f.caption for f in figs)
-    for f in figs:
-        from pathlib import Path
-        assert Path(f.path).exists()
-        assert Path(f.path).parent == tmp_path
-
-
-def test_sectionalizer_report_includes_default_tcc_figures(tmp_path):
-    p, ws = _salut()
-    report = ReportComposer().compose(p, ws, [StudyKind.SECTIONALIZER], charts_dir=tmp_path)
-    figs = _figures(report, "prot_coordination")
-    assert figs and all("جریان–زمان" in f.caption for f in figs)
-
-
-def test_report_without_settings_has_no_tcc_figures(tmp_path):
-    p, ws = _khalkhal()
-    p.recloser.settings = ProtectionSettings()
-    for f in ws.common_network.feeders:
-        f.existing_protection = []
-    report = ReportComposer().compose(p, ws, [StudyKind.RECLOSER], charts_dir=tmp_path)
-    assert not _figures(report, "prot_coordination")    # بدون داده، نمودار ساخته نمی‌شود
+    assert not _figures(report, "prot_coordination")
+    p2, ws2 = _salut()
+    report2 = ReportComposer().compose(p2, ws2, [StudyKind.SECTIONALIZER], charts_dir=tmp_path)
+    assert not _figures(report2, "prot_coordination")
 
 
 # ---------------------------------------------------------------------------

@@ -16,4 +16,4 @@ _import_guard.apply_frozen_guards()
 
 APP_NAME = "ReportForge"
 APP_NAME_FA = "گزارش‌یار مطالعات"
-APP_VERSION = "2.1.2"
+APP_VERSION = "2.2.0"

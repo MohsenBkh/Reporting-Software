@@ -58,12 +58,15 @@ REPORT_SECTIONS: list[tuple[str, str]] = [
     ("prot_conclusion", "حفاظت — جمع‌بندی"),
     ("prot_recommendation", "حفاظت — پیشنهاد نهایی"),
     ("prot_trace", "حفاظت — پیوست ردیابی یافته‌ها"),
+    # v2.2.0 — پیوست برگه تنظیمات نهایی (خروجی نرم‌افزار IDMT)
+    ("prot_settings_sheet", "حفاظت — پیوست برگه تنظیمات"),
 ]
 
 # شکل بدون محل صریح در گزارش‌های حفاظتی: نوع شکل ← بخش پیش‌فرض
 PROTECTION_DEFAULT_SECTION_BY_KIND: dict[str, str] = {
     "location": "prot_placement", "network": "prot_network", "other": "prot_coordination",
     "single_line": "prot_network", "tcc": "prot_coordination", "placement": "prot_placement",
+    "sequence": "prot_scenario", "settings_sheet": "prot_settings_sheet",
 }
 
 SECTION_LABELS: dict[str, str] = dict(REPORT_SECTIONS)
@@ -157,4 +160,4 @@ def image_kinds_for_selection(selection, all_kinds: dict[str, str]) -> dict[str,
     return out
 
 
-PROTECTION_IMAGE_KINDS = ("single_line", "tcc", "placement")
+PROTECTION_IMAGE_KINDS = ("single_line", "tcc", "placement", "sequence", "settings_sheet")
