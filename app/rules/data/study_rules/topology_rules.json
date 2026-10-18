@@ -1,0 +1,105 @@
+{
+  "domain": "study_topology",
+  "kind": "analysis",
+  "description": "امکان تأمین مشترک چند نقطه تقاضا از یک مسیر/فیدر — موضوع توپولوژیکی است و نباید از فاصله مکانی نتیجه‌گیری شود (بند ۶ صورت‌مسئله)",
+  "rules": [
+    {
+      "id": "TP-SHARED-SUPPLY-REVIEW",
+      "name": "نیاز به بررسی توپولوژیکی تأمین مشترک",
+      "domain": "study_topology",
+      "condition": "n_demand_points_ge_2 and not has_joint_supply_study",
+      "status": "REQUIRES_ENGINEER_REVIEW",
+      "severity": "review",
+      "priority": 60,
+      "requires": [
+        "n_demand_points"
+      ],
+      "inputs": [
+        "n_demand_points",
+        "cd_locations"
+      ],
+      "calculated": [
+        "n_demand_points",
+        "min_distance_km"
+      ],
+      "finding": "با وجود {n_demand_points:.0f} نقطه تقاضا در محدوده ({cd_locations})، امکان تأمین برق همه آن‌ها از یک مسیر/فیدر مشترک یک موضوع توپولوژیکی است و باید بر اساس مسیر شبکه، آرایش فیدرها و ظرفیت انتقال بررسی شود. نتیجه‌گیری صرفاً از روی فاصله مکانی مجاز نیست و در ورودی، مطالعه توپولوژیکی ثبت نشده است.",
+      "evidence": "اصل Rule Set: پراکندگی مکانی تقاضاها دلیل نبود امکان تأمین مشترک نیست؛ شاهد لازم، بررسی مسیر/آرایش شبکه (GIS/PowerFactory) است.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — نکات تحلیلی نتیجه‌گیری",
+      "engineer_review_required": true
+    },
+    {
+      "id": "TP-SHARED-SUPPLY-EVIDENCED",
+      "name": "تأمین مشترک با مبنای توپولوژیکی ثبت‌شده",
+      "domain": "study_topology",
+      "condition": "n_demand_points_ge_2 and has_joint_supply_study and has_joint_supply_evidence",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 50,
+      "requires": [
+        "joint_supply_feasibility"
+      ],
+      "inputs": [
+        "joint_supply_feasibility",
+        "joint_supply_note"
+      ],
+      "calculated": [
+        "n_demand_points"
+      ],
+      "finding": "بررسی توپولوژیکی تأمین مشترک ثبت شده است؛ نتیجه: {joint_supply_feasibility} — مبنای ثبت‌شده: {joint_supply_note}.",
+      "evidence": "شاهد توپولوژیکی (مسیر/آرایش شبکه) توسط کارشناس ثبت شده است.",
+      "recommended_text": "امکان تأمین برق نقاط تقاضای محدوده از یک مسیر/فیدر مشترک بر اساس بررسی توپولوژیکی شبکه: {joint_supply_feasibility}.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — نکات تحلیلی نتیجه‌گیری",
+      "engineer_review_required": false
+    },
+    {
+      "id": "TP-SHARED-SUPPLY-NO-EVIDENCE",
+      "name": "نتیجه توپولوژیکی بدون شاهد مسیر/آرایش شبکه",
+      "domain": "study_topology",
+      "condition": "n_demand_points_ge_2 and has_joint_supply_study and not has_joint_supply_evidence",
+      "status": "DATA_ERROR",
+      "severity": "review",
+      "priority": 58,
+      "inputs": [
+        "joint_supply_feasibility",
+        "joint_supply_note"
+      ],
+      "calculated": [
+        "n_demand_points"
+      ],
+      "finding": "نتیجه بررسی تأمین مشترک ({joint_supply_feasibility}) ثبت شده است، اما شاهد توپولوژیکی (مسیر فیدر، آرایش شبکه، ظرفیت انتقال) برای آن ثبت نشده؛ نتیجه بدون مبنا قابل استفاده در گزارش نیست.",
+      "evidence": "بند ۶ صورت‌مسئله: امکان تأمین مشترک باید به‌عنوان موضوع توپولوژیکی بررسی و مستند شود.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — نکات تحلیلی نتیجه‌گیری",
+      "engineer_review_required": true,
+      "requires": []
+    },
+    {
+      "id": "TP-SINGLE-POINT",
+      "name": "تک‌نقطه‌ای بودن تقاضا",
+      "domain": "study_topology",
+      "condition": "n_demand_points_lt_2",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 10,
+      "requires": [
+        "n_demand_points"
+      ],
+      "inputs": [
+        "n_demand_points"
+      ],
+      "calculated": [
+        "n_demand_points"
+      ],
+      "finding": "تعداد نقاط تقاضای ثبت‌شده {n_demand_points:.0f} است؛ موضوع تأمین مشترک چند نقطه مطرح نیست.",
+      "evidence": "شمارش نقاط تقاضا از داده ورودی (متقاضی اصلی + سایر متقاضیان).",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — نکات تحلیلی نتیجه‌گیری",
+      "engineer_review_required": false
+    }
+  ]
+}

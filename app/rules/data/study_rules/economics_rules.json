@@ -1,0 +1,213 @@
+{
+  "domain": "study_economics",
+  "kind": "analysis",
+  "description": "بررسی اقتصادی سناریوها — هزینه هر سناریو جداگانه ثبت و نمایش داده می‌شود؛ پارامترهای هزینه (طول شبکه، درصد هوایی/زمینی، تجهیزات کلیدی، پست زمینی، تجهیزات حفاظتی/کلیدزنی) پارامتریک‌اند و Hard-Code نمی‌شوند. اگر هزینه یک سناریو موجود نباشد: MISSING_DATA و نه صفر (بند ۴ صورت‌مسئله).",
+  "rules": [
+    {
+      "id": "EC-COST-VALUE",
+      "name": "هزینه ثبت‌شده سناریو",
+      "domain": "study_economics",
+      "condition": "scenario_cost_available and not scenario_cost_is_zero",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 50,
+      "requires": [
+        "scenario_cost_million"
+      ],
+      "inputs": [
+        "scenario_kind",
+        "scenario_cost_million",
+        "scenario_cost_items"
+      ],
+      "calculated": [
+        "scenario_cost_million"
+      ],
+      "finding": "هزینه سناریو «{scenario_title}» برابر {scenario_cost_million:.0f} میلیون تومان ثبت شده است. اقلام هزینه: {scenario_cost_items}.",
+      "evidence": "مقدار هزینه از داده ورودی خوانده شده و هیچ پارامتری جایگزین/برآورد نشده است.",
+      "recommended_text": "هزینه {scenario_title}: {scenario_cost_million:.0f} میلیون تومان{scenario_cost_note}.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — بررسی اقتصادی سناریوها",
+      "engineer_review_required": false
+    },
+    {
+      "id": "EC-COST-ZERO-NO-BASIS",
+      "name": "هزینه صفر بدون مبنای هزینه — باید MISSING_DATA ثبت شود",
+      "domain": "study_economics",
+      "condition": "scenario_cost_is_zero",
+      "status": "DATA_ERROR",
+      "severity": "review",
+      "priority": 70,
+      "inputs": [
+        "scenario_kind",
+        "scenario_cost_million",
+        "scenario_cost_items"
+      ],
+      "calculated": [
+        "scenario_cost_million"
+      ],
+      "finding": "برای سناریو «{scenario_title}» هزینه صفر ثبت شده است، در حالی که هیچ قلم هزینه‌ای (طول شبکه، درصد هوایی/زمینی، تجهیزات) برای آن ثبت نشده و مبنای صفر بودن هزینه وجود ندارد. مطابق Rule Set، نبود داده هزینه باید MISSING_DATA ثبت شود، نه صفر.",
+      "evidence": "بند ۴ صورت‌مسئله: هزینه غایب = MISSING_DATA؛ صفر تنها زمانی معتبر است که صریحاً به‌عنوان هزینه صفر با مبنا ثبت شده باشد.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — بررسی اقتصادی سناریوها",
+      "engineer_review_required": true
+    },
+    {
+      "id": "EC-COST-MISSING",
+      "name": "نبود داده هزینه سناریو",
+      "domain": "study_economics",
+      "condition": "has_scenario and not scenario_cost_available and not scenario_cost_is_zero",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 40,
+      "inputs": [
+        "scenario_kind",
+        "scenario_title"
+      ],
+      "calculated": [],
+      "finding": "داده هزینه سناریو «{scenario_title}» در ورودی موجود نیست؛ وضعیت این سناریو در بررسی اقتصادی MISSING_DATA ثبت می‌شود و هیچ عدد جایگزینی ساخته نمی‌شود.",
+      "evidence": "بند ۴ صورت‌مسئله: در نبود هزینه، MISSING_DATA ثبت می‌شود (نه صفر).",
+      "recommended_text": "هزینه سناریو {scenario_title}: MISSING_DATA (داده هزینه در ورودی موجود نیست).",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — بررسی اقتصادی سناریوها",
+      "engineer_review_required": true
+    },
+    {
+      "id": "EC-PARAMETRIC-NO-PARAMS",
+      "name": "برآورد پارامتریک هزینه — پارامترهای هزینه تعریف‌نشده",
+      "domain": "study_economics",
+      "condition": "has_scenario_route and not has_cost_parameters",
+      "status": "MISSING_RULE",
+      "severity": "review",
+      "priority": 60,
+      "requires": [],
+      "thresholds": [
+        {
+          "key": "cost_overhead_per_km_million",
+          "label": "هزینه احداث شبکه هوایی (میلیون تومان بر کیلومتر)",
+          "basis": "config",
+          "note": "پارامتر هزینه در سند مرجع ارائه نشده است؛ تا تعریف‌نشدن آن هیچ برآورد هزینه‌ای ساخته نمی‌شود."
+        },
+        {
+          "key": "cost_underground_per_km_million",
+          "label": "هزینه احداث شبکه زمینی (میلیون تومان بر کیلومتر)",
+          "basis": "config",
+          "note": "پارامتر هزینه در سند مرجع ارائه نشده است."
+        },
+        {
+          "key": "cost_ground_substation_million",
+          "label": "هزینه احداث پست زمینی (میلیون تومان)",
+          "basis": "config",
+          "note": "پارامتر هزینه در سند مرجع ارائه نشده است."
+        }
+      ],
+      "inputs": [
+        "scenario_title",
+        "scenario_length_km",
+        "scenario_overhead_pct",
+        "scenario_underground_pct"
+      ],
+      "calculated": [
+        "scenario_overhead_km",
+        "scenario_underground_km"
+      ],
+      "finding": "برای سناریو «{scenario_title}» مسیر شبکه ثبت شده است (طول {scenario_length_km:.2f} کیلومتر، {scenario_overhead_pct:.0f}٪ هوایی و {scenario_underground_pct:.0f}٪ زمینی)، اما پارامترهای هزینه (هزینه هر کیلومتر هوایی/زمینی، پست زمینی، تجهیزات حفاظتی/کلیدزنی) تعریف نشده‌اند؛ بنابراین هیچ برآورد هزینه‌ای تولید نمی‌شود.",
+      "evidence": "پارامترهای هزینه مطابق بند ۴ صورت‌مسئله باید پارامتریک و خارج از کد باشند.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — بررسی اقتصادی سناریوها",
+      "engineer_review_required": true
+    },
+    {
+      "id": "EC-PARAMETRIC-ESTIMATE",
+      "name": "برآورد پارامتریک هزینه سناریو",
+      "domain": "study_economics",
+      "condition": "has_scenario_route and has_cost_parameters",
+      "status": "INFO",
+      "severity": "normal",
+      "priority": 45,
+      "requires": [
+        "scenario_length_km"
+      ],
+      "thresholds": [
+        {
+          "key": "cost_overhead_per_km_million",
+          "label": "هزینه احداث شبکه هوایی (میلیون تومان بر کیلومتر)",
+          "basis": "config",
+          "note": "پارامتر پیکربندی — قابل ویرایش توسط کاربر."
+        },
+        {
+          "key": "cost_underground_per_km_million",
+          "label": "هزینه احداث شبکه زمینی (میلیون تومان بر کیلومتر)",
+          "basis": "config",
+          "note": "پارامتر پیکربندی — قابل ویرایش توسط کاربر."
+        }
+      ],
+      "inputs": [
+        "scenario_title",
+        "scenario_length_km",
+        "scenario_overhead_pct",
+        "scenario_underground_pct"
+      ],
+      "calculated": [
+        "scenario_estimated_cost_million",
+        "scenario_cost_breakdown"
+      ],
+      "finding": "برآورد پارامتریک هزینه سناریو «{scenario_title}»: طول شبکه {scenario_length_km:.2f} کیلومتر ({scenario_overhead_km:.2f} کیلومتر هوایی و {scenario_underground_km:.2f} کیلومتر زمینی). ریز اقلام: {scenario_cost_breakdown}. جمع اقلام قابل‌محاسبه: {scenario_estimated_cost_million:.0f} میلیون تومان. اقلام/پارامترهای ناموجود (به‌صورت MISSING_DATA): {scenario_cost_missing_items}.",
+      "evidence": "محاسبه کامل از پارامترهای هزینه پیکربندی‌شده و مسیر ثبت‌شده سناریو؛ هیچ قلم هزینه‌ای هارد‌کد نشده است.",
+      "recommended_text": "برآورد هزینه سناریو {scenario_title} با احتساب {scenario_length_km:.2f} کیلومتر شبکه ({scenario_overhead_pct:.0f}٪ هوایی و {scenario_underground_pct:.0f}٪ زمینی) مبلغ {scenario_estimated_cost_million:.0f} میلیون تومان برای اقلام قابل‌محاسبه است؛ اقلام ناموجود برآورد (MISSING_DATA): {scenario_cost_missing_items}.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — بررسی اقتصادی سناریوها",
+      "engineer_review_required": false
+    },
+    {
+      "id": "EC-EXCLUDED-ITEMS",
+      "name": "اقلام خارج از برآورد هزینه",
+      "domain": "study_economics",
+      "condition": "scenario_excluded_items_present",
+      "status": "MISSING_DATA",
+      "severity": "review",
+      "priority": 42,
+      "inputs": [
+        "scenario_title",
+        "scenario_excluded_items"
+      ],
+      "calculated": [],
+      "finding": "در برآورد هزینه سناریو «{scenario_title}» اقلام زیر لحاظ نشده و هزینه آن‌ها به‌صورت MISSING_DATA باقی می‌ماند: {scenario_excluded_items}.",
+      "evidence": "اقلام مستثنی از متن مرجع/ورودی خوانده شده‌اند؛ صفر جایگزین آن‌ها نمی‌شود.",
+      "recommended_text": "در برآورد هزینه مذکور، اقلام {scenario_excluded_items} لحاظ نشده است.",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — بررسی اقتصادی سناریوها",
+      "engineer_review_required": true
+    },
+    {
+      "id": "EC-ROUTE-LENGTH-VS-DISTANCE",
+      "name": "طول شبکه سناریو کمتر از فاصله نزدیک‌ترین منبع — نیازمند بررسی",
+      "domain": "study_economics",
+      "condition": "has_scenario_route and has_substations and scenario_length_lt_min_distance",
+      "status": "REQUIRES_ENGINEER_REVIEW",
+      "severity": "review",
+      "priority": 65,
+      "requires": [
+        "scenario_length_km",
+        "min_substation_distance_km"
+      ],
+      "inputs": [
+        "scenario_title",
+        "scenario_length_km",
+        "min_substation_distance_km",
+        "nearest_substation_names"
+      ],
+      "calculated": [
+        "scenario_length_km",
+        "min_substation_distance_km"
+      ],
+      "finding": "طول شبکه موردنیاز سناریو «{scenario_title}» ({scenario_length_km:.2f} کیلومتر) کمتر از فاصله نزدیک‌ترین ایستگاه ثبت‌شده ({min_substation_distance_km:.2f} کیلومتر — {nearest_substation_names}) است؛ منبع تغذیه و مسیر این سناریو باید صریحاً مستند شود.",
+      "evidence": "مقایسه طول مسیر ثبت‌شده سناریو با فاصله ایستگاه‌های جدول «ایستگاه‌های نزدیک»؛ موتور فرض نمی‌کند که ایستگاه دیگری خارج از جدول وجود دارد.",
+      "recommended_text": "",
+      "source": "TAV111-10/00",
+      "source_page": "صفحه ۱۲ از ۱۵ — بررسی اقتصادی سناریوها",
+      "engineer_review_required": true
+    }
+  ]
+}

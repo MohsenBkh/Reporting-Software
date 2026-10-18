@@ -34,6 +34,8 @@ _P = {
     "moon": '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
     "excel": '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>',
     "open": '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
+    "study": '<path d="M12 3v6"/><path d="M8 9h8"/><path d="M6 21l6-12 6 12"/><path d="M9.5 15h5"/><line x1="3" y1="21" x2="21" y2="21"/>',
+    "protection": '<path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10z"/><polyline points="11 8 8 12 12 12 10 16 14 11 10 11 12 8"/>',
 }
 _cache: dict[tuple, QIcon] = {}
 

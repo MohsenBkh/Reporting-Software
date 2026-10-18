@@ -1,0 +1,75 @@
+MANIFEST — «تغییرات آرنا» arena-changes-v1.2.0 (۵ کامیت)
+تاریخ بسته: 2026-10-03
+تعداد فایل پروژه: 68
+
+نسخهٔ ۱.۲.۰: بارگذاری کل فیدر (۷/۸ MW) + On/Off همهٔ ورودی‌ها + جدول‌های Excel-گونه
+             + تصاویر چندگانه با محل/اولویت/کپشن + نگاشت ستون با نام ستون
+
+d1d9de7e1c1345df  .gitignore
+5daa3b245336a976  CHANGELOG.md
+16c6c1c886f47882  FIXES.md
+9b69562ea8e31b81  README.md
+6e59cc481df86505  ReportForge.spec
+d8e3c39880196901  app/__init__.py
+bddd0932984c9cdd  app/core/calculations.py
+8ae1d5feaa4bcb49  app/core/findings.py
+afbd60a046c311be  app/core/models.py
+4ccc5e5afd471921  app/core/project_manager.py
+1b16aa31bcfd21a8  app/core/report_sections.py
+0575dca4cbc17183  app/core/scenarios.py
+d1b1ab6ebd30307e  app/core/settings.py
+88edb61e08969e51  app/core/study.py
+175c0fc73ddfca49  app/core/traceability.py
+a2e56c7a22d5eed9  app/core/validation.py
+c556669fb268a615  app/excel/importer.py
+3ab92ac037dd38b6  app/excel/template.py
+638c5ac101394e97  app/main.py
+5b1a8024a6e88e39  app/pyi_rth_reportforge.py
+02e8485db88bbc29  app/pyside_compat.py
+1e26838f6fa72bd7  app/report/analysis.py
+dc7addc30e75e6d2  app/report/data/texts/forecast.json
+1842f26e6c999f27  app/report/data/texts/study.json
+ba87344a5d6b9a46  app/report/pipeline.py
+8d85624f40e8f9ba  app/report/study_sections.py
+b55a8a0c7ee2ea3d  app/report/text_generator.py
+16b4a851218d4e1e  app/report/word_generator.py
+d8ab086286266e17  app/rules/data/study_rules/coincidence_rules.json
+e7de90c2a2c4016b  app/rules/data/study_rules/crosscheck_rules.json
+b52c8e4cafee48be  app/rules/data/study_rules/demand_rules.json
+b8a448fdb1d1ba38  app/rules/data/study_rules/economics_rules.json
+fde182bd02971e23  app/rules/data/study_rules/line_rules.json
+e75cb2c723b6f7e7  app/rules/data/study_rules/loading_limit_rules.json
+8ac9de56c1bdc7dd  app/rules/data/study_rules/scenario_check_rules.json
+9bfc7de9576bbd72  app/rules/data/study_rules/scenario_rules.json
+dd761f6c99165bd0  app/rules/data/study_rules/substation_rules.json
+76d1418bb3a7b4f6  app/rules/data/study_rules/topology_rules.json
+392b3eb171849fb2  app/rules/outcome.py
+8dc7bba9311203d1  app/rules/rule_engine.py
+f37c285c61dfcbb8  app/ui/analysis_page.py
+89e03c573b6d9e49  app/ui/excel_table.py
+9dc98d1df36a8837  app/ui/feeder_page.py
+6b5400ddbb2c3df7  app/ui/generate_page.py
+079daef111529866  app/ui/home_page.py
+5999fa1f26ea4c06  app/ui/icons.py
+186241c27b765c00  app/ui/images_page.py
+17216e0d69433c52  app/ui/main_window.py
+be9473fd9b2dbba0  app/ui/settings_page.py
+2226776725a49b1b  app/ui/study_page.py
+7e28a44a27e9eeb9  app/ui/widgets.py
+9071093f6a938ae1  app/utils/import_guard.py
+493bf0e4b42508f4  app/utils/selfcheck.py
+c09dbc6065346f6c  build_exe.bat
+5b9d9bb74ffb7578  docs/EXE_BUILD_FIX_v1.1.2.md
+1838392bf608d3c9  docs/INCREMENTAL_FIXES_v1.2.0.md
+c7897e983bae7a43  docs/STUDY_RULE_SET_v1.1.0.md
+89f86322f034c47a  docs/STUDY_RULE_SET_v1.2.0.md
+90c89ec509a2507c  reportforge.py
+4a4d7c5d963f7d0d  tests/sample_projects.py
+adcca6c8bc75a3d7  tests/test_v110_study_engine.py
+3be3214e985dd5b1  tests/test_v111_forecast_split.py
+c602c4680752d64a  tests/test_v111_study_ui.py
+f553860aadee4ea7  tests/test_v112_exe_guard.py
+b1262503c6436223  tests/test_v120_incremental.py
+ae7ce8d7ed3de42b  tools/build_demo.py
+39bc2ea5b3711f93  tools/export_rule_set.py
+ddbbe644824c14b6  tools/ui_check_study.py

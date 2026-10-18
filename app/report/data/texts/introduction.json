@@ -4,73 +4,123 @@
       "id": "T-INTRO-MAIN",
       "title": "متن اصلی مقدمه (مشترک همه گزارش‌ها)",
       "template": "مطابق دستورالعمل مطالعات فنی اتصال مصارف سنگین TAV111-10/00 شرکت توانیر با کد «اتصال مصارف سنگین یعنی به شبکه توزیع»، برای متقاضیان یک مگاوات و بالاتر که درخواست تأمین برق از شبکه را دارند می‌بایست مطالعات فنی اتصال به شبکه انجام شده و راهکارهایی چون احداث پست، احداث خط، ایجاد نقاط مانور، اصلاح شبکه، نصب جبرانساز و ... پیشنهاد گردد. در این گزارش مطالعات لازم به منظور {REQUEST_PHRASE} به شرح ذیل صورت گرفته است:",
-      "vars": ["REQUEST_PHRASE"]
+      "vars": [
+        "REQUEST_PHRASE"
+      ]
     },
     {
       "id": "T-INTRO-ITEM-NEW",
       "title": "بند الف — تأمین برق جدید",
       "template": "الف- تأمین برق به {APPLICANT_NAME} به ظرفیت {REQUESTED_KW} کیلووات",
-      "vars": ["APPLICANT_NAME", "REQUESTED_KW"]
+      "vars": [
+        "APPLICANT_NAME",
+        "REQUESTED_KW"
+      ]
     },
     {
       "id": "T-INTRO-ITEM-INCREASE",
       "title": "بند الف — افزایش قدرت",
       "template": "الف- افزایش قدرت {APPLICANT_NAME} از قدرت {EXISTING_KW} به {NEW_KW} کیلووات",
-      "vars": ["APPLICANT_NAME", "EXISTING_KW", "NEW_KW"]
+      "vars": [
+        "APPLICANT_NAME",
+        "EXISTING_KW",
+        "NEW_KW"
+      ]
     },
     {
       "id": "T-INTRO-ITEM-LOCATION",
       "title": "بند ب — موقعیت محل",
       "template": "ب- موقعیت محل: {LOCATION_TEXT}",
-      "vars": ["LOCATION_TEXT"]
+      "vars": [
+        "LOCATION_TEXT"
+      ]
     },
     {
       "id": "T-LOCATION-DEFAULT",
       "title": "توضیح موقعیت (با شکل)",
       "template": "موقعیت محل تقاضا نسبت به فیدرهای پست فوق توزیع {SUBSTATION} در شکل {FIG_NO} نمایش داده شده است.",
-      "vars": ["SUBSTATION", "FIG_NO"]
+      "vars": [
+        "SUBSTATION",
+        "FIG_NO"
+      ]
     },
     {
       "id": "T-LOCATION-DEFAULT-NOFIG",
       "title": "توضیح موقعیت (بدون شکل)",
       "template": "موقعیت محل تقاضا نسبت به فیدرهای پست فوق توزیع {SUBSTATION} می‌باشد.",
-      "vars": ["SUBSTATION"]
+      "vars": [
+        "SUBSTATION"
+      ]
     },
     {
       "id": "T-LOCATION-DETAIL",
       "title": "توضیح موقعیت (با فاصله و کابل، با شکل)",
       "template": "{LOCATION_NOTE} طبق مختصات ارائه‌شده در مدارک ارسالی، فاصله محل تقاضا تا نزدیک‌ترین تیر فشار متوسط حدود {DISTANCE_M} متر بوده که کابل نوع {CABLE_TYPE} پیشنهاد شده است. موقعیت محل در شکل {FIG_NO} نمایش داده شده است.",
-      "vars": ["LOCATION_NOTE", "DISTANCE_M", "CABLE_TYPE", "FIG_NO"]
+      "vars": [
+        "LOCATION_NOTE",
+        "DISTANCE_M",
+        "CABLE_TYPE",
+        "FIG_NO"
+      ]
     },
     {
       "id": "T-LOCATION-DETAIL-NOFIG",
       "title": "توضیح موقعیت (با فاصله و کابل، بدون شکل)",
       "template": "{LOCATION_NOTE} طبق مختصات ارائه‌شده در مدارک ارسالی، فاصله محل تقاضا تا نزدیک‌ترین تیر فشار متوسط حدود {DISTANCE_M} متر بوده که کابل نوع {CABLE_TYPE} پیشنهاد شده است.",
-      "vars": ["LOCATION_NOTE", "DISTANCE_M", "CABLE_TYPE"]
+      "vars": [
+        "LOCATION_NOTE",
+        "DISTANCE_M",
+        "CABLE_TYPE"
+      ]
     },
     {
       "id": "T-MANEUVER",
       "title": "مانور / بازآرایی شبکه",
       "template": "طبق اظهار نظر همکاران واحد مهندسی امور {OFFICE}، {TRANSFER_TEXT} جزئیات مربوط به این بازآرایی در شکل {FIG_NO} نمایش داده شده است. {MANEUVER_NOTE}",
-      "vars": ["OFFICE", "TRANSFER_TEXT", "FIG_NO", "MANEUVER_NOTE"]
+      "vars": [
+        "OFFICE",
+        "TRANSFER_TEXT",
+        "FIG_NO",
+        "MANEUVER_NOTE"
+      ]
     },
     {
       "id": "T-MANEUVER-TRANSFER",
       "title": "جزئیات انتقال بار مانور",
       "template": "{SOURCE} بر روی {TARGET} منتقل شده و انتقال حدود {TRANSFERRED_MW} مگاوات بار صورت گرفته است.",
-      "vars": ["SOURCE", "TARGET", "TRANSFERRED_MW"]
+      "vars": [
+        "SOURCE",
+        "TARGET",
+        "TRANSFERRED_MW"
+      ]
     },
     {
       "id": "T-MANEUVER-TRANSFER-NOMW",
       "title": "جزئیات انتقال بار (مقدار نامشخص)",
       "template": "بخشی از انشعاب {SOURCE} بر روی {TARGET} منتقل شده است.",
-      "vars": ["SOURCE", "TARGET"]
+      "vars": [
+        "SOURCE",
+        "TARGET"
+      ]
     },
     {
       "id": "T-MANEUVER-UNCERTAIN",
       "title": "یادداشت عدم قطعیت زمان مانور",
       "template": "لازم به ذکر می‌باشد زمان دقیق انتقال بار بین دو فیدر بر اساس اطلاعات موجود مشخص نبوده و این موضوع هنگام تفسیر پروفیل بار می‌بایست مدنظر قرار گیرد.",
       "vars": []
+    },
+    {
+      "id": "T-INTRO-ITEM-DEMAND",
+      "title": "بند الف — مشخصات تقاضا (مطابق گزارش مرجع)",
+      "template": "الف) تقاضای درخواستی {REQUESTED} کیلووات می‌باشد{EXISTING}{WITHOUT}{WITH}{FACTOR}{REQUEST_KIND}.",
+      "vars": [
+        "REQUESTED",
+        "EXISTING",
+        "WITHOUT",
+        "WITH",
+        "FACTOR",
+        "REQUEST_KIND"
+      ]
     }
   ]
 }
