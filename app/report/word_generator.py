@@ -17,7 +17,8 @@ from docx.shared import Cm, Pt, RGBColor
 
 from app.core.models import Project, REQUEST_INCREASE
 from app import APP_VERSION
-from app.core.report_types import booklet_title, header_title, is_protection_report
+from app.core.report_types import (REPORT_TYPE_FEEDER_DEV, booklet_title,
+                                   header_title, is_protection_report)
 from app.core.settings import AppSettings
 from app.report.sections import FigureBlock, GeneratedReport, Paragraph, ReportSection, TableSpec
 from app.utils.jalali import jalali_month_year
@@ -198,8 +199,11 @@ class WordGenerator:
         self.settings = settings
         self.f = settings.fonts
         # قالب‌های حفاظتی (ریکلوزر/سکشنالایزر/ترکیبی): چیدمان جلد و سربرگ
-        # دقیقاً مطابق «نمونه دفترچه مطالعه ریکلوزر و سکشنالایزر»
-        self.protection = is_protection_report(getattr(project, "report_type", ""))
+        # دقیقاً مطابق «نمونه دفترچه مطالعه ریکلوزر و سکشنالایزر».
+        # v2.4.0 — دفترچه «توسعه و اصلاح فیدر» هم از همین قالب دفترچه (جلد با
+        # عنوان سری + شماره گزارش و سربرگ سه‌ستونه با شماره/تاریخ) استفاده می‌کند.
+        rt = getattr(project, "report_type", "")
+        self.protection = is_protection_report(rt) or rt == REPORT_TYPE_FEEDER_DEV
 
     @property
     def _caption_size(self) -> int:

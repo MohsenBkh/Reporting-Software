@@ -97,6 +97,8 @@ def build_project_tree(project: Any, workspace: Workspace,
             for name in workspace.scope(kind):
                 n.children[0].children.append(TreeNode(f"feeder:{kind.value}:{name}", name, "feeder"))
             inp.children.append(n)
+    if sel.is_selected(StudyKind.FEEDER_DEV):            # v2.4.0
+        inp.children.append(TreeNode("input.feeder_dev", "توسعه و اصلاح فیدر", "study"))
     inp.children.append(TreeNode("images", "تصاویر و شکل‌های گزارش", "group"))
     root.children.append(inp)
 
@@ -125,6 +127,9 @@ def study_status(project: Any, workspace: Workspace, kind: StudyKind,
         return ST_NOT_SELECTED
     if not has_study_data(project, kind):
         return ST_EMPTY
+    if kind is StudyKind.FEEDER_DEV:
+        # v2.4.0 — مطالعه توسعه فیدر موتور قواعد ندارد؛ داده ثبت‌شده = کامل
+        return ST_COMPLETE
     if results is None:
         return ST_UNEVALUATED
     if any(r.status in ("MISSING_DATA", "MISSING_RULE", "DATA_ERROR") for r in results):

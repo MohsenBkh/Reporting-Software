@@ -59,6 +59,10 @@ class ProtectionSettings:
     counter: Optional[int] = None                     # شمارنده (سکشنالایزر)
     dead_line_current_pct: Optional[float] = None     # % جریان نامی
     dead_line_voltage_pct: Optional[float] = None     # % ولتاژ نامی
+    # v2.4.0 — قابلیت فیوز سیوینگ (Fuse saving) ریکلوزر:
+    # None = ثبت نشده، True = فعال، False = غیرفعال؛ توضیح مثل «شات‌های سریع ۱ و ۲».
+    fuse_saving: Optional[bool] = None
+    fuse_saving_note: str = ""
     ct_ratio: str = ""
     note: str = ""
 
@@ -84,6 +88,7 @@ class ProtectionSettings:
                     or self.reclaim_time_s is not None or self.counter is not None
                     or self.dead_line_current_pct is not None
                     or self.dead_line_voltage_pct is not None
+                    or self.fuse_saving is not None or self.fuse_saving_note.strip()
                     or self.ct_ratio.strip() or self.note.strip())
 
     # --- سریال‌سازی ------------------------------------------------------
@@ -100,7 +105,8 @@ class ProtectionSettings:
                 known = {f.name for f in dataclasses.fields(FunctionSetting)}
                 setattr(obj, key, FunctionSetting(**{k: v for k, v in raw.items() if k in known}))
         for key in ("shots", "reclaim_time_s", "counter", "dead_line_current_pct",
-                    "dead_line_voltage_pct", "ct_ratio", "note"):
+                    "dead_line_voltage_pct", "fuse_saving", "fuse_saving_note",
+                    "ct_ratio", "note"):
             if key in data:
                 setattr(obj, key, data[key])
         if isinstance(data.get("dead_times_s"), list):

@@ -96,6 +96,7 @@ class ProtectionSettingsEditor(QWidget):
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
         self.shots = self.dead_times = self.reclaim = None
+        self.fuse_saving = self.fuse_saving_note = None
         self.counter = self.dl_current = self.dl_voltage = None
         if reclosing:
             self.shots = OptionalNumberEdit()
@@ -105,6 +106,17 @@ class ProtectionSettingsEditor(QWidget):
             form.addRow("تعداد Shot:", self.shots)
             form.addRow("Dead time ها (s):", self.dead_times)
             form.addRow("Reclaim time (s):", self.reclaim)
+            # v2.4.0 — قابلیت فیوز سیوینگ (Fuse saving) ریکلوزر
+            self.fuse_saving = QComboBox()
+            for label in ("— (ثبت نشده)", "فعال", "غیرفعال"):
+                self.fuse_saving.addItem(label)
+            self.fuse_saving.setToolTip(
+                "طرح فیوز سیوینگ: عملکرد شات‌های سریع ریکلوزر پیش از ذوب فیوز شاخه‌ها")
+            self.fuse_saving_note = QLineEdit()
+            self.fuse_saving_note.setPlaceholderText(
+                "مثال: شات‌های ۱ و ۲ روی منحنی سریع — فیوز K 100A")
+            form.addRow("فیوز سیوینگ:", self.fuse_saving)
+            form.addRow("توضیح فیوز سیوینگ:", self.fuse_saving_note)
         if counter:
             self.counter = OptionalNumberEdit()
             self.dl_current = OptionalNumberEdit()
@@ -113,11 +125,15 @@ class ProtectionSettingsEditor(QWidget):
             form.addRow("Dead line — جریان (٪ In):", self.dl_current)
             form.addRow("Dead line — ولتاژ (٪ Un):", self.dl_voltage)
         grid.addLayout(form, len(FUNCTION_KEYS) + 1, 0, 1, 5)
-        for w in (self.shots, self.dead_times, self.reclaim, self.counter,
-                  self.dl_current, self.dl_voltage):
-            if w is not None:
+        for w in (self.shots, self.dead_times, self.reclaim, self.fuse_saving,
+                  self.fuse_saving_note, self.counter, self.dl_current, self.dl_voltage):
+            if w is None:
+                continue
+            if isinstance(w, QComboBox):
+                w.currentIndexChanged.connect(self._emit)
+            else:
                 w.textChanged.connect(self._emit)
-                self._order.append(w)
+            self._order.append(w)
         for a, b in zip(self._order, self._order[1:]):       # Tab Order صحیح
             QWidget.setTabOrder(a, b)
         self._loading = False
@@ -137,7 +153,8 @@ class ProtectionSettingsEditor(QWidget):
                           "pickup_a": row[3]}.get(attr)
         else:
             target = {"shots": self.shots, "dead_times": self.dead_times, "reclaim": self.reclaim,
-                      "counter": self.counter, "dead_line": self.dl_current}.get(key)
+                      "fuse_saving": self.fuse_saving, "counter": self.counter,
+                      "dead_line": self.dl_current}.get(key)
         if target is None:
             return False
         target.setFocus()
@@ -163,6 +180,9 @@ class ProtectionSettingsEditor(QWidget):
             self.shots.set_value(None if s.shots is None else float(s.shots))
             self.dead_times.setText(", ".join(f"{t:g}" for t in s.dead_times_s))
             self.reclaim.set_value(s.reclaim_time_s)
+            self.fuse_saving.setCurrentIndex(
+                0 if s.fuse_saving is None else (1 if s.fuse_saving else 2))
+            self.fuse_saving_note.setText(s.fuse_saving_note)
         if self.counter is not None:
             self.counter.set_value(None if s.counter is None else float(s.counter))
             self.dl_current.set_value(s.dead_line_current_pct)
@@ -181,6 +201,9 @@ class ProtectionSettingsEditor(QWidget):
                                           for p in self.dead_times.text().replace("،", ",").split(","))
                               if t is not None]
             s.reclaim_time_s = self.reclaim.value()
+            idx = self.fuse_saving.currentIndex()
+            s.fuse_saving = None if idx == 0 else (idx == 1)
+            s.fuse_saving_note = self.fuse_saving_note.text().strip()
         if self.counter is not None:
             v = self.counter.value()
             s.counter = None if v is None else int(v)

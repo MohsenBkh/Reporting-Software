@@ -17,12 +17,14 @@ class StudyKind(str, Enum):
     HEAVY = "heavy"
     RECLOSER = "recloser"
     SECTIONALIZER = "sectionalizer"
+    FEEDER_DEV = "feeder_dev"            # v2.4.0 — توسعه و اصلاح فیدر
 
 
 STUDY_LABELS_FA = {
     StudyKind.HEAVY: "متقاضی سنگین",
     StudyKind.RECLOSER: "ریکلوزر",
     StudyKind.SECTIONALIZER: "سکشنالایزر",
+    StudyKind.FEEDER_DEV: "توسعه و اصلاح فیدر",
 }
 PROTECTION_KINDS = (StudyKind.RECLOSER, StudyKind.SECTIONALIZER)
 PROTECTION_WORKSPACE_TITLE_FA = "مطالعات حفاظت و اتوماسیون شبکه"
@@ -35,6 +37,7 @@ class StudySelection:
     heavy: bool = False
     recloser: bool = False
     sectionalizer: bool = False
+    feeder_dev: bool = False             # v2.4.0 — توسعه و اصلاح فیدر
 
     def kinds(self) -> list[StudyKind]:
         return [k for k in StudyKind if getattr(self, k.value)]
@@ -63,6 +66,8 @@ def selection_from_legacy(report_type: Optional[str]) -> StudySelection:
         return StudySelection(sectionalizer=True)
     if report_type == StudyKind.RECLOSER.value:
         return StudySelection(recloser=True)
+    if report_type == StudyKind.FEEDER_DEV.value:
+        return StudySelection(feeder_dev=True)
     return StudySelection(heavy=True)
 
 
@@ -91,4 +96,6 @@ def report_type_for_selection(selection: "StudySelection") -> str:
         return StudyKind.RECLOSER.value
     if selection.sectionalizer:
         return StudyKind.SECTIONALIZER.value
+    if selection.feeder_dev:
+        return StudyKind.FEEDER_DEV.value
     return StudyKind.HEAVY.value

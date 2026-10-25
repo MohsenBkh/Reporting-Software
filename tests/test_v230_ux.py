@@ -259,4 +259,5 @@ def test_settings_page_sections_split_into_three_tabs():
     # همه بخش‌ها همچنان چک‌باکس دارند (ذخیره/بازیابی بدون تغییر)
     assert set(pg.chk_sections) == {k for k, _ in REPORT_SECTIONS}
     tabs = [w for w in pg.findChildren(QTabWidget)]
-    assert any(t.count() == 3 for t in tabs)
+    # v2.4.0: تب چهارم «توسعه و اصلاح فیدر» اضافه شد (۳ تب قبلی + ۱)
+    assert any(t.count() == 4 for t in tabs)

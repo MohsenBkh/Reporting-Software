@@ -201,7 +201,10 @@ def apply_bundle_to_project(project, bundle: dict) -> IdmtImportResult:
     cycle = resolved.get("cycle") or {}
 
     # --- ریکلوزر: توابع ۵۱/۵۰/۵۱N/۵۰N + چرخه وصل مجدد --------------------
+    prev_fuse = (rec.settings.fuse_saving, rec.settings.fuse_saving_note)
     rec.settings = _protection_settings(r_phase.get("rec"), r_earth.get("rec"), note)
+    # فیوز سیوینگ دستی قبلی تا وقتی بسته بخش «فیوز» نداشته باشد حفظ می‌شود
+    rec.settings.fuse_saving, rec.settings.fuse_saving_note = prev_fuse
     if ct_primary is not None:
         rec.settings.ct_ratio = _fmt(ct_primary)
     shots = _num(cycle.get("shots"))
@@ -217,6 +220,9 @@ def apply_bundle_to_project(project, bundle: dict) -> IdmtImportResult:
     if f51.pickup_a is not None:
         rec.pickup_current_a = f51.pickup_a
     res.applied.append("تنظیمات نهایی ریکلوزر (۵۱/۵۰/۵۱N/۵۰N + Shot/Dead/Reclaim)")
+
+    # --- قابلیت فیوز سیوینگ (v2.4.0) — از بخش «فیوز» خود ابزار IDMT ---------
+    _apply_fuse_saving(rec.settings, src.get("fuse"), res)
 
     # --- رله سرخط (بالادست) ---------------------------------------------
     head_ps = _protection_settings(r_phase.get("head"), r_earth.get("head"), note)
@@ -327,6 +333,36 @@ def _apply_to_workspace(project, feeder: str, voltage, load_a, in_phase: dict,
         res.applied.append("شبکه مشترک (فیدر محدوده مطالعه + رله ابتدای فیدر)")
     except Exception:  # noqa: BLE001 — نبود Workspace نباید ورود بسته را متوقف کند
         pass
+
+
+def _apply_fuse_saving(settings: ProtectionSettings, fuse, res: "IdmtImportResult") -> None:
+    """قابلیت فیوز سیوینگ ریکلوزر از بخش «فیوز» بسته IDMT (v2.4.0).
+
+    در ابزار IDMT اگر فیوز پایین‌دست (فاز یا زمین) در هماهنگی «فعال» شده باشد،
+    طرح فیوز سیوینگ (عملکرد شات‌های سریع ریکلوزر پیش از ذوب فیوز) مبنای مطالعه
+    است؛ نوع و جریان نامی فیوز به توضیح منتقل می‌شود. نبود بخش فیوز در بسته =
+    دست‌نخورده ماندن مقدار قبلی (هیچ مقداری «ساخته» نمی‌شود).
+    """
+    if not isinstance(fuse, dict) or not fuse:
+        return
+    parts: list[str] = []
+    enabled = False
+    for key, label in (("phase", "فاز"), ("earth", "زمین")):
+        m = fuse.get(key)
+        if not isinstance(m, dict) or not m:
+            continue
+        if m.get("enabled"):
+            enabled = True
+            ftype = str(m.get("type") or "").strip()
+            rating = _num(m.get("rating"))
+            desc = f"{label}: فیوز" + (f" {ftype}" if ftype else "")
+            if rating is not None:
+                desc += f" {rating:g}A"
+            parts.append(desc)
+    settings.fuse_saving = enabled
+    settings.fuse_saving_note = " — ".join(parts)
+    res.applied.append("قابلیت فیوز سیوینگ ریکلوزر (از بخش فیوز IDMT: "
+                       + ("فعال" if enabled else "غیرفعال") + ")")
 
 
 def _div(v: Optional[float], by: float) -> Optional[float]:

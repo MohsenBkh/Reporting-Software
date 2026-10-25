@@ -43,6 +43,7 @@ from app.ui.shell.dashboard_model import dashboard_cards, validation_checklist
 from app.ui.shell.dashboard_page import EngineeringDashboard
 from app.ui.shell.design import shell_qss
 from app.ui.shell.explorer import ProjectExplorer
+from app.ui.shell.feeder_dev_page import FeederDevPage
 from app.ui.shell.guide_bar import GuideBar
 from app.ui.shell.inspector import PropertyInspector
 from app.ui.shell.inspector_model import apply_include_flag, inspector_model
@@ -71,6 +72,7 @@ ROUTES: dict[str, tuple[str, Optional[str]]] = {
     "sectionalizer.device": ("sectionalizer", "device"),
     "sectionalizer.settings": ("sectionalizer", "settings"),
     "protection": ("protnet", None),
+    "feeder_dev": ("feeder_dev", None),          # v2.4.0 — توسعه و اصلاح فیدر
     "images": ("images", None), "analysis": ("analysis", "metrics"),
     "validation": ("analysis", "validation"),
     "review": ("review", None), "settings": ("settings", None),
@@ -83,7 +85,8 @@ ROUTE_STEP = {"project": "project", "applicant": "input", "study": "input", "inp
               "protnet": "input",
               "recloser.network": "input", "recloser.device": "input", "recloser.settings": "input",
               "sectionalizer.network": "input", "sectionalizer.device": "input",
-              "sectionalizer.settings": "input", "protection": "input", "images": "input",
+              "sectionalizer.settings": "input", "protection": "input",
+              "feeder_dev": "input", "images": "input",
               "validation": "validation", "analysis": "analysis", "review": "review",
               "preview": "preview", "generate": "generate", "ai": "review"}
 # گرهٔ Explorer ← کلید ناوبری
@@ -96,6 +99,7 @@ NODE_ROUTE = {
     "sectionalizer.network": "sectionalizer.network",
     "sectionalizer.device": "sectionalizer.device",
     "sectionalizer.settings": "sectionalizer.settings",
+    "input.feeder_dev": "feeder_dev", "feeder_dev": "feeder_dev",
     "images": "images", "step.validation": "validation", "step.analysis": "analysis",
     "step.review": "review", "step.preview": "preview", "step.generate": "reportcenter",
     "report.select": "reportcenter", "report.generate": "generate", "report.ai": "ai", "settings": "settings",
@@ -104,6 +108,7 @@ ROUTE_NODE = {v: k for k, v in NODE_ROUTE.items()}
 TITLES = {"dashboard": "داشبورد", "home": "خانه", "project": "اطلاعات پروژه",
           "heavy": "متقاضی سنگین", "protnet": "فیدرهای محدوده مطالعه",
           "recloser": "ریکلوزر", "sectionalizer": "سکشنالایزر",
+          "feeder_dev": "توسعه و اصلاح فیدر",
           "images": "تصاویر گزارش", "analysis": "اعتبارسنجی و تحلیل", "review": "بازبینی مهندس",
           "reportcenter": "Report Center", "settings": "تنظیمات"}
 
@@ -139,6 +144,7 @@ class EngineeringWindow(MainWindow):
                                             self._ws, lambda: self.settings.theme)
         self.secz_page = ProtectionStudyPage(self.manager, self.settings, StudyKind.SECTIONALIZER,
                                              self._ws, lambda: self.settings.theme)
+        self.feeder_dev_page = FeederDevPage(self.manager)      # v2.4.0
         self.selection_page = ReportCenterPage(self.manager, self._ws)
         self.ai_page = AIPage(self.manager, self.settings, self._ws, self._current_report,
                               lambda: self._results, on_applied=self._on_ai_applied)
@@ -149,6 +155,7 @@ class EngineeringWindow(MainWindow):
             "home": self.home_page, "dashboard": self.dashboard_page, "project": self.project_page,
             "heavy": self.heavy_page, "protnet": self.prot_network_page,
             "recloser": self.rec_page, "sectionalizer": self.secz_page,
+            "feeder_dev": self.feeder_dev_page,
             "images": self.images_page, "analysis": self.analysis_page, "review": self.review_page,
             "reportcenter": self.report_center, "settings": self.settings_page}
 
@@ -229,7 +236,8 @@ class EngineeringWindow(MainWindow):
         hp.continue_requested.connect(lambda k: self.navigate(STEP_TO_PAGE.get(k, "dashboard")))
         hp.open_file_requested.connect(GeneratePage._open)
         for pg in (self.project_page, self.applicant_page, self.feeder_page, self.images_page,
-                   self.study_page, self.prot_network_page, self.rec_page, self.secz_page):
+                   self.study_page, self.prot_network_page, self.rec_page, self.secz_page,
+                   self.feeder_dev_page):
             pg.changed.connect(self._data_changed)
         self.selection_page.changed.connect(self._on_selection_changed)
         self.ai_page.changed.connect(self._data_changed_keep_cache)
@@ -313,6 +321,8 @@ class EngineeringWindow(MainWindow):
           tip="فیدرهای محدودهٔ مطالعه و اطلاعات شبکه — یک‌بار ورود برای ریکلوزر و سکشنالایزر")
         A("recloser", "ریکلوزر", self._nav("recloser"))
         A("sectionalizer", "سکشنالایزر", self._nav("sectionalizer"))
+        A("feeder_dev", "توسعه و اصلاح فیدر", self._nav("feeder_dev"),
+          tip="ورود داده مطالعه توسعه و اصلاح فیدر (دفترچه مطالعات توسعه و اصلاح شبکه)")
         A("validate", "اعتبارسنجی", self._nav("validation"), "F5")
         A("analysis", "تحلیل مهندسی", self._nav("analysis"))
         A("run", "اجرای قواعد حفاظتی", self._run_protection, "F6")
@@ -363,6 +373,7 @@ class EngineeringWindow(MainWindow):
         g = p.add_group("ورود داده مطالعات")
         g.add_action(a["study"], "study"); g.add_action(a["prot_network"], "input")
         g.add_action(a["recloser"], "protection"); g.add_action(a["sectionalizer"], "protection")
+        g.add_action(a["feeder_dev"], "input")
         g = p.add_group("هماهنگی حفاظتی (IDMT)")
         g.add_action(a["idmt_tool"], "analysis"); g.add_action(a["idmt_import"], "input")
 
@@ -391,9 +402,11 @@ class EngineeringWindow(MainWindow):
         R.set_current("file")
         self._project_actions = [a[k] for k in (
             "save", "import", "project", "applicant", "input", "profile", "loadflow", "images",
-            "study", "prot_network", "recloser", "sectionalizer", "validate", "analysis", "run", "review",
+            "study", "prot_network", "recloser", "sectionalizer", "feeder_dev",
+            "validate", "analysis", "run", "review",
             "rc_select", "rc_preview", "rc_generate", "rc_ai", "dashboard",
-            "sel_heavy", "sel_recloser", "sel_sectionalizer", "idmt_import")]
+            "sel_heavy", "sel_recloser", "sel_sectionalizer", "sel_feeder_dev",
+            "idmt_import")]
         a["import"].setEnabled(True)
 
     # ------------------------------------------------------------------
@@ -567,6 +580,8 @@ class EngineeringWindow(MainWindow):
             page = self.pages[page_key]
             page.refresh()
             page.show_tab(sub or "device")
+        elif page_key == "feeder_dev":
+            self.feeder_dev_page.refresh()
         elif page_key == "images":
             self.images_page.refresh()
         elif page_key == "analysis":
@@ -612,6 +627,8 @@ class EngineeringWindow(MainWindow):
                 self.prot_network_page.save_to_project()
             elif page in ("recloser", "sectionalizer"):
                 self.pages[page].save_to_project()
+            elif page == "feeder_dev":
+                self.feeder_dev_page.save_to_project()
         except Exception as exc:  # noqa: BLE001
             log_exception(exc, "collect forms")
 
@@ -725,15 +742,13 @@ class EngineeringWindow(MainWindow):
         if not fname:
             return
         try:
-            res = import_idmt_file(self.manager, fname)
+            res = self._apply_idmt_import(fname)
         except IdmtBundleError as exc:
             QMessageBox.warning(self, "ورود از IDMT", str(exc))
             return
         except Exception as exc:  # noqa: BLE001 — خطای غیرمنتظره نباید برنامه را ببندد
             QMessageBox.critical(self, "ورود از IDMT", f"ورود بسته ناموفق بود: {exc}")
             return
-        self._data_changed()
-        self._refresh_dashboard()
         lines = ["داده‌های زیر از IDMT منتقل شد:"]
         lines += [f"• {a}" for a in res.applied]
         if res.images:
@@ -751,6 +766,41 @@ class EngineeringWindow(MainWindow):
         QMessageBox.information(self, "ورود از IDMT", "\n".join(lines))
         self.statusBar().showMessage(f"ورود از IDMT انجام شد ({res.summary}).", 8000)
         self.navigate("recloser")
+
+    def _apply_idmt_import(self, fname):
+        """هسته ورود بسته IDMT (بدون دیالوگ) — برای فراخوانی از UI و آزمون‌ها.
+
+        رفع اشکال v2.4.0: پس از نشاندن داده‌های بسته روی پروژه، فرم‌های بازِ
+        صفحه‌های حفاظتی هنوز مقادیر قدیمی (معمولاً خالی) را نشان می‌دهند. اگر
+        قبل از نخستین ``_collect_forms`` (مثلاً هنگام ``navigate``) تازه نشوند،
+        همان مقادیر کهنه روی تنظیمات واردشدهٔ ریکلوزر/سکشنالایزر نوشته می‌شوند
+        و به نظر می‌رسد «ورود از IDMT» کار نکرده است. پس بلافاصله بعد از ورود،
+        همهٔ صفحه‌های متأثر refresh می‌شوند.
+        """
+        from app.core.idmt_bundle import import_idmt_file
+        res = import_idmt_file(self.manager, fname)
+        self._refresh_pages_after_import()
+        self._data_changed()
+        self._refresh_dashboard()
+        return res
+
+    def _refresh_pages_after_import(self) -> None:
+        """تازه‌سازی صفحه‌هایی که ورود بسته IDMT داده‌هایشان را تغییر می‌دهد."""
+        project = self.manager.project
+        if project is None:
+            return
+        for key in ("recloser", "sectionalizer", "protnet", "images"):
+            page = self.pages.get(key)
+            refresh = getattr(page, "refresh", None)
+            if callable(refresh):
+                try:
+                    refresh()
+                except Exception as exc:  # noqa: BLE001
+                    log_exception(exc, f"refresh پس از ورود IDMT ({key})")
+        try:        # عنوان پروژه هم ممکن است از بسته پر شده باشد
+            self.project_page.load_from(project)
+        except Exception as exc:  # noqa: BLE001
+            log_exception(exc, "refresh صفحه پروژه پس از ورود IDMT")
 
     def _refresh_dashboard(self) -> None:
         project, ws = self.manager.project, self._ws()

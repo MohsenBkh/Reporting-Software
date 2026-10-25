@@ -21,7 +21,8 @@ from app.core.studies import (PROTECTION_KINDS, STUDY_LABELS_FA, StudyKind,
                               StudySelection)
 from app.core.workspace import (OUTPUT_COMBINED, OUTPUT_SEPARATE, Workspace,
                                 load_workspace_for, resolve_study_inputs)
-from app.core.report_sections import PROTECTION_DEFAULT_SECTION_BY_KIND
+from app.core.report_sections import (FEEDER_DEV_DEFAULT_SECTION_BY_KIND,
+                                      PROTECTION_DEFAULT_SECTION_BY_KIND)
 from app.report.protection_narrative import NarrativeEngine, RefParagraph
 from app.report.sections import (FigureBlock, GeneratedReport, Paragraph, ReportSection,
                                  TableSpec, number_figures)
@@ -42,8 +43,13 @@ def figures_for_section(project: Any, resolver: Optional[Callable], key: str) ->
     picked = []
     for idx, img in enumerate(images):
         explicit = (getattr(img, "section_key", "") or "").strip()
-        target = explicit or PROTECTION_DEFAULT_SECTION_BY_KIND.get(getattr(img, "kind", ""), "")
-        if target == key:
+        kind = getattr(img, "kind", "")
+        if explicit:
+            targets = {explicit}
+        else:       # بدون محل صریح: پیش‌فرض نوع شکل در گزارش حفاظتی و/یا توسعه فیدر
+            targets = {PROTECTION_DEFAULT_SECTION_BY_KIND.get(kind, ""),
+                       FEEDER_DEV_DEFAULT_SECTION_BY_KIND.get(kind, "")}
+        if key in targets:
             picked.append((getattr(img, "order", 0) or 0, idx, img))
     out: list[FigureBlock] = []
     for _order, _idx, img in sorted(picked, key=lambda t: (t[0], t[1])):
@@ -91,6 +97,10 @@ def plan_reports(selection: StudySelection, protection_mode: str = OUTPUT_COMBIN
             plans.append(ReportPlan(kind.value, f"گزارش مطالعه {STUDY_LABELS_FA[kind]}", [kind],
                                     "Recloser Report" if kind is StudyKind.RECLOSER
                                     else "Sectionalizer Report"))
+    if getattr(selection, "feeder_dev", False):      # v2.4.0 — دفترچه توسعه و اصلاح فیدر
+        plans.append(ReportPlan(StudyKind.FEEDER_DEV.value,
+                                "گزارش مطالعه توسعه و اصلاح فیدر",
+                                [StudyKind.FEEDER_DEV], "Feeder Development Report"))
     return plans
 
 
@@ -156,6 +166,12 @@ def _settings_table(ctx: ComposeContext, caption: str, settings: ProtectionSetti
              ["Reclaim time (s)", MISSING if settings.reclaim_time_s is None
               else f"{settings.reclaim_time_s:g}", "", ""],
              ["Counter", MISSING if settings.counter is None else str(settings.counter), "", ""]]
+    # v2.4.0 — قابلیت فیوز سیوینگ ریکلوزر (فقط وقتی ثبت شده باشد درج می‌شود)
+    if settings.fuse_saving is not None or (settings.fuse_saving_note or "").strip():
+        state = (MISSING if settings.fuse_saving is None
+                 else ("فعال" if settings.fuse_saving else "غیرفعال"))
+        extra.append(["فیوز سیوینگ (Fuse saving)", state,
+                      (settings.fuse_saving_note or "").strip(), ""])
     return TableSpec(caption=f"جدول {ctx.next_table()}: {caption}",
                      header_rows=[["تابع / پارامتر", "منحنی", "TMS / زمان", "Pickup (A)"]],
                      body_rows=rows + extra)
@@ -408,6 +424,145 @@ def _settings_sheet(ctx: ComposeContext) -> ReportSection:
     return sec
 
 
+# ---------------------------------------------------------------------------
+# v2.4.0 — بخش‌های مطالعه «توسعه و اصلاح فیدر» (دفترچه مطالعات توسعه و اصلاح شبکه)
+# اسکلت فصل‌ها مطابق دفترچه‌های نمونه: مقدمه ← مشخصات شبکه و وضعیت موجود ←
+# پخش بار قبل ← راه‌حل پیشنهادی ← پخش بار بعد ← نتیجه‌گیری.
+# ---------------------------------------------------------------------------
+def _fd_num(v: Optional[float], unit: str = "") -> str:
+    if v is None:
+        return MISSING
+    return f"{v:g} {unit}".strip()
+
+
+def _fd_paras(text: str) -> list[Paragraph]:
+    return [Paragraph(line.strip()) for line in (text or "").split("\n") if line.strip()]
+
+
+def _fd_info(ctx: ComposeContext):
+    return getattr(ctx.project, "feeder_dev", None)
+
+
+def _fd_intro(ctx: ComposeContext) -> ReportSection:
+    sec = ReportSection("fd_intro", "مقدمه")
+    info = _fd_info(ctx)
+    if info is None:
+        return sec
+    if (info.intro or "").strip():
+        sec.blocks.extend(_fd_paras(info.intro))
+        return sec
+    # متن پیش‌فرض مطابق مقدمه دفترچه‌های نمونه (مرجع‌ها: WI150900 و TAV111-03/00)
+    kind = (info.plan_kind or "").strip() or "توسعه و اصلاح شبکه فشار متوسط"
+    where = f" در محدوده پست {info.substation.strip()}" if (info.substation or "").strip() else ""
+    sec.blocks.append(Paragraph(
+        "این گزارش بر اساس «دستورالعمل بررسی درخواست و تأمین برق متقاضیان» به شماره "
+        "WI150900 و استاندارد شرکت توانیر به شماره TAV111-03/00 تهیه شده است و نتایج "
+        f"مطالعه {kind}{where} را ارائه می‌کند."))
+    sec.blocks.append(Paragraph(
+        "در این مطالعه ابتدا وضعیت موجود فیدرهای محدوده بررسی و سپس نتایج پخش بار "
+        "شبکه در دو حالت قبل و بعد از اجرای طرح پیشنهادی مقایسه می‌شود تا اثر طرح بر "
+        "پروفیل ولتاژ، بارگیری و تلفات شبکه مشخص شود."))
+    return sec
+
+
+def _fd_network(ctx: ComposeContext) -> ReportSection:
+    sec = ReportSection("fd_network", "مشخصات شبکه و وضعیت موجود")
+    info = _fd_info(ctx)
+    if info is None:
+        return sec
+    sec.blocks.extend(_fd_paras(info.existing_description))
+    rows = [[(f.name or MISSING), _fd_num(f.voltage_kv), _fd_num(f.length_km),
+             _fd_num(f.peak_load_mw), _fd_num(f.min_load_mw),
+             _fd_num(f.loading_pct), _fd_num(f.power_factor)]
+            for f in (info.feeders or [])]
+    if rows:
+        sec.blocks.append(TableSpec(
+            caption=f"جدول {ctx.next_table()}: مشخصات فیدرهای محدوده مطالعه",
+            header_rows=[["پست و فیدر", "ولتاژ (kV)", "طول خط (km)", "حداکثر بار (MW)",
+                          "حداقل بار (MW)", "بارگیری (%)", "ضریب قدرت"]],
+            body_rows=rows))
+    return sec
+
+
+_FD_METRICS = (("حداقل ولتاژ شبکه (kV)", "min_voltage_kv_before", "min_voltage_kv_after"),
+               ("تلفات توان (kW)", "losses_kw_before", "losses_kw_after"),
+               ("حداکثر بارگیری فیدر (%)", "max_loading_pct_before", "max_loading_pct_after"))
+
+
+def _fd_before(ctx: ComposeContext) -> ReportSection:
+    sec = ReportSection("fd_before", "وضعیت پخش بار شبکه قبل از اصلاح")
+    info = _fd_info(ctx)
+    if info is None:
+        return sec
+    sec.blocks.extend(_fd_paras(info.before_description))
+    rows = [[label, _fd_num(getattr(info, b))]
+            for label, b, _a in _FD_METRICS if getattr(info, b) is not None]
+    if rows:
+        sec.blocks.append(TableSpec(
+            caption=f"جدول {ctx.next_table()}: نتایج پخش بار شبکه قبل از اصلاح",
+            header_rows=[["پارامتر", "مقدار"]], body_rows=rows))
+    return sec
+
+
+def _fd_plan(ctx: ComposeContext) -> ReportSection:
+    sec = ReportSection("fd_plan", "راه‌حل پیشنهادی (شرح طرح)")
+    info = _fd_info(ctx)
+    if info is None:
+        return sec
+    sec.blocks.extend(_fd_paras(info.proposal_description))
+    rows = []
+    if (info.plan_kind or "").strip():
+        rows.append(["نوع طرح", info.plan_kind.strip()])
+    if info.new_line_length_km is not None:
+        rows.append(["طول خط جدید/اصلاحی (km)", _fd_num(info.new_line_length_km)])
+    if (info.conductor_type or "").strip():
+        rows.append(["نوع هادی", info.conductor_type.strip()])
+    if info.removed_line_length_km is not None:
+        rows.append(["طول خط برچیده‌شده (km)", _fd_num(info.removed_line_length_km)])
+    if rows:
+        sec.blocks.append(TableSpec(
+            caption=f"جدول {ctx.next_table()}: مشخصات طرح پیشنهادی",
+            header_rows=[["پارامتر", "مقدار"]], body_rows=rows))
+    return sec
+
+
+def _fd_after(ctx: ComposeContext) -> ReportSection:
+    sec = ReportSection("fd_after", "وضعیت پخش بار شبکه بعد از اصلاح")
+    info = _fd_info(ctx)
+    if info is None:
+        return sec
+    sec.blocks.extend(_fd_paras(info.after_description))
+    rows = [[label, _fd_num(getattr(info, b)), _fd_num(getattr(info, a))]
+            for label, b, a in _FD_METRICS
+            if getattr(info, b) is not None or getattr(info, a) is not None]
+    if rows:
+        sec.blocks.append(TableSpec(
+            caption=f"جدول {ctx.next_table()}: مقایسه نتایج پخش بار قبل و بعد از اصلاح",
+            header_rows=[["پارامتر", "قبل از اصلاح", "بعد از اصلاح"]], body_rows=rows))
+    return sec
+
+
+def _fd_conclusion(ctx: ComposeContext) -> ReportSection:
+    sec = ReportSection("fd_conclusion", "نتیجه‌گیری")
+    info = _fd_info(ctx)
+    if info is None:
+        return sec
+    if (info.conclusion or "").strip():
+        sec.blocks.extend(_fd_paras(info.conclusion))
+        return sec
+    # بازتاب دادهٔ ثبت‌شده (بدون نتیجه‌گیری مهندسی ساختگی): فقط مقادیر قبل/بعد
+    facts = []
+    for label, b, a in _FD_METRICS:
+        vb, va = getattr(info, b), getattr(info, a)
+        if vb is not None and va is not None:
+            facts.append(f"{label} از {vb:g} به {va:g} رسید")
+    if facts:
+        sec.blocks.append(Paragraph(
+            "بر اساس نتایج پخش بار ثبت‌شده، پس از اجرای طرح پیشنهادی " +
+            "، ".join(facts) + ". تصمیم نهایی دربارهٔ اجرای طرح با مهندس مطالعه است."))
+    return sec
+
+
 @dataclass
 class ReportComponent:
     key: str
@@ -416,7 +571,9 @@ class ReportComponent:
     requires_kinds: Optional[set[StudyKind]] = None   # None = برای هر مطالعهٔ حفاظتی
 
     def applies(self, kinds: list[StudyKind]) -> bool:
-        return self.requires_kinds is None or bool(self.requires_kinds & set(kinds))
+        if self.requires_kinds is None:     # بخش عمومی حفاظتی — نه برای توسعه فیدر
+            return any(k in PROTECTION_KINDS for k in kinds)
+        return bool(self.requires_kinds & set(kinds))
 
 
 # ترتیب فصل‌ها دقیقاً مطابق فهرست دفترچه نمونه «احداث ریکلوزر — فیدر ۴ خلخال»:
@@ -440,6 +597,18 @@ DEFAULT_COMPONENTS: list[ReportComponent] = [
     ReportComponent("prot_recommendation", "پیشنهاد نهایی", _recommendation),
     ReportComponent("prot_trace", "پیوست — ردیابی یافته‌ها", _trace),
     ReportComponent("prot_settings_sheet", "پیوست — برگه تنظیمات هماهنگی", _settings_sheet),
+    # v2.4.0 — مطالعه «توسعه و اصلاح فیدر» (فقط در گزارش همین مطالعه ظاهر می‌شود)
+    ReportComponent("fd_intro", "توسعه فیدر — مقدمه", _fd_intro, {StudyKind.FEEDER_DEV}),
+    ReportComponent("fd_network", "توسعه فیدر — مشخصات شبکه و وضعیت موجود", _fd_network,
+                    {StudyKind.FEEDER_DEV}),
+    ReportComponent("fd_before", "توسعه فیدر — پخش بار قبل از اصلاح", _fd_before,
+                    {StudyKind.FEEDER_DEV}),
+    ReportComponent("fd_plan", "توسعه فیدر — راه‌حل پیشنهادی", _fd_plan,
+                    {StudyKind.FEEDER_DEV}),
+    ReportComponent("fd_after", "توسعه فیدر — پخش بار بعد از اصلاح", _fd_after,
+                    {StudyKind.FEEDER_DEV}),
+    ReportComponent("fd_conclusion", "توسعه فیدر — نتیجه‌گیری", _fd_conclusion,
+                    {StudyKind.FEEDER_DEV}),
 ]
 
 
@@ -491,11 +660,14 @@ class ReportComposer:
                 image_resolver: Optional[Callable] = None,
                 notices: Optional[list[str]] = None,
                 charts_dir: Optional[Path] = None) -> GeneratedReport:
-        kinds = [k for k in kinds if k in PROTECTION_KINDS]
+        kinds = [k for k in kinds
+                 if k in PROTECTION_KINDS or k is StudyKind.FEEDER_DEV]
+        prot_kinds = [k for k in kinds if k in PROTECTION_KINDS]
         ctx = ComposeContext(project, workspace, kinds, narrative=self.narrative,
                              charts_dir=charts_dir)
-        ctx.results = self.analyse(project, workspace, kinds, thresholds)
-        ctx.vars = self.narrative.build_vars(project, workspace, kinds, ctx.results)
+        # قواعد و متن حفاظتی فقط برای مطالعات حفاظتی اجرا می‌شوند (نه توسعه فیدر)
+        ctx.results = self.analyse(project, workspace, prot_kinds, thresholds)
+        ctx.vars = self.narrative.build_vars(project, workspace, prot_kinds, ctx.results)
         sections = []
         if notices:                                       # خطاهای رفع‌نشده در آغاز گزارش
             sections.append(ReportSection("prot_notice", "هشدار — نقص‌های رفع‌نشده", [

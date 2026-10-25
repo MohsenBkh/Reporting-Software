@@ -13,8 +13,8 @@ from dataclasses import dataclass
 
 from app.core.models import Project, REQUEST_INCREASE
 from app.core.report_types import (REPORT_TYPE_COMBINED_PROTECTION,
-                                   REPORT_TYPE_RECLOSER, REPORT_TYPE_SECTIONALIZER,
-                                   normalize)
+                                   REPORT_TYPE_FEEDER_DEV, REPORT_TYPE_RECLOSER,
+                                   REPORT_TYPE_SECTIONALIZER, normalize)
 from app.core.settings import AppSettings
 
 ERROR = "error"      # خطای ضروری → دکمه تولید غیرفعال
@@ -66,6 +66,8 @@ def validate_project(project: Project, settings: AppSettings) -> list[Validation
         return validate_sectionalizer(project, settings)
     if report_type in (REPORT_TYPE_RECLOSER, REPORT_TYPE_COMBINED_PROTECTION):
         return validate_protection(project, settings, report_type)
+    if report_type == REPORT_TYPE_FEEDER_DEV:
+        return validate_feeder_dev(project, settings)
     return validate_heavy(project, settings)
 
 
@@ -276,6 +278,47 @@ def validate_sectionalizer(project: Project, settings: AppSettings) -> list[Vali
              "جریان اتصال کوتاه و جریان پیکاپ را تکمیل کنید.")
     else:
         _add(items, OK, "تنظیمات حفاظتی سکشنالایزر", STEP_INPUT)
+
+    items.append(ValidationItem(OK, "قالب گزارش", ""))
+    return items
+
+
+# ---------------------------------------------------------------------------
+# v2.4.0 — اعتبارسنجی گزارش «توسعه و اصلاح فیدر»
+# ---------------------------------------------------------------------------
+def validate_feeder_dev(project: Project, settings: AppSettings) -> list[ValidationItem]:
+    """اعتبارسنجی سبک گزارش «توسعه و اصلاح فیدر».
+
+    کمبود دادهٔ فنی «هشدار» است نه خطا تا ساخت گزارش ممکن بماند؛ مقادیر ناموجود
+    در جدول‌ها با وضعیت «ناموجود» درج می‌شوند.
+    """
+    items: list[ValidationItem] = []
+    fd = project.feeder_dev
+
+    _validate_general_info(items, project)
+
+    if not fd.feeders:
+        _add(items, WARNING,
+             "هیچ فیدری در جدول «مشخصات فیدرهای محدوده مطالعه» ثبت نشده است.",
+             STEP_INPUT, "در صفحه «توسعه و اصلاح فیدر» دست‌کم یک فیدر وارد کنید.",
+             target="feeder_dev")
+    else:
+        _add(items, OK, "مشخصات فیدرهای محدوده مطالعه", STEP_INPUT, target="feeder_dev")
+
+    if not (fd.proposal_description.strip() or fd.plan_kind.strip()
+            or fd.conductor_type.strip() or fd.new_line_length_km is not None):
+        _add(items, WARNING, "شرح طرح پیشنهادی (راه‌حل) ثبت نشده است.", STEP_INPUT,
+             "در بخش «راه‌حل پیشنهادی» شرح یا مشخصات طرح را وارد کنید.",
+             target="feeder_dev")
+    else:
+        _add(items, OK, "شرح طرح پیشنهادی", STEP_INPUT, target="feeder_dev")
+
+    if not fd.has_results():
+        _add(items, WARNING, "نتایج پخش بار قبل/بعد از اصلاح ثبت نشده است.", STEP_INPUT,
+             "حداقل ولتاژ، تلفات یا حداکثر بارگیری شبکه را برای دو حالت قبل و بعد "
+             "از اجرای طرح ثبت کنید.", target="feeder_dev")
+    else:
+        _add(items, OK, "نتایج پخش بار قبل/بعد از اصلاح", STEP_INPUT, target="feeder_dev")
 
     items.append(ValidationItem(OK, "قالب گزارش", ""))
     return items

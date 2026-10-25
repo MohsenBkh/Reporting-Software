@@ -46,7 +46,9 @@ def _device_model(project: Any, kind: StudyKind) -> InspectorModel:
     ]
     if kind is StudyKind.RECLOSER and s is not None:
         rows += [("تعداد Shot", _txt(s.shots)),
-                 ("Reclaim time", format_quantity(s.reclaim_time_s, "s", 0))]
+                 ("Reclaim time", format_quantity(s.reclaim_time_s, "s", 0)),
+                 ("فیوز سیوینگ", MISSING_TEXT if s.fuse_saving is None
+                  else ("فعال" if s.fuse_saving else "غیرفعال"))]
     if kind is StudyKind.SECTIONALIZER and s is not None:
         rows += [("Counter", _txt(s.counter)),
                  ("Dead line", (f"{s.dead_line_current_pct:g}% I / {s.dead_line_voltage_pct:g}% V"
@@ -83,6 +85,18 @@ def inspector_model(project: Any, workspace: Workspace, key: str) -> InspectorMo
         base = key.split(".")[0]                      # recloser.network → recloser
     if base in (StudyKind.RECLOSER.value, StudyKind.SECTIONALIZER.value):
         return _device_model(project, StudyKind(base))
+    if base == StudyKind.FEEDER_DEV.value:               # v2.4.0
+        fd = getattr(project, "feeder_dev", None)
+        if fd is None:
+            return InspectorModel(title="توسعه و اصلاح فیدر")
+        return InspectorModel(
+            title="توسعه و اصلاح فیدر",
+            rows=[("نوع طرح", _txt(fd.plan_kind)),
+                  ("پست محدوده", _txt(fd.substation)),
+                  ("تعداد فیدر", str(len(fd.feeders or []))),
+                  ("طول خط جدید", format_quantity(fd.new_line_length_km, "km", 2)),
+                  ("نوع هادی", _txt(fd.conductor_type)),
+                  ("نتایج قبل/بعد", "ثبت شده" if fd.has_results() else MISSING_TEXT)])
     if key.startswith("feeder:"):
         return _feeder_model(workspace, key.split(":")[-1])
     if key in ("project", "project.info", "step.project", "dashboard"):

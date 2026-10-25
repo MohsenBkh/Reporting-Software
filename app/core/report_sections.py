@@ -60,6 +60,15 @@ REPORT_SECTIONS: list[tuple[str, str]] = [
     ("prot_trace", "حفاظت — پیوست ردیابی یافته‌ها"),
     # v2.2.0 — پیوست برگه تنظیمات نهایی (خروجی نرم‌افزار IDMT)
     ("prot_settings_sheet", "حفاظت — پیوست برگه تنظیمات"),
+    # v2.4.0 — مطالعه «توسعه و اصلاح فیدر» (دفترچه مطالعات توسعه و اصلاح شبکه)
+    # ترتیب فصل‌ها مطابق دفترچه‌های نمونه (اصلاح خط اوچ‌بلاغ / فیدر جدید آغدام):
+    # مقدمه ← مشخصات شبکه و وضعیت موجود ← پخش بار قبل ← راه‌حل پیشنهادی ← پخش بار بعد ← نتیجه‌گیری
+    ("fd_intro", "توسعه فیدر — مقدمه"),
+    ("fd_network", "توسعه فیدر — مشخصات شبکه و وضعیت موجود"),
+    ("fd_before", "توسعه فیدر — پخش بار قبل از اصلاح"),
+    ("fd_plan", "توسعه فیدر — راه‌حل پیشنهادی (شرح طرح)"),
+    ("fd_after", "توسعه فیدر — پخش بار بعد از اصلاح"),
+    ("fd_conclusion", "توسعه فیدر — نتیجه‌گیری"),
 ]
 
 # شکل بدون محل صریح در گزارش‌های حفاظتی: نوع شکل ← بخش پیش‌فرض
@@ -67,6 +76,13 @@ PROTECTION_DEFAULT_SECTION_BY_KIND: dict[str, str] = {
     "location": "prot_placement", "network": "prot_network", "other": "prot_coordination",
     "single_line": "prot_network", "tcc": "prot_coordination", "placement": "prot_placement",
     "sequence": "prot_scenario", "settings_sheet": "prot_settings_sheet",
+}
+
+# v2.4.0 — شکل بدون محل صریح در گزارش «توسعه و اصلاح فیدر»: نوع شکل ← بخش پیش‌فرض
+FEEDER_DEV_DEFAULT_SECTION_BY_KIND: dict[str, str] = {
+    "network": "fd_network", "single_line": "fd_network", "location": "fd_network",
+    "profile": "fd_network", "before": "fd_before", "after": "fd_after",
+    "other": "fd_after",
 }
 
 SECTION_LABELS: dict[str, str] = dict(REPORT_SECTIONS)
@@ -111,7 +127,7 @@ def kind_options() -> list[tuple[str, str]]:
 # v2.0.0 — بخش‌ها و انواع شکل متناسب با مطالعات انتخاب‌شده
 # ---------------------------------------------------------------------------
 def _is_heavy_key(key: str) -> bool:
-    return not key.startswith(("secz_", "prot_"))
+    return not key.startswith(("secz_", "prot_", "fd_"))
 
 
 def sections_for_selection(selection) -> list[tuple[str, str]]:
@@ -126,6 +142,7 @@ def sections_for_selection(selection) -> list[tuple[str, str]]:
         return list(REPORT_SECTIONS)
     out: list[tuple[str, str]] = []
     prot = selection.recloser or selection.sectionalizer
+    fd = bool(getattr(selection, "feeder_dev", False))
     for key, label in REPORT_SECTIONS:
         if key.startswith("secz_") or key == "prot_trace":
             continue
@@ -137,6 +154,9 @@ def sections_for_selection(selection) -> list[tuple[str, str]]:
             if key == "prot_sectionalizer" and not selection.sectionalizer:
                 continue
             out.append((key, label))
+        elif key.startswith("fd_"):
+            if fd:                                  # v2.4.0 — توسعه و اصلاح فیدر
+                out.append((key, label))
         elif selection.heavy:
             out.append((key, label))
     return out
@@ -146,13 +166,17 @@ HEAVY_ONLY_IMAGE_KINDS = ("profile", "forecast", "before", "after")
 
 
 def image_kinds_for_selection(selection, all_kinds: dict[str, str]) -> dict[str, str]:
-    """انواع شکل: «پروفیل/پیش‌بینی/پخش بار» فقط برای متقاضی سنگین؛ «تک‌خطی/TCC/جانمایی» فقط حفاظتی."""
+    """انواع شکل: «پروفیل/پیش‌بینی/پخش بار» فقط برای متقاضی سنگین؛ «تک‌خطی/TCC/جانمایی» فقط حفاظتی.
+
+    v2.4.0 — مطالعه «توسعه و اصلاح فیدر» هم شکل‌های پخش بار (قبل/بعد) و پروفیل دارد.
+    """
     if selection is None:
         return dict(all_kinds)
     prot = selection.recloser or selection.sectionalizer
+    heavy_like = selection.heavy or bool(getattr(selection, "feeder_dev", False))
     out = {}
     for k, label in all_kinds.items():
-        if k in HEAVY_ONLY_IMAGE_KINDS and not selection.heavy:
+        if k in HEAVY_ONLY_IMAGE_KINDS and not heavy_like:
             continue
         if k in PROTECTION_IMAGE_KINDS and not prot:
             continue

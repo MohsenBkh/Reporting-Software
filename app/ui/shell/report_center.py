@@ -17,7 +17,8 @@ from app.ui.shell.design import SPACING
 
 TAB_KEYS = ("select", "preview", "generate", "ai")
 PLAN_TO_REPORT_TYPE = {"heavy": "heavy", "recloser": "recloser", "sectionalizer": "sectionalizer",
-                       "combined_protection": "combined_protection"}
+                       "combined_protection": "combined_protection",
+                       "feeder_dev": "feeder_dev"}
 
 
 class ReportCenter(QWidget):

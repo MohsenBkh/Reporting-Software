@@ -228,12 +228,15 @@ class SettingsPage(QWidget):
             return page
 
         heavy_items = [(k, l) for k, l in REPORT_SECTIONS
-                       if not k.startswith(("secz_", "prot_"))]
+                       if not k.startswith(("secz_", "prot_", "fd_"))]
         prot_items = [(k, l.replace("حفاظت — ", "")) for k, l in REPORT_SECTIONS
                       if k.startswith("prot_")]
+        fd_items = [(k, l.replace("توسعه فیدر — ", "")) for k, l in REPORT_SECTIONS
+                    if k.startswith("fd_")]            # v2.4.0
         secz_items = [(k, l) for k, l in REPORT_SECTIONS if k.startswith("secz_")]
         tabs6.addTab(_section_tab(heavy_items), "متقاضی سنگین")
         tabs6.addTab(_section_tab(prot_items), "ریکلوزر و سکشنالایزر")
+        tabs6.addTab(_section_tab(fd_items), "توسعه و اصلاح فیدر")
         tabs6.addTab(_section_tab(secz_items), "قالب قدیمی سکشنالایزر")
         v6.addWidget(tabs6)
         note6 = QLabel("بخش خاموش، در گزارش و در پیوست ردیابی نمی‌آید؛ داده‌های آن حذف "

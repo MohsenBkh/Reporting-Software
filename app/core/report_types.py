@@ -28,23 +28,29 @@ REPORT_TYPE_HEAVY = "heavy"                # متقاضیان سنگین (پیش
 REPORT_TYPE_SECTIONALIZER = "sectionalizer"  # مطالعه نصب سکشنالایزر
 REPORT_TYPE_RECLOSER = "recloser"          # مطالعه ریکلوزر
 REPORT_TYPE_COMBINED_PROTECTION = "combined_protection"  # گزارش ترکیبی ریکلوزر + سکشنالایزر
+REPORT_TYPE_FEEDER_DEV = "feeder_dev"      # v2.4.0 — مطالعه توسعه و اصلاح فیدر
 
 REPORT_TYPE_LABELS: dict[str, str] = {
     REPORT_TYPE_HEAVY: "متقاضیان سنگین (یک مگاوات و بالاتر)",
     REPORT_TYPE_SECTIONALIZER: "مطالعه سکشنالایزر",
     REPORT_TYPE_RECLOSER: "مطالعه ریکلوزر",
     REPORT_TYPE_COMBINED_PROTECTION: "گزارش ترکیبی ریکلوزر و سکشنالایزر",
+    REPORT_TYPE_FEEDER_DEV: "مطالعه توسعه و اصلاح فیدر",
 }
 
 # عنوان دفترچهٔ مندرج در جلد، سربرگ و مشخصات سند — برای هر قالب
 # قالب‌های حفاظتی: عنوان سری دفترچه مطابق «نمونه دفترچه مطالعه ریکلوزر و سکشنالایزر»
 PROTECTION_BOOKLET_TITLE = "دفترچه مطالعات جایابی تجهیزات و هماهنگی حفاظتی"
 PROTECTION_HEADER_TITLE = "گزارش مطالعات نصب و هماهنگی حفاظتی ریکلوزر و سکشنالایزر"
+# v2.4.0 — دفترچه نمونه «توسعه و اصلاح شبکه»: جلد ≠ سربرگ (مطابق نمونه‌های واقعی)
+FEEDER_DEV_BOOKLET_TITLE = "دفترچه مطالعات توسعه و اصلاح شبکه"
+FEEDER_DEV_HEADER_TITLE = "دفترچه مطالعات توسعه و اصلاح فیدر"
 REPORT_TYPE_BOOKLETS: dict[str, str] = {
     REPORT_TYPE_HEAVY: "دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر",
     REPORT_TYPE_SECTIONALIZER: PROTECTION_BOOKLET_TITLE,
     REPORT_TYPE_RECLOSER: PROTECTION_BOOKLET_TITLE,
     REPORT_TYPE_COMBINED_PROTECTION: PROTECTION_BOOKLET_TITLE,
+    REPORT_TYPE_FEEDER_DEV: FEEDER_DEV_BOOKLET_TITLE,
 }
 
 PROTECTION_REPORT_TYPES = (REPORT_TYPE_RECLOSER, REPORT_TYPE_SECTIONALIZER,
@@ -60,11 +66,14 @@ def header_title(report_type: str) -> str:
     """عنوان میانی سربرگ صفحات — مطابق سربرگ دفترچه نمونه برای قالب‌های حفاظتی."""
     if is_protection_report(report_type):
         return PROTECTION_HEADER_TITLE
+    if (report_type or "") == REPORT_TYPE_FEEDER_DEV:
+        return FEEDER_DEV_HEADER_TITLE
     return booklet_title(report_type)
 
 # قالب‌هایی که پیاده‌سازی آن‌ها تکمیل شده است.
 _IMPLEMENTED = {REPORT_TYPE_HEAVY, REPORT_TYPE_SECTIONALIZER,
-                REPORT_TYPE_RECLOSER, REPORT_TYPE_COMBINED_PROTECTION}
+                REPORT_TYPE_RECLOSER, REPORT_TYPE_COMBINED_PROTECTION,
+                REPORT_TYPE_FEEDER_DEV}
 
 # قالب‌هایی که با مولد مطالعات حفاظتی (ReportComposer) تولید می‌شوند
 PROTECTION_COMPOSER_TYPES = {REPORT_TYPE_RECLOSER, REPORT_TYPE_COMBINED_PROTECTION}

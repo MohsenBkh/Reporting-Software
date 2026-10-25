@@ -125,6 +125,18 @@ def input_requirements(project: Any, workspace: Workspace, settings: Any) -> lis
     for kind in PROTECTION_KINDS:
         if workspace.selection.is_selected(kind):
             reqs += _protection_requirements(project, workspace, kind)
+    if workspace.selection.is_selected(StudyKind.FEEDER_DEV):    # v2.4.0
+        fd = getattr(project, "feeder_dev", None)
+        reqs.append(Requirement(
+            "توسعه فیدر: ثبت دست‌کم یک فیدر در جدول «مشخصات فیدرهای محدوده مطالعه»",
+            bool(getattr(fd, "feeders", None)), "feeder_dev", "", StudyKind.FEEDER_DEV.value))
+        reqs.append(Requirement(
+            "توسعه فیدر: شرح طرح پیشنهادی یا مشخصات طرح",
+            bool(fd is not None and ((fd.proposal_description or "").strip()
+                                     or (fd.plan_kind or "").strip()
+                                     or fd.new_line_length_km is not None
+                                     or (fd.conductor_type or "").strip())),
+            "feeder_dev", "", StudyKind.FEEDER_DEV.value))
     return reqs
 
 

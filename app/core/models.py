@@ -128,6 +128,66 @@ class RecloserInfo:
 
 
 # ---------------------------------------------------------------------------
+# v2.4.0 — مطالعه «توسعه و اصلاح فیدر» (دفترچه مطالعات توسعه و اصلاح شبکه)
+# مطابق نمونه‌های واقعی: اصلاح خط موجود (اوچ‌بلاغ) و احداث فیدر جدید/بازآرایی
+# (پست آغدام). همه مقادیر اختیاری‌اند: نبود داده = None/خالی و نه صفر.
+# ---------------------------------------------------------------------------
+@dataclass
+class FeederDevRow:
+    """یک سطر جدول «مشخصات فیدرهای محدوده مطالعه»."""
+
+    name: str = ""                                # پست و فیدر (مثلاً «پست خلخال — فیدر ۴»)
+    voltage_kv: Optional[float] = None            # ولتاژ (kV)
+    length_km: Optional[float] = None             # طول خط (km)
+    peak_load_mw: Optional[float] = None          # حداکثر بار (MW)
+    min_load_mw: Optional[float] = None           # حداقل بار (MW)
+    loading_pct: Optional[float] = None           # درصد بارگیری فیدر
+    power_factor: Optional[float] = None          # ضریب قدرت
+
+
+@dataclass
+class FeederDevelopmentInfo:
+    """اطلاعات مطالعه «توسعه و اصلاح فیدر».
+
+    اسکلت فصل‌ها مطابق دفترچه‌های نمونه: مقدمه ← مشخصات شبکه و وضعیت موجود ←
+    پخش بار قبل از اصلاح ← راه‌حل پیشنهادی (شرح طرح) ← پخش بار بعد از اصلاح ←
+    نتیجه‌گیری. مرجع‌ها: دستورالعمل WI150900 و استاندارد TAV111-03/00.
+    """
+
+    plan_kind: str = ""                           # نوع طرح: اصلاح خط موجود / احداث فیدر جدید / بازآرایی
+    substation: str = ""                          # پست فوق توزیع محدوده مطالعه
+    feeders: list[FeederDevRow] = field(default_factory=list)   # جدول مشخصات فیدرها
+
+    # متن فصل‌ها (خالی = متن پیش‌فرض/حذف بخش)
+    intro: str = ""                               # مقدمه (پیش‌فرض: متن استاندارد با مرجع‌ها)
+    existing_description: str = ""                # تحلیل وضعیت موجود فیدرها
+    before_description: str = ""                  # شرح پخش بار قبل از اصلاح
+    proposal_description: str = ""                # شرح راه‌حل پیشنهادی / طرح
+    after_description: str = ""                   # شرح پخش بار بعد از اصلاح
+    conclusion: str = ""                          # نتیجه‌گیری
+
+    # مشخصات طرح پیشنهادی
+    new_line_length_km: Optional[float] = None    # طول خط جدید/اصلاحی (km)
+    conductor_type: str = ""                      # نوع هادی (مثلاً هاینا ۱۲۶)
+    removed_line_length_km: Optional[float] = None  # طول خط برچیده‌شده (km)
+
+    # نتایج پخش بار — قبل و بعد از اصلاح (DIgSILENT یا نرم‌افزار مشابه)
+    min_voltage_kv_before: Optional[float] = None  # حداقل ولتاژ شبکه قبل (kV)
+    min_voltage_kv_after: Optional[float] = None   # حداقل ولتاژ شبکه بعد (kV)
+    losses_kw_before: Optional[float] = None       # تلفات توان قبل (kW)
+    losses_kw_after: Optional[float] = None        # تلفات توان بعد (kW)
+    max_loading_pct_before: Optional[float] = None  # حداکثر بارگیری قبل (%)
+    max_loading_pct_after: Optional[float] = None   # حداکثر بارگیری بعد (%)
+
+    def has_results(self) -> bool:
+        """آیا دست‌کم یک نتیجه عددی قبل/بعد ثبت شده است؟"""
+        return any(v is not None for v in (
+            self.min_voltage_kv_before, self.min_voltage_kv_after,
+            self.losses_kw_before, self.losses_kw_after,
+            self.max_loading_pct_before, self.max_loading_pct_after))
+
+
+# ---------------------------------------------------------------------------
 # «تغییرات آرنا» v1.1.0 — ساختار داده‌های مطالعه مصارف سنگین
 # (منطبق با صورت‌مسئله Rule Engine: A) تقاضا B) پست‌ها C) خطوط D) متقاضیان همزمان
 #  E) سناریوهای تأمین — همه مقادیر اختیاری: نبود داده = None و نه صفر)
@@ -538,6 +598,7 @@ class Project:
     report_type: str = REPORT_TYPE_HEAVY
     sectionalizer: SectionalizerInfo = field(default_factory=SectionalizerInfo)
     recloser: RecloserInfo = field(default_factory=RecloserInfo)
+    feeder_dev: FeederDevelopmentInfo = field(default_factory=FeederDevelopmentInfo)  # v2.4.0
 
     applicant_name: str = ""              # نام متقاضی
     request_type: str = REQUEST_INCREASE  # new | increase
@@ -740,13 +801,17 @@ _NESTED: dict[type, dict[str, type]] = {
     LineCandidate: {},
     CoincidentDemand: {},
     SupplyScenario: {},
+    FeederDevRow: {},
+    FeederDevelopmentInfo: {},
     Project: {"maneuver": Maneuver, "demand": DemandInfo,
-              "sectionalizer": SectionalizerInfo, "recloser": RecloserInfo},
+              "sectionalizer": SectionalizerInfo, "recloser": RecloserInfo,
+              "feeder_dev": FeederDevelopmentInfo},
 }
 
 # فیلدهای لیستی که عضو آن‌ها dataclass است — هنگام بازسازی از JSON
 _NESTED_LISTS: dict[type, dict[str, type]] = {
     ForecastResult: {"points": ForecastPoint},
+    FeederDevelopmentInfo: {"feeders": FeederDevRow},
     Feeder: {"manual_forecast": ForecastPoint, "annual_peaks": ForecastPoint},
     Project: {"feeders": Feeder, "images": ProjectImage,
               "nearby_substations": SubstationCandidate,

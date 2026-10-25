@@ -8,7 +8,8 @@ from typing import Optional
 
 from app.core.models import Project
 from app.core.report_types import (REPORT_TYPE_COMBINED_PROTECTION,
-                                   REPORT_TYPE_HEAVY, REPORT_TYPE_RECLOSER,
+                                   REPORT_TYPE_FEEDER_DEV, REPORT_TYPE_HEAVY,
+                                   REPORT_TYPE_RECLOSER,
                                    REPORT_TYPE_SECTIONALIZER, booklet_title,
                                    is_implemented, pending_message)
 from app.core.settings import AppSettings
@@ -35,11 +36,12 @@ def make_generator(project: Project, settings: AppSettings,
     if not is_implemented(report_type):
         raise NotImplementedError(pending_message(report_type))
     if report_type in (REPORT_TYPE_RECLOSER, REPORT_TYPE_SECTIONALIZER,
-                       REPORT_TYPE_COMBINED_PROTECTION):
+                       REPORT_TYPE_COMBINED_PROTECTION, REPORT_TYPE_FEEDER_DEV):
         from app.core.studies import StudyKind
         from app.report.composer import ProtectionReportGenerator
         kinds = {REPORT_TYPE_RECLOSER: [StudyKind.RECLOSER],
-                 REPORT_TYPE_SECTIONALIZER: [StudyKind.SECTIONALIZER]}.get(
+                 REPORT_TYPE_SECTIONALIZER: [StudyKind.SECTIONALIZER],
+                 REPORT_TYPE_FEEDER_DEV: [StudyKind.FEEDER_DEV]}.get(
             report_type, [StudyKind.RECLOSER, StudyKind.SECTIONALIZER])
         return ProtectionReportGenerator(project, settings, texts, engine, charts_dir,
                                          image_resolver, profile_loader, kinds=kinds)
