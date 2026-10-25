@@ -19,6 +19,7 @@ from app.ai import keystore
 from app.ai.package import AIPackage, build_package
 from app.ai.providers import PROVIDERS, AIError
 from app.ai.service import (Proposal, SectionProposal, apply_section, check_ready,
+                            proposal_from_text,
                             recommend_provider, request_suggestions)
 from app.ai.settings import DEFAULT_INSTRUCTIONS, PROVIDER_CUSTOM
 from app.ui.widgets import page_header, scrollable
@@ -141,6 +142,13 @@ class AIPage(QWidget):
         bar.addWidget(self.btn_zip)
         bar.addWidget(self.btn_send)
         lv.addLayout(bar)
+        # v2.4.1 — مسیر آفلاین: بسته ZIP در هر ابزار هوش مصنوعی بارگذاری و پاسخ
+        # JSON آن (مثل ReportForge_AI_revised.json) بدون کلید API وارد می‌شود.
+        self.btn_load_resp = QPushButton("بارگذاری پاسخ از فایل…")
+        self.btn_load_resp.setToolTip(
+            "ورود پاسخ JSON هوش مصنوعی که به‌صورت دستی (با بستهٔ ZIP) گرفته‌اید — "
+            "مثلاً فایل ReportForge_AI_revised.json؛ همان بررسی و نگهبان اعداد اجرا می‌شود.")
+        lv.addWidget(self.btn_load_resp)
         self.lbl_status = QLabel("")
         self.lbl_status.setObjectName("Muted")
         self.lbl_status.setWordWrap(True)
@@ -211,6 +219,7 @@ class AIPage(QWidget):
         self.btn_reset_instr.clicked.connect(lambda: self.txt_instr.setPlainText(DEFAULT_INSTRUCTIONS))
         self.btn_zip.clicked.connect(self._save_zip)
         self.btn_send.clicked.connect(self._send)
+        self.btn_load_resp.clicked.connect(self._load_response)
         self.results.currentRowChanged.connect(self._show_proposal)
         self.btn_accept.clicked.connect(self._accept)
         self.btn_reject.clicked.connect(self._reject)
@@ -314,6 +323,35 @@ class AIPage(QWidget):
         if path:
             pkg.to_zip(path)
             self.lbl_status.setText(f"بسته ذخیره شد: {path} — {pkg.summary()}")
+
+    def _load_response(self) -> None:
+        """v2.4.1 — ورود پاسخ ذخیره‌شدهٔ مدل (مسیر آفلاین، بدون کلید API).
+
+        پاسخ باید همان JSONِ خواسته‌شده در task.md باشد:
+        {"sections": {"<کلید بخش>": "<متن>"}, "notes": "..."} — مثلاً فایل
+        ReportForge_AI_revised.json. بسته با همان بخش‌های انتخاب‌شدهٔ فعلی ساخته
+        می‌شود تا متن فعلی/کلیدهای مجاز و نگهبان اعداد دقیقاً مثل مسیر API باشند.
+        """
+        pkg = self._build_package()
+        if pkg is None:
+            return
+        path = QFileDialog.getOpenFileName(
+            self, "بارگذاری پاسخ هوش مصنوعی", "ReportForge_AI_revised.json",
+            "پاسخ JSON (*.json *.txt);;همه فایل‌ها (*)")[0]
+        if not path:
+            return
+        try:
+            raw = open(path, encoding="utf-8-sig").read()
+            proposal = proposal_from_text(raw, pkg)
+        except AIError as exc:
+            QMessageBox.warning(self, "بارگذاری پاسخ", str(exc))
+            return
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "بارگذاری پاسخ", f"فایل خوانده نشد: {exc}")
+            return
+        self._on_done(proposal)
+        self.lbl_status.setText(
+            f"پاسخ از فایل وارد شد ({len(proposal.sections)} بخش) — هر بخش را بررسی و بپذیرید.")
 
     def _send(self) -> None:
         if self._worker is not None:

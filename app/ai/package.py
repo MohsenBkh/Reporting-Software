@@ -174,7 +174,10 @@ def build_package(project: Any, workspace: Any, report: Any, results: Optional[d
     task = (f"# دستورالعمل\n\n{ai.instructions}\n\n## بخش‌های درخواست‌شده\n"
             + "\n".join(f"- {k}" for k in pkg.requested)
             + "\n\n## فایل‌ها\n- project.json، workspace.json: ورودی‌ها\n- findings.json: یافته‌های موتور قواعد "
-              "(با منبع و محل اصلاح)\n- sections.json: متن فعلی بخش‌ها\n- images/: تصاویر پروژه\n")
+              "(با منبع و محل اصلاح)\n- sections.json: متن فعلی بخش‌ها\n- images/: تصاویر پروژه\n"
+              "\n## بازگرداندن پاسخ به گزارش‌ساز\n"
+              "پاسخ JSON را در فایلی مانند ReportForge_AI_revised.json ذخیره کنید؛ در برنامه، "
+              "صفحهٔ «دستیار هوش مصنوعی» ← دکمهٔ «بارگذاری پاسخ از فایل…» آن را وارد می‌کند.\n")
     pkg.files["task.md"] = task.encode("utf-8")
     pkg.files["manifest.json"] = dump({"format": "reportforge-ai-package/1", "requested": pkg.requested,
                                         "anonymized": ai.anonymize_people, "n_images": pkg.n_images,
