@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import json
 from typing import Any, Callable, Optional
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
@@ -329,11 +330,18 @@ class AIPage(QWidget):
 
         پاسخ باید همان JSONِ خواسته‌شده در task.md باشد:
         {"sections": {"<کلید بخش>": "<متن>"}, "notes": "..."} — مثلاً فایل
-        ReportForge_AI_revised.json. بسته با همان بخش‌های انتخاب‌شدهٔ فعلی ساخته
-        می‌شود تا متن فعلی/کلیدهای مجاز و نگهبان اعداد دقیقاً مثل مسیر API باشند.
+        ReportForge_AI_revised.json. برخلاف مسیر ارسال، ورود از فایل به تیک‌های
+        فعلی وابسته نیست: هر بخشِ شناخته‌شدهٔ گزارشِ باز پذیرفته می‌شود (ممکن است
+        بسته ZIP با انتخاب دیگری — یا بدون انتخاب — ساخته شده باشد). نگهبان اعداد
+        و پذیرش بخش‌به‌بخش مثل مسیر API برقرار است.
         """
         pkg = self._build_package()
         if pkg is None:
+            return
+        # v2.4.1: فیلتر پذیرش = همهٔ بخش‌های گزارش (نه فقط تیک‌خورده‌ها)
+        pkg.requested = [s.key for s in pkg.sections if s.key not in SKIP_SECTIONS]
+        if not pkg.requested:
+            QMessageBox.warning(self, "بارگذاری پاسخ", "گزارش باز هیچ بخش قابل‌اصلاحی ندارد.")
             return
         path = QFileDialog.getOpenFileName(
             self, "بارگذاری پاسخ هوش مصنوعی", "ReportForge_AI_revised.json",
@@ -344,7 +352,17 @@ class AIPage(QWidget):
             raw = open(path, encoding="utf-8-sig").read()
             proposal = proposal_from_text(raw, pkg)
         except AIError as exc:
-            QMessageBox.warning(self, "بارگذاری پاسخ", str(exc))
+            msg = str(exc)
+            try:                                   # راهنمای بیشتر: کلیدهای فایل در برابر گزارش باز
+                file_keys = list((json.loads(raw).get("sections") or {}).keys())
+                unknown = [k for k in file_keys if k not in pkg.requested]
+                if unknown:
+                    msg += ("\n\nکلیدهای فایل که در گزارشِ باز وجود ندارند: "
+                            + "، ".join(unknown)
+                            + "\nپروژه/گزارش مربوط به همین پاسخ را باز و آماده کنید و دوباره تلاش کنید.")
+            except Exception:  # noqa: BLE001
+                pass
+            QMessageBox.warning(self, "بارگذاری پاسخ", msg)
             return
         except Exception as exc:  # noqa: BLE001
             QMessageBox.warning(self, "بارگذاری پاسخ", f"فایل خوانده نشد: {exc}")

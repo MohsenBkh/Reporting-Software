@@ -102,6 +102,43 @@ def test_ai_page_load_response_populates_review_ui(tmp_path, monkeypatch):
     assert "پاسخ از فایل وارد شد" in page.lbl_status.text()
 
 
+def test_ai_page_load_response_independent_of_selection(tmp_path, monkeypatch):
+    """رفع اشکال گزارش کاربر: اگر هیچ بخشی تیک نخورده باشد (یا تیک‌ها با زمان ساخت
+    ZIP فرق کنند)، ورود از فایل نباید خطای «مدل متنی ... برنگرداند» بدهد —
+    هر بخش شناخته‌شدهٔ گزارشِ باز پذیرفته می‌شود."""
+    page = _page(monkeypatch)
+    pkg = _pkg()
+    pkg.requested = []                                  # هیچ تیکی زده نشده
+    monkeypatch.setattr(page, "_build_package", lambda: pkg)
+    f = tmp_path / "ReportForge_AI_revised.json"
+    f.write_text(json.dumps({"sections": {"intro": "الف", "concl": "ب"}, "notes": ""},
+                            ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(QFileDialog, "getOpenFileName",
+                        staticmethod(lambda *a, **k: (str(f), "")))
+    page._load_response()
+    assert page.results.count() == 2
+    assert [s.key for s in page._proposal.sections] == ["intro", "concl"]
+
+
+def test_ai_page_load_response_lists_unknown_keys(tmp_path, monkeypatch):
+    """اگر کلیدهای فایل در گزارشِ باز نباشند (مثلاً پاسخ fd_* ولی گزارش ریکلوزر باز
+    است)، پیام خطا باید کلیدهای ناهمخوان را نام ببرد."""
+    page = _page(monkeypatch)
+    monkeypatch.setattr(page, "_build_package", lambda: _pkg())
+    f = tmp_path / "resp.json"
+    f.write_text(json.dumps({"sections": {"fd_intro": "متن"}, "notes": ""},
+                            ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(QFileDialog, "getOpenFileName",
+                        staticmethod(lambda *a, **k: (str(f), "")))
+    warned = []
+    from PySide6.QtWidgets import QMessageBox
+    monkeypatch.setattr(QMessageBox, "warning",
+                        staticmethod(lambda *a, **k: warned.append(a[2])))
+    page._load_response()
+    assert warned and "fd_intro" in warned[0]
+    assert page.results.count() == 0
+
+
 def test_ai_page_load_response_warns_on_bad_file(tmp_path, monkeypatch):
     page = _page(monkeypatch)
     monkeypatch.setattr(page, "_build_package", lambda: _pkg())
