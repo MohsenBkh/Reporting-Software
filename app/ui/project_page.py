@@ -9,10 +9,13 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QFormLayout, QFrame, QLabel, QLineEdit, QScrollArea,
+from PySide6.QtWidgets import (QComboBox, QFormLayout, QFrame, QHBoxLayout, QLabel,
+                               QLineEdit, QPushButton, QScrollArea, QSpinBox,
                                QVBoxLayout, QWidget)
 
 from app.core.models import Project
+from app.core.report_coding import (OFFICE_CODES, STUDY_CODE_LABELS,
+                                    describe_report_number, make_report_number)
 from app.utils.jalali import today_jalali
 
 
@@ -57,6 +60,31 @@ class ProjectPage(QWidget):
         self.ed_expert = QLineEdit()
         form.addRow("عنوان پروژه:", self.ed_name)
         form.addRow("شماره گزارش:", self.ed_number)
+        # --- v2.5.0: سازنده کد مدرک مطابق «کدگذاری مطالعات.xlsx» ---------------
+        code_row = QHBoxLayout()
+        self.cb_study_code = QComboBox()
+        for code, label in STUDY_CODE_LABELS.items():
+            self.cb_study_code.addItem(f"{label} ({code})", code)
+        self.cb_office_code = QComboBox()
+        for name, code in OFFICE_CODES.items():
+            self.cb_office_code.addItem(f"{name} ({code})", code)
+        self.sp_serial = QSpinBox()
+        self.sp_serial.setRange(1, 999)
+        self.sp_serial.setToolTip("شماره گزارش — از 001 شروع می‌شود")
+        self.btn_make_code = QPushButton("درج کد")
+        self.btn_make_code.setToolTip(
+            "ساخت کد مدرک به قالب «کد مطالعه-کد امور-شماره» (مثال: PD-13-001) و درج در «شماره گزارش»")
+        code_row.addWidget(self.cb_study_code, 2)
+        code_row.addWidget(self.cb_office_code, 2)
+        code_row.addWidget(self.sp_serial, 1)
+        code_row.addWidget(self.btn_make_code, 1)
+        form.addRow("کدگذاری مدرک:", code_row)
+        self.lbl_code_hint = QLabel("")
+        self.lbl_code_hint.setObjectName("Muted")
+        self.lbl_code_hint.setWordWrap(True)
+        form.addRow("", self.lbl_code_hint)
+        self.btn_make_code.clicked.connect(self._insert_code)
+        self.ed_number.textChanged.connect(self._update_code_hint)
         form.addRow("تاریخ گزارش:", self.ed_date)
         form.addRow("نام پست فوق توزیع:", self.ed_substation)
         form.addRow("نام امور:", self.ed_office)
@@ -84,8 +112,48 @@ class ProjectPage(QWidget):
             self.changed.emit()
 
     # ------------------------------------------------------------------
+    # v2.5.0 — کدگذاری مدرک
+    # ------------------------------------------------------------------
+    def _insert_code(self) -> None:
+        """ساخت کد از سه جزء انتخابی و درج در فیلد «شماره گزارش»."""
+        code = make_report_number(self.cb_study_code.currentData(),
+                                  self.cb_office_code.currentData(),
+                                  self.sp_serial.value())
+        self.ed_number.setText(code)
+        # اگر «نام امور» خالی است، از انتخاب کدگذاری پر شود
+        if not self.ed_office.text().strip():
+            office = self.cb_office_code.currentText().split("(")[0].strip()
+            self.ed_office.setText(office)
+
+    def _update_code_hint(self, *_a) -> None:
+        text = self.ed_number.text().strip()
+        if not text:
+            self.lbl_code_hint.setText("")
+            return
+        desc = describe_report_number(text)
+        self.lbl_code_hint.setText(
+            desc if desc else
+            "⚠ قالب کد با ساختار کدگذاری مطالعات (مثل PD-13-001) هم‌خوان نیست.")
+
+    # ------------------------------------------------------------------
     def load_from(self, project: Project) -> None:
+        from app.core.report_coding import (office_code_for_name, parse_report_number,
+                                            study_code_for_report_type)
         self._loading = True
+        # پیش‌فرض‌های سازنده کد از وضعیت پروژه (کد موجود > نوع مطالعه/نام امور)
+        parsed = parse_report_number(project.report_number)
+        sc = parsed[0] if parsed else study_code_for_report_type(project.report_type)
+        oc = parsed[1] if parsed else office_code_for_name(project.office)
+        if sc:
+            i = self.cb_study_code.findData(sc)
+            if i >= 0:
+                self.cb_study_code.setCurrentIndex(i)
+        if oc:
+            i = self.cb_office_code.findData(oc)
+            if i >= 0:
+                self.cb_office_code.setCurrentIndex(i)
+        if parsed:
+            self.sp_serial.setValue(parsed[2])
         self.ed_name.setText(project.name)
         self.ed_number.setText(project.report_number)
         self.ed_date.setText(project.date_jalali)

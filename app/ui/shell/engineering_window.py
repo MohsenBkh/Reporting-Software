@@ -137,7 +137,12 @@ class EngineeringWindow(MainWindow):
         self.preview_page = PreviewPage(self.manager, self.settings, self.analysis)
         self.generate_page = GeneratePage(self.manager, self.settings, self.analysis)
         self.settings_page = SettingsPage(self.settings)
-        self.heavy_page = HeavyStudyPage(self.applicant_page, self.feeder_page, self.study_page)
+        # v2.5.0 — تب «نیروگاه‌ها و اتوبوستر» برای مطالعه متقاضی سنگین
+        from app.ui.shell.network_assets import NetworkAssetsWidget
+        from app.ui.widgets import scrollable as _scrollable
+        self.heavy_assets = NetworkAssetsWidget(self.manager)
+        self.heavy_page = HeavyStudyPage(self.applicant_page, self.feeder_page, self.study_page,
+                                         _scrollable(self.heavy_assets))
         # v2.3.0 — صفحهٔ مشترک «فیدرهای محدودهٔ مطالعه» (یک‌بار ورود برای هر دو مطالعه)
         self.prot_network_page = NetworkEditor(self.manager, self._ws)
         self.rec_page = ProtectionStudyPage(self.manager, self.settings, StudyKind.RECLOSER,
@@ -237,7 +242,7 @@ class EngineeringWindow(MainWindow):
         hp.open_file_requested.connect(GeneratePage._open)
         for pg in (self.project_page, self.applicant_page, self.feeder_page, self.images_page,
                    self.study_page, self.prot_network_page, self.rec_page, self.secz_page,
-                   self.feeder_dev_page):
+                   self.feeder_dev_page, self.heavy_assets):
             pg.changed.connect(self._data_changed)
         self.selection_page.changed.connect(self._on_selection_changed)
         self.ai_page.changed.connect(self._data_changed_keep_cache)
@@ -570,6 +575,7 @@ class EngineeringWindow(MainWindow):
             self.applicant_page.load_from(project)
             self.feeder_page.refresh()
             self.study_page.refresh()
+            self.heavy_assets.refresh()           # v2.5.0 — نیروگاه‌ها و اتوبوستر
             tab, _, section = (sub or "applicant").partition(":")
             self.heavy_page.show_tab(tab)
             if section:
@@ -623,6 +629,7 @@ class EngineeringWindow(MainWindow):
                 self.applicant_page.save_to(project)
                 self.study_page.save_to_project()
                 self.feeder_page._save_current()  # noqa: SLF001
+                self.heavy_assets.save_to_project()   # v2.5.0
             elif page == "protnet":
                 self.prot_network_page.save_to_project()
             elif page in ("recloser", "sectionalizer"):

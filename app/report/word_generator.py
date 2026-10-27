@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import re as _re
 from pathlib import Path
 
 from docx import Document
@@ -75,7 +76,8 @@ def set_rtl(paragraph, rtl: bool = True) -> None:
 
 
 def style_run(run, font_fa: str, size: int, bold: bool = False,
-              color: RGBColor | None = None, font_latin: str = "Times New Roman") -> None:
+              color: RGBColor | None = None, font_latin: str = "Times New Roman",
+              rtl: bool = True) -> None:
     run.font.name = font_latin
     run.font.size = Pt(size)
     run.font.bold = bold
@@ -86,6 +88,10 @@ def style_run(run, font_fa: str, size: int, bold: bool = False,
     if rFonts is None:
         rFonts = _el("w:rFonts")
         rPr.insert(0, rFonts)
+    # v2.5.0: فونت لاتین صریح روی ascii/hAnsi تا واژه‌های انگلیسی با
+    # Times New Roman رندر شوند (نه گلیف لاتین فونت فارسی)
+    rFonts.set(qn("w:ascii"), font_latin)
+    rFonts.set(qn("w:hAnsi"), font_latin)
     rFonts.set(qn("w:cs"), font_fa)
     # ترتیب فرزندان rPr مطابق اسکیمای OOXML: ... b, bCs, ... sz, szCs, ... rtl
     if rPr.find(qn("w:szCs")) is None:
@@ -106,8 +112,38 @@ def style_run(run, font_fa: str, size: int, bold: bool = False,
                 szCs.addprevious(bCs)
             else:
                 rPr.append(bCs)
-    if rPr.find(qn("w:rtl")) is None:
-        rPr.append(_el("w:rtl"))
+    if rtl:
+        if rPr.find(qn("w:rtl")) is None:
+            rPr.append(_el("w:rtl"))
+
+
+#: قطعه لاتین: واژه‌ای که با حرف انگلیسی شروع می‌شود + ادامه‌های چسبیده
+#: (رقم/نقطه/خط تیره/اسلش) و واژه‌های لاتین بعدی با یک فاصله
+#: مثال‌ها: «WI150900»، «TAV111-03/00»، «DIgSILENT PowerFactory»، «ACSR-70 mm2»
+_LATIN_SEG = _re.compile(r"[A-Za-z][A-Za-z0-9&+./\-]*(?:[ ][A-Za-z0-9][A-Za-z0-9&+./\-]*)*")
+
+
+def add_text_runs(p, text: str, *, font_fa: str, size: int, bold: bool = False,
+                  color: RGBColor | None = None,
+                  font_latin: str = "Times New Roman") -> None:
+    """نوشتن متن مخلوط فارسی/انگلیسی در چند run.
+
+    v2.5.0 — قطعات انگلیسی در run جداگانه و بدون پرچم ``w:rtl`` نوشته می‌شوند تا
+    Word آن‌ها را با فونت لاتین (Times New Roman) رندر کند؛ در run دارای
+    ``w:rtl`` تمام متن با فونت فارسی (cs) نمایش داده می‌شود.
+    """
+    text = "" if text is None else str(text)
+    pos = 0
+    for m in _LATIN_SEG.finditer(text):
+        if m.start() > pos:
+            style_run(p.add_run(text[pos:m.start()]), font_fa, size, bold=bold,
+                      color=color, font_latin=font_latin)
+        style_run(p.add_run(m.group()), font_fa, size, bold=bold, color=color,
+                  font_latin=font_latin, rtl=False)
+        pos = m.end()
+    if pos < len(text) or not text:
+        style_run(p.add_run(text[pos:]), font_fa, size, bold=bold, color=color,
+                  font_latin=font_latin)
 
 
 def add_par(doc_or_cell, text: str, *, font_fa: str, size: int,
@@ -115,15 +151,15 @@ def add_par(doc_or_cell, text: str, *, font_fa: str, size: int,
             color: RGBColor | None = None, rtl: bool = True,
             space_after: int = 6, font_latin: str = "Times New Roman",
             line_spacing: float = 1.15):
-    """افزودن پاراگراف فارسی RTL با استایل کامل."""
+    """افزودن پاراگراف فارسی RTL با استایل کامل (واژه‌های انگلیسی با فونت لاتین)."""
     p = doc_or_cell.add_paragraph()
     p.alignment = align
     set_rtl(p, rtl)
     pf = p.paragraph_format
     pf.space_after = Pt(space_after)
     pf.line_spacing = line_spacing
-    run = p.add_run(text)
-    style_run(run, font_fa, size, bold=bold, color=color, font_latin=font_latin)
+    add_text_runs(p, text, font_fa=font_fa, size=size, bold=bold, color=color,
+                  font_latin=font_latin)
     return p
 
 
@@ -168,8 +204,8 @@ def cell_text(cell, text: str, *, font_fa: str, size: int, bold=False,
         set_rtl(p)
         p.paragraph_format.space_after = Pt(1)
         p.paragraph_format.space_before = Pt(1)
-        run = p.add_run(line)
-        style_run(run, font_fa, size, bold=bold, color=color, font_latin=font_latin)
+        add_text_runs(p, line, font_fa=font_fa, size=size, bold=bold, color=color,
+                      font_latin=font_latin)
 
 
 def _field(paragraph, instr: str) -> None:
@@ -365,8 +401,8 @@ class WordGenerator:
         ip.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         set_rtl(ip)
         ip.paragraph_format.space_after = Pt(0)
-        r = ip.add_run(f"شماره گزارش: {p.report_number}")
-        style_run(r, f.body_font, 10, bold=True)
+        add_text_runs(ip, f"شماره گزارش: {p.report_number}", font_fa=f.body_font,
+                      size=10, bold=True)
         ip2 = info_cell.add_paragraph()
         ip2.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         set_rtl(ip2)
@@ -419,8 +455,8 @@ class WordGenerator:
         cp2 = left_cell.paragraphs[0]
         cp2.alignment = WD_ALIGN_PARAGRAPH.LEFT
         set_rtl(cp2)
-        r = cp2.add_run(f"شماره گزارش: {p.report_number}        تاریخ: {jalali_month_year(p.date_jalali)}")
-        style_run(r, f.body_font, 10, bold=True)
+        add_text_runs(cp2, f"شماره گزارش: {p.report_number}        تاریخ: {jalali_month_year(p.date_jalali)}",
+                      font_fa=f.body_font, size=10, bold=True)
         self._header_rule(header)
 
     def _footer(self, sec) -> None:

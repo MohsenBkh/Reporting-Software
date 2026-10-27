@@ -146,6 +146,63 @@ class FeederDevRow:
 
 
 @dataclass
+class CandidateBus:
+    """شینه کاندید مطالعه توسعه/اصلاح فیدر — v2.5.0.
+
+    مقایسه قبل/بعد مانند جدول ۴ دفترچه نمونه (اوچ‌بلاغ/کوراماللو):
+    ولتاژ شینه و بارگیری ترانسفورماتور توزیع همان شینه.
+    """
+
+    name: str = ""                                     # نام شینه (مثلاً «روستای کوراماللو»)
+    voltage_kv_before: Optional[float] = None          # ولتاژ شینه قبل (kV)
+    voltage_kv_after: Optional[float] = None           # ولتاژ شینه بعد (kV)
+    trafo_loading_pct_before: Optional[float] = None   # بارگیری ترانسفورماتور قبل (%)
+    trafo_loading_pct_after: Optional[float] = None    # بارگیری ترانسفورماتور بعد (%)
+
+
+# ---------------------------------------------------------------------------
+# v2.5.0 — نیروگاه‌ها و اتوبوستر (مشترک بین همه مطالعات)
+# ---------------------------------------------------------------------------
+#: نوع نیروگاه: کلید -> برچسب فارسی
+PLANT_KINDS = {
+    "solar": "خورشیدی",
+    "gas": "گازی",
+    "thermal": "حرارتی",
+    "chp": "CHP",
+    "wind": "بادی",
+}
+
+#: پاسخ سؤال «وجود دارد؟»: "" = ثبت‌نشده
+PRESENCE_UNSET, PRESENCE_YES, PRESENCE_NO = "", "yes", "no"
+PRESENCE_LABELS = {PRESENCE_UNSET: "ثبت‌نشده", PRESENCE_YES: "وجود دارد", PRESENCE_NO: "وجود ندارد"}
+
+
+@dataclass
+class PowerPlant:
+    """یک نیروگاه متصل به شبکه محدوده مطالعه."""
+
+    kind: str = ""                            # solar | gas | thermal | chp | wind
+    rated_mw: Optional[float] = None          # توان نامی (MW)
+    operation_mw: Optional[float] = None      # ظرفیت بهره‌برداری (MW)
+    location_note: str = ""                   # توضیحات محل نصب
+
+    @property
+    def kind_label(self) -> str:
+        return PLANT_KINDS.get(self.kind, self.kind or "—")
+
+
+@dataclass
+class AutoBoosterInfo:
+    """اطلاعات اتوبوستر(های) محدوده مطالعه."""
+
+    present: str = PRESENCE_UNSET             # "" | yes | no
+    count: Optional[int] = None               # تعداد
+    current_a: Optional[float] = None         # ظرفیت جریانی (A)
+    location_note: str = ""                   # توضیحات محل نصب
+
+
+
+@dataclass
 class FeederDevelopmentInfo:
     """اطلاعات مطالعه «توسعه و اصلاح فیدر».
 
@@ -178,6 +235,9 @@ class FeederDevelopmentInfo:
     losses_kw_after: Optional[float] = None        # تلفات توان بعد (kW)
     max_loading_pct_before: Optional[float] = None  # حداکثر بارگیری قبل (%)
     max_loading_pct_after: Optional[float] = None   # حداکثر بارگیری بعد (%)
+
+    # v2.5.0 — شینه‌های کاندید (مقایسه قبل/بعد مانند جدول ۴ نمونه)
+    candidate_buses: list[CandidateBus] = field(default_factory=list)
 
     def has_results(self) -> bool:
         """آیا دست‌کم یک نتیجه عددی قبل/بعد ثبت شده است؟"""
@@ -600,6 +660,11 @@ class Project:
     recloser: RecloserInfo = field(default_factory=RecloserInfo)
     feeder_dev: FeederDevelopmentInfo = field(default_factory=FeederDevelopmentInfo)  # v2.4.0
 
+    # v2.5.0 — نیروگاه‌ها و اتوبوستر (ورودی مشترک همه مطالعات)
+    has_power_plants: str = ""                 # "" | yes | no (سؤال وجود نیروگاه)
+    power_plants: list[PowerPlant] = field(default_factory=list)
+    autobooster: AutoBoosterInfo = field(default_factory=AutoBoosterInfo)
+
     applicant_name: str = ""              # نام متقاضی
     request_type: str = REQUEST_INCREASE  # new | increase
     existing_power_kw: Optional[float] = None   # توان فعلی (kW)
@@ -711,7 +776,15 @@ class Project:
         return self.requested_power_kw - self.existing_power_kw
 
     def title_text(self) -> str:
-        """عنوان گزارش مطابق ادبیات نمونه‌ها."""
+        """عنوان گزارش.
+
+        v2.5.0 — اگر کاربر در «اطلاعات پروژه ← عنوان پروژه» عنوانی وارد کرده
+        باشد، همان عنوان روی جلد و مشخصات گزارش درج می‌شود (مطابق دفترچه‌های
+        نمونه که عنوان مطالعه زیر سری دفترچه می‌آید). در نبود عنوان،
+        متن خودکار مطابق ادبیات نمونه‌ها ساخته می‌شود.
+        """
+        if (self.name or "").strip():
+            return self.name.strip()
         if self.report_type == REPORT_TYPE_SECTIONALIZER:
             sz = self.sectionalizer
             where = sz.installation_location or sz.feeder_name or "محل تعیین‌شده"
@@ -802,23 +875,27 @@ _NESTED: dict[type, dict[str, type]] = {
     CoincidentDemand: {},
     SupplyScenario: {},
     FeederDevRow: {},
+    CandidateBus: {},
+    PowerPlant: {},
+    AutoBoosterInfo: {},
     FeederDevelopmentInfo: {},
     Project: {"maneuver": Maneuver, "demand": DemandInfo,
               "sectionalizer": SectionalizerInfo, "recloser": RecloserInfo,
-              "feeder_dev": FeederDevelopmentInfo},
+              "feeder_dev": FeederDevelopmentInfo, "autobooster": AutoBoosterInfo},
 }
 
 # فیلدهای لیستی که عضو آن‌ها dataclass است — هنگام بازسازی از JSON
 _NESTED_LISTS: dict[type, dict[str, type]] = {
     ForecastResult: {"points": ForecastPoint},
-    FeederDevelopmentInfo: {"feeders": FeederDevRow},
+    FeederDevelopmentInfo: {"feeders": FeederDevRow, "candidate_buses": CandidateBus},
     Feeder: {"manual_forecast": ForecastPoint, "annual_peaks": ForecastPoint},
     Project: {"feeders": Feeder, "images": ProjectImage,
               "nearby_substations": SubstationCandidate,
               "nearby_lines": LineCandidate,
               "coincident_demands": CoincidentDemand,
               "scenarios": SupplyScenario,
-              "neighbor_feeders": NeighborFeeder},
+              "neighbor_feeders": NeighborFeeder,
+              "power_plants": PowerPlant},
 }
 
 

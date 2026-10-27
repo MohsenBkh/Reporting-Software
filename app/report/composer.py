@@ -481,6 +481,20 @@ def _fd_network(ctx: ComposeContext) -> ReportSection:
             header_rows=[["پست و فیدر", "ولتاژ (kV)", "طول خط (km)", "حداکثر بار (MW)",
                           "حداقل بار (MW)", "بارگیری (%)", "ضریب قدرت"]],
             body_rows=rows))
+    # v2.5.0 — تحلیل خودکار موتور قواعد (بارگیری/نوسان بار/ضریب قدرت/نیروگاه/اتوبوستر)
+    from app.core.feeder_dev_rules import network_paragraphs
+    for text in network_paragraphs(ctx.project):
+        sec.blocks.append(Paragraph(text))
+    # جدول نیروگاه‌های محدوده مطالعه (در صورت ثبت)
+    plants = list(getattr(ctx.project, "power_plants", []) or [])
+    if getattr(ctx.project, "has_power_plants", "") == "yes" and plants:
+        prows = [[p.kind_label, _fd_num(p.rated_mw), _fd_num(p.operation_mw),
+                  (p.location_note or MISSING)] for p in plants]
+        sec.blocks.append(TableSpec(
+            caption=f"جدول {ctx.next_table()}: نیروگاه‌های محدوده مطالعه",
+            header_rows=[["نوع نیروگاه", "توان نامی (MW)", "ظرفیت بهره‌برداری (MW)",
+                          "محل نصب"]],
+            body_rows=prows))
     return sec
 
 
@@ -539,6 +553,22 @@ def _fd_after(ctx: ComposeContext) -> ReportSection:
         sec.blocks.append(TableSpec(
             caption=f"جدول {ctx.next_table()}: مقایسه نتایج پخش بار قبل و بعد از اصلاح",
             header_rows=[["پارامتر", "قبل از اصلاح", "بعد از اصلاح"]], body_rows=rows))
+    # v2.5.0 — شینه‌های کاندید: جدول مقایسه ولتاژ/بارگیری ترانس (جدول ۴ نمونه)
+    buses = list(getattr(info, "candidate_buses", []) or [])
+    if buses:
+        brows = [[(b.name or MISSING),
+                  _fd_num(b.voltage_kv_before), _fd_num(b.voltage_kv_after),
+                  _fd_num(b.trafo_loading_pct_before), _fd_num(b.trafo_loading_pct_after)]
+                 for b in buses]
+        sec.blocks.append(TableSpec(
+            caption=f"جدول {ctx.next_table()}: مقایسه ولتاژ و بارگیری ترانسفورماتور "
+                    "شینه‌های کاندید قبل و بعد از اصلاح",
+            header_rows=[["شینه کاندید", "ولتاژ قبل (kV)", "ولتاژ بعد (kV)",
+                          "بارگیری ترانسفورماتور قبل (%)", "بارگیری ترانسفورماتور بعد (%)"]],
+            body_rows=brows))
+        from app.core.feeder_dev_rules import after_paragraphs
+        for text in after_paragraphs(ctx.project):
+            sec.blocks.append(Paragraph(text))
     return sec
 
 
@@ -550,16 +580,11 @@ def _fd_conclusion(ctx: ComposeContext) -> ReportSection:
     if (info.conclusion or "").strip():
         sec.blocks.extend(_fd_paras(info.conclusion))
         return sec
-    # بازتاب دادهٔ ثبت‌شده (بدون نتیجه‌گیری مهندسی ساختگی): فقط مقادیر قبل/بعد
-    facts = []
-    for label, b, a in _FD_METRICS:
-        vb, va = getattr(info, b), getattr(info, a)
-        if vb is not None and va is not None:
-            facts.append(f"{label} از {vb:g} به {va:g} رسید")
-    if facts:
-        sec.blocks.append(Paragraph(
-            "بر اساس نتایج پخش بار ثبت‌شده، پس از اجرای طرح پیشنهادی " +
-            "، ".join(facts) + ". تصمیم نهایی دربارهٔ اجرای طرح با مهندس مطالعه است."))
+    # v2.5.0 — نتیجه‌گیری خودکار موتور قواعد به سبک دفترچه‌های نمونه
+    from app.core.feeder_dev_rules import conclusion_paragraph
+    text = conclusion_paragraph(ctx.project)
+    if text:
+        sec.blocks.append(Paragraph(text))
     return sec
 
 

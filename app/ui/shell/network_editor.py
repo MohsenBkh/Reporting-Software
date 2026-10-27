@@ -126,6 +126,17 @@ class NetworkEditor(QWidget):
         f5.addRow("سناریوی عادی:", self.txt_normal)
         f5.addRow("سناریوی اضطراری:", self.txt_emergency)
         bv.addWidget(g5)
+
+        # v2.5.0 — نیروگاه‌ها و اتوبوستر (مشترک همه مطالعات؛ روی Project ذخیره می‌شود)
+        from app.ui.shell.network_assets import NetworkAssetsWidget
+        g6 = QGroupBox("نیروگاه‌ها و اتوبوستر")
+        v6 = QVBoxLayout(g6)
+        self.assets = NetworkAssetsWidget(self.manager)
+        self.assets.changed.connect(self.changed)
+        v6.addWidget(self.assets)
+        bv.addWidget(g6)
+        # گروه‌های وابسته به فیدر انتخابی (نیروگاه/اتوبوستر مشترک است و همیشه فعال می‌ماند)
+        self._feeder_groups = (g1, g4, g5)
         bv.addStretch(1)
         self.form_body = body
         split.addWidget(scrollable(body))
@@ -157,7 +168,10 @@ class NetworkEditor(QWidget):
 
     # ------------------------------------------------------------------
     def _set_form_enabled(self, on: bool) -> None:
-        self.form_body.setEnabled(on)
+        # v2.5.0: فقط گروه‌های وابسته به فیدر غیرفعال می‌شوند؛ کارت مشترک
+        # «نیروگاه‌ها و اتوبوستر» حتی بدون انتخاب فیدر هم قابل ویرایش است.
+        for g in getattr(self, "_feeder_groups", (self.form_body,)):
+            g.setEnabled(on)
         self.lbl_empty.setVisible(not on)
 
     def refresh(self) -> None:
@@ -169,6 +183,7 @@ class NetworkEditor(QWidget):
         if ws is None or project is None:
             self._loading = False
             return
+        self.assets.load_from(project)          # v2.5.0 — نیروگاه‌ها و اتوبوستر
         names = self._scope_names(ws)
         for n in names:
             self.list.addItem(QListWidgetItem(n))
@@ -198,6 +213,7 @@ class NetworkEditor(QWidget):
 
     def save_to_project(self) -> None:          # برای هماهنگی با ``_collect_forms`` پنجره
         self._store()
+        self.assets.save_to_project()           # v2.5.0 — نیروگاه‌ها و اتوبوستر
 
     # ------------------------------------------------------------------
     def _on_select(self, row: int) -> None:

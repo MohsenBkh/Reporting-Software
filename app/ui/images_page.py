@@ -20,10 +20,10 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout,
-                               QHBoxLayout, QLabel, QLineEdit, QListWidget,
+                               QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget,
                                QListWidgetItem, QMessageBox, QPlainTextEdit,
-                               QPushButton, QSpinBox, QSplitter, QVBoxLayout,
-                               QWidget)
+                               QPushButton, QScrollArea, QSpinBox, QSplitter,
+                               QVBoxLayout, QWidget)
 
 from app.core.models import IMAGE_KINDS
 from app.core.report_sections import (REPORT_SECTIONS, image_kinds_for_selection,
@@ -138,7 +138,13 @@ class ImagesPage(QWidget):
         self.lbl_where.setObjectName("Muted")
         self.lbl_where.setWordWrap(True)
         rv.addWidget(self.lbl_where)
-        splitter.addWidget(right)
+        # v2.5.0 — فرم مشخصات شکل داخل اسکرول: در پنجره‌های کوچک فیلدهای
+        # «نوع شکل/عنوان شکل/بخش گزارش/...» فشرده و روی هم نمی‌افتند.
+        right_scroll = QScrollArea()
+        right_scroll.setWidgetResizable(True)
+        right_scroll.setFrameShape(QFrame.NoFrame)
+        right_scroll.setWidget(right)
+        splitter.addWidget(right_scroll)
         splitter.setSizes([320, 620])
 
         self.btn_add.clicked.connect(self._add_image)

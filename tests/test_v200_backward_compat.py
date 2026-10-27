@@ -89,7 +89,10 @@ def test_report_types_registry_v2():
 
 def test_title_text_for_new_report_types():
     p = project_from_dict(LEGACY)
+    # v2.5.0 — «عنوان پروژه» (در صورت وجود) بر متن خودکار مقدم است
     p.report_type = REPORT_TYPE_RECLOSER
+    assert p.title_text() == p.name
+    p.name = ""                      # بدون عنوان: متن خودکار قبلی
     assert "ریکلوزر" in p.title_text()
     p.report_type = REPORT_TYPE_COMBINED_PROTECTION
     assert "ریکلوزر و سکشنالایزر" in p.title_text()

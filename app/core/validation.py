@@ -98,6 +98,16 @@ def validate_heavy(project: Project, settings: AppSettings) -> list[ValidationIt
         _add(items, WARNING, f"قالب تاریخ «{project.date_jalali}» استاندارد نیست.", STEP_PROJECT,
              "تاریخ را به‌صورت 1405/06/15 وارد کنید.")
 
+    # v2.5.0 — کدگذاری مدارک مطابق «کدگذاری مطالعات.xlsx»
+    if project.report_number:
+        from app.core.report_coding import is_valid_report_number
+        if not is_valid_report_number(project.report_number):
+            _add(items, WARNING,
+                 f"شماره گزارش «{project.report_number}» با ساختار کدگذاری مطالعات هم‌خوان نیست.",
+                 STEP_PROJECT,
+                 "قالب استاندارد: «کد مطالعه-کد امور-شماره» مثل PD-13-001 — از سازنده کد در صفحه "
+                 "«اطلاعات پروژه» استفاده کنید.")
+
     # ---------------- منطق توان‌ها / واحد ----------------
     rq, ex = project.requested_power_kw, project.existing_power_kw
     if rq is not None and rq <= 0:
@@ -248,6 +258,15 @@ def _validate_general_info(items: list, project: Project) -> None:
              "در صفحهٔ «اطلاعات پروژه» تکمیل کنید.", target="project", field=fld)
     if not problems:
         _add(items, OK, "اطلاعات پروژه", STEP_PROJECT)
+    # v2.5.0 — کدگذاری مدارک مطابق «کدگذاری مطالعات.xlsx» (همه مطالعات)
+    if project.report_number:
+        from app.core.report_coding import is_valid_report_number
+        if not is_valid_report_number(project.report_number):
+            _add(items, WARNING,
+                 f"شماره گزارش «{project.report_number}» با ساختار کدگذاری مطالعات هم‌خوان نیست.",
+                 STEP_PROJECT,
+                 "قالب استاندارد: «کد مطالعه-کد امور-شماره» مثل PD-13-001 — از سازنده کد در "
+                 "صفحه «اطلاعات پروژه» استفاده کنید.", target="project", field="ed_number")
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +338,13 @@ def validate_feeder_dev(project: Project, settings: AppSettings) -> list[Validat
              "از اجرای طرح ثبت کنید.", target="feeder_dev")
     else:
         _add(items, OK, "نتایج پخش بار قبل/بعد از اصلاح", STEP_INPUT, target="feeder_dev")
+
+    # v2.5.0 — یافته‌های هشداری موتور قواعد توسعه/اصلاح فیدر (داده ناقص، افت شاخص، ...)
+    from app.core.feeder_dev_rules import evaluate
+    for f in evaluate(project):
+        if f.severity == "warning":
+            _add(items, WARNING, f"{f.title}: {f.text}", STEP_INPUT,
+                 f"منبع قاعده: {f.source}", target="feeder_dev")
 
     items.append(ValidationItem(OK, "قالب گزارش", ""))
     return items

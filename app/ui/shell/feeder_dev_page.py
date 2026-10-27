@@ -15,8 +15,9 @@ from PySide6.QtWidgets import (QComboBox, QFormLayout, QFrame, QHBoxLayout, QLab
                                QLineEdit, QPlainTextEdit, QPushButton, QScrollArea,
                                QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
 
-from app.core.models import FeederDevRow
+from app.core.models import CandidateBus, FeederDevRow
 from app.ui.shell.design import SPACING
+from app.ui.shell.network_assets import NetworkAssetsWidget
 from app.ui.shell.settings_editor import OptionalNumberEdit, parse_optional_float
 from app.ui.widgets import page_header
 
@@ -32,6 +33,15 @@ FEEDER_COLUMNS = [
     ("حداقل بار (MW)", "min_load_mw", True),
     ("بارگیری (%)", "loading_pct", True),
     ("ضریب قدرت", "power_factor", True),
+]
+
+#: ستون‌های جدول شینه‌های کاندید (v2.5.0): (عنوان، صفت CandidateBus، عددی؟)
+BUS_COLUMNS = [
+    ("نام شینه کاندید", "name", False),
+    ("ولتاژ شینه — قبل (kV)", "voltage_kv_before", True),
+    ("ولتاژ شینه — بعد (kV)", "voltage_kv_after", True),
+    ("بارگیری ترانسفورماتور — قبل (%)", "trafo_loading_pct_before", True),
+    ("بارگیری ترانسفورماتور — بعد (%)", "trafo_loading_pct_after", True),
 ]
 
 
@@ -159,10 +169,35 @@ class FeederDevPage(QWidget):
         form.addRow("تلفات توان — بعد (kW):", self.losses_kw_after)
         form.addRow("حداکثر بارگیری فیدر — بعد (%):", self.max_loading_pct_after)
         lay.addLayout(form)
+        # --- v2.5.0: شینه‌های کاندید (مقایسه قبل/بعد مثل جدول ۴ نمونه) -------
+        lay.addWidget(QLabel("شینه‌های کاندید (ولتاژ و بارگیری ترانسفورماتور، قبل/بعد):"))
+        self.bus_table = QTableWidget(0, len(BUS_COLUMNS))
+        self.bus_table.setHorizontalHeaderLabels([c[0] for c in BUS_COLUMNS])
+        self.bus_table.horizontalHeader().setStretchLastSection(True)
+        self.bus_table.verticalHeader().setVisible(False)
+        self.bus_table.setColumnWidth(0, 220)
+        self.bus_table.setMinimumHeight(110)
+        lay.addWidget(self.bus_table)
+        bus_btns = QHBoxLayout()
+        b_bus_add = QPushButton("+ شینه کاندید")
+        b_bus_del = QPushButton("➖ حذف شینه انتخابی")
+        b_bus_add.clicked.connect(self._add_bus_row)
+        b_bus_del.clicked.connect(self._remove_bus_row)
+        bus_btns.addWidget(b_bus_add)
+        bus_btns.addWidget(b_bus_del)
+        bus_btns.addStretch(1)
+        lay.addLayout(bus_btns)
         self.conclusion = self._text(
             "نتیجه‌گیری (خالی = جمع‌بندی خودکار از مقادیر قبل/بعد ثبت‌شده)")
         lay.addWidget(QLabel("نتیجه‌گیری:"))
         lay.addWidget(self.conclusion)
+        v.addWidget(card)
+
+        # --- v2.5.0: نیروگاه‌ها و اتوبوستر (مشترک همه مطالعات) ---------------
+        card, lay = _card("نیروگاه‌ها و اتوبوستر")
+        self.assets = NetworkAssetsWidget(self.manager)
+        self.assets.changed.connect(self.changed)
+        lay.addWidget(self.assets)
         v.addWidget(card)
 
         # --- ۶) متن مقدمه (اختیاری) ----------------------------------------
@@ -185,6 +220,7 @@ class FeederDevPage(QWidget):
                   self.proposal_description, self.after_description, self.conclusion):
             t.textChanged.connect(self._emit)
         self.table.itemChanged.connect(self._emit)
+        self.bus_table.itemChanged.connect(self._emit)
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -207,6 +243,16 @@ class FeederDevPage(QWidget):
         row = self.table.currentRow()
         if row >= 0:
             self.table.removeRow(row)
+            self._emit()
+
+    def _add_bus_row(self) -> None:
+        self.bus_table.insertRow(self.bus_table.rowCount())
+        self._emit()
+
+    def _remove_bus_row(self) -> None:
+        row = self.bus_table.currentRow()
+        if row >= 0:
+            self.bus_table.removeRow(row)
             self._emit()
 
     # ------------------------------------------------------------------
@@ -248,6 +294,15 @@ class FeederDevPage(QWidget):
                 val = getattr(f, attr)
                 text = "" if val in (None, "") else (f"{val:g}" if numeric else str(val))
                 self.table.setItem(r, c, QTableWidgetItem(text))
+        self.bus_table.setRowCount(0)
+        for b in getattr(info, "candidate_buses", []) or []:
+            r = self.bus_table.rowCount()
+            self.bus_table.insertRow(r)
+            for c, (_t, attr, numeric) in enumerate(BUS_COLUMNS):
+                val = getattr(b, attr)
+                text = "" if val in (None, "") else (f"{val:g}" if numeric else str(val))
+                self.bus_table.setItem(r, c, QTableWidgetItem(text))
+        self.assets.load_from(project)
         self._loading = False
 
     def save_to_project(self) -> None:
@@ -286,6 +341,21 @@ class FeederDevPage(QWidget):
             if not empty:
                 rows.append(row)
         info.feeders = rows
+        buses: list[CandidateBus] = []
+        for r in range(self.bus_table.rowCount()):
+            bus = CandidateBus()
+            empty = True
+            for c, (_t, attr, numeric) in enumerate(BUS_COLUMNS):
+                item = self.bus_table.item(r, c)
+                text = (item.text() if item is not None else "").strip()
+                if not text:
+                    continue
+                empty = False
+                setattr(bus, attr, parse_optional_float(text) if numeric else text)
+            if not empty:
+                buses.append(bus)
+        info.candidate_buses = buses
+        self.assets.save_to_project()
 
     # ------------------------------------------------------------------
     def focus_field(self, *_keys) -> bool:

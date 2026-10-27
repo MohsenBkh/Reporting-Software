@@ -21,17 +21,24 @@ from app.ui.shell.protection_settings_page import ProtectionSettingsPage
 
 
 class HeavyStudyPage(QTabWidget):
-    """متقاضی سنگین: سه تب بر پایهٔ صفحه‌های موجود (بدون تکرار فرم)."""
+    """متقاضی سنگین: تب‌ها بر پایهٔ صفحه‌های موجود (بدون تکرار فرم).
 
-    TAB_KEYS = ("applicant", "feeders", "study")
+    v2.5.0 — تب چهارم «نیروگاه‌ها و اتوبوستر» (اختیاری) برای ورودی مشترک
+    همه مطالعات اضافه شد.
+    """
+
+    TAB_KEYS = ("applicant", "feeders", "study", "assets")
 
     def __init__(self, applicant_page: QWidget, feeder_page: QWidget, study_page: QWidget,
-                 parent=None) -> None:
+                 assets_page: QWidget | None = None, parent=None) -> None:
         super().__init__(parent)
         self.applicant_page, self.feeder_page, self.study_page = applicant_page, feeder_page, study_page
+        self.assets_page = assets_page
         self.addTab(applicant_page, "اطلاعات متقاضی")
         self.addTab(feeder_page, "فیدرها و پخش بار")
         self.addTab(study_page, "مطالعه مصارف سنگین")
+        if assets_page is not None:
+            self.addTab(assets_page, "نیروگاه‌ها و اتوبوستر")
 
     def show_tab(self, key: str) -> None:
         if key in self.TAB_KEYS:

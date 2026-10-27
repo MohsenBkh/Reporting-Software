@@ -144,7 +144,8 @@ def test_preview_manual_edit_survives_regeneration(win, app, monkeypatch):
 
 def test_dashboard_shows_current_project(win):
     win._refresh_status()
-    assert "افزایش قدرت" in win.home_page.lbl_name.text()
+    # v2.5.0 — عنوان گزارش از «عنوان پروژه» خوانده می‌شود
+    assert win.home_page.lbl_name.text() == win.manager.project.name
     assert win.home_page.btn_continue.isVisible() or win.home_page.btn_continue.text()
 
 

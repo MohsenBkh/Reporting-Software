@@ -37,7 +37,17 @@ def _docx(tmp_path, **over):
 
 
 def _texts(xml: str) -> list[str]:
-    return re.findall(r"<w:t[^>]*>([^<]*)</w:t>", xml)
+    """متن هر پاراگراف (runها به‌هم چسبیده).
+
+    v2.5.0 — قطعات انگلیسی در run جداگانه (فونت Times New Roman) نوشته می‌شوند؛
+    بنابراین متن باید در سطح پاراگراف جمع شود نه run.
+    """
+    out = []
+    for para in re.findall(r"<w:p[ >].*?</w:p>", xml, flags=re.S):
+        t = "".join(re.findall(r"<w:t[^>]*>([^<]*)</w:t>", para))
+        if t:
+            out.append(t)
+    return out
 
 
 def test_protection_titles_match_sample_booklet():
