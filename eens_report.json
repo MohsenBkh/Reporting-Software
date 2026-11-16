@@ -1,0 +1,4083 @@
+{
+  "algo_version": "SwitchLoc 1.24.0",
+  "settings": {
+    "user": "ui-user",
+    "method": "directional",
+    "method_fa": "دایرکشنال (Directional) — λ و r واقعی خاموشی؛ فقط بار پایین‌دست قطعهٔ معیوب بی‌برق می‌شود",
+    "failure_rate_source": "outage",
+    "failure_rates_input": {},
+    "failure_rates_resolved": {
+      "F10 - RADIO": 146.0
+    },
+    "repair_times_resolved": {
+      "F10 - RADIO": 43.54
+    },
+    "backup_kw": {},
+    "feeder_keys": [
+      "F10 - RADIO"
+    ],
+    "load_model": {
+      "level": "scaled",
+      "loading_factor": 1.0,
+      "substitute_factor": 1.0,
+      "feeder_pq": {
+        "F10 - RADIO": {
+          "p_kw": 7800.0,
+          "q_kvar": 4350.0
+        }
+      }
+    },
+    "engine": {
+      "total_failure_rate_per_year": 30.0,
+      "repair_time_min": 50.0,
+      "restoration_time_min": 30.0,
+      "max_sectionalizers": 1,
+      "max_downstream_load_ratio": 0.8,
+      "min_candidate_depth": 3,
+      "use_existing_switches": true,
+      "exclude_nodes_with_switch": true,
+      "exclude_transformer_terminal_nodes": false,
+      "restoration_model": "directional",
+      "restoration_model_fa": "شعاعی/جهت‌دار (بالادست بی‌برق نمی‌شود)",
+      "stop_without_gain": true,
+      "min_gain_kwh_per_year": 1e-06,
+      "max_candidates_per_feeder": 0,
+      "switch_type": "disconnector",
+      "switch_type_fa": "سکسیونر (Disconnector)",
+      "fault_scope": [
+        "permanent"
+      ],
+      "transient_max_duration_min": 3.0,
+      "transient_interruption_min": 1.0,
+      "reclose_time_min": 0.25,
+      "reclose_success_probability": 0.7,
+      "manual_restoration_time_min": 30.0,
+      "effective_restoration_time_min": 30.0
+    }
+  },
+  "failure_rates": {
+    "F10 - RADIO": 146.0
+  },
+  "markdown": "# مطالعهٔ جایابی بهینهٔ کلید و کاهش EENS — تک‌فیدره\n\n**نوع مطالعه:** تک‌فیدره · **نوع EENS:** دایرکشنال (Directional) — λ و r واقعی خاموشی؛ فقط بار پایین‌دست قطعهٔ معیوب بی‌برق می‌شود · **نوع کلید:** سکسیونر (Disconnector) · **سطح مدل بار:** scaled\n\n**فیدرهای مطالعه:** F10 - RADIO (از 23 فیدر مدل‌شده)\n\nλ پیش‌فرض تنظیمات: 30.0 خرابی/سال · زمان تعمیر پیش‌فرض: 50.0 دقیقه · زمان بازیابی بار سالم: 30.0 دقیقه · سقف کلید هر فیدر: 1\n\n> λ و r هر فیدر از **ماتریس λ/r خاموشی‌های واقعی پروژه** خوانده می‌شود؛ تنها برای فیدرهایی که دادهٔ واقعی ندارند مقدار پیش‌فرض با برچسب `configured-default` به‌کار می‌رود (جدول زیر).\n\n## λ و r مؤثر هر فیدر (با منبع هر عدد)\n\n| فیدر | λ (خرابی/سال) | منبع λ | r (دقیقه) | منبع r | λ گذرا |\n|---|---|---|---|---|---|\n| F10 - RADIO | 146.00 | outage-lambda | 43.5 | outage-r | 0.00 |\n\n## نتیجهٔ فیدرها\n\n| فیدر | طول (km) | بار (kW) | قطعه موجود | کاندید | EENS پایه (MWh/سال) | کلید پیشنهادی | EENS نهایی (MWh/سال) | کاهش (٪) | خطوط پیشنهادی |\n|---|---|---|---|---|---|---|---|---|---|\n| F10 - RADIO | 37.92 | 7,094.8 | 18 | 173 | 562.1667 | 1 | 367.8555 | 34.56 | F10 - RADIO · خط هوایی · @ 750552, 4379268 m |\n\n**جمع کل:** EENS پایه 562.167 MWh/سال → 367.855 MWh/سال (کاهش 34.56٪ با 1 کلید).\n\n## گام‌های بهینه‌سازی (حریصانه)\n\n| فیدر | گام | EENS پس از گام (kWh/سال) | کاهش تجمعی (٪) | کلید افزوده |\n|---|---|---|---|---|\n| F10 - RADIO | 1 | 367,855.5 | 34.56 | F10 - RADIO · خط هوایی · @ 750552, 4379268 m |\n\n## فرمول‌بندی محاسبات (همان روش اجراشده)\n\n- λ_i = λ_fid × L_i / ΣL  — توزیع نرخ خرابی متناسب طول خط (قاعدهٔ کد مرجع).\n- U_i = λ_i / 60 × r  — ساعت خاموشی سالانهٔ هر قطعه.\n- EENS = Σ_i (λ_i/60) × [ r·P_i + s·min(P_down,i, C_bak) + r·(P_down,i − min(P_down,i, C_bak)) ]\n  ↳ P_i بار خود قطعهٔ معیوب، P_down,i مجموع بار قطعه‌های پایین‌دست، s = min(زمان بازیابی, زمان تعمیر) — بار بالادست اصلاً بی‌برق نمی‌شود (مدل جهت‌دار).\n- EENS کل = EENS دائمی + EENS گذرا.\n- کاهش٪ = 100 × (EENS پایه − EENS نهایی) / EENS پایه.\n- کلیدها حریصانه و گام‌به‌گام نصب می‌شوند: در هر گام کاندیدی که بیشترین کاهش EENS را بدهد انتخاب می‌شود (توقف با بهبود ناچیز).\n\n## فرض‌های صریح\n\n- نوع کلید مورد جایابی: سکسیونر (Disconnector) — قطع/وصل دستی؛ جداسازی محدودهٔ معیوب و انتقال بار با زمان بازیابی دستی انجام می‌شود.\n- دستهٔ خطای ارزیابی‌شده: فقط دائمی (دامنهٔ سکسیونر (Disconnector)).\n- λ هر فیدر = 30 خرابی/سال (یا λ واقعی خاموشی همان فیدر، هرگاه موجود باشد) و بین قطعات متناسب با طول خط توزیع می‌شود — قاعدهٔ کد مرجع PowerFactory.\n- زمان تعمیر قطعهٔ معیوب = 50 دقیقه (یا r واقعی همان فیدر در روش خودکار) و زمان بازیابی بار سالم = 30 دقیقه (سکسیونر: بازیابی دستی).\n- مدل بازیابی: شعاعی/جهت‌دار (بالادست بی‌برق نمی‌شود).\n- ظرفیت پشتیبان نامحدود فرض شد (همان فرض کد مرجع)؛ برای نتیجهٔ محافظه‌کارانه، ظرفیت پشتیبان را وارد کنید.\n- کلیدهای موجود (مرزهای زون) در حالت پایه قطعه‌بندی می‌کنند؛ EENS پایه، وضعیت فعلی شبکه است.\n",
+  "study": {
+    "algo_version": "",
+    "settings": {
+      "total_failure_rate_per_year": 30.0,
+      "repair_time_min": 50.0,
+      "restoration_time_min": 30.0,
+      "max_sectionalizers": 1,
+      "max_downstream_load_ratio": 0.8,
+      "min_candidate_depth": 3,
+      "use_existing_switches": true,
+      "exclude_nodes_with_switch": true,
+      "exclude_transformer_terminal_nodes": false,
+      "restoration_model": "directional",
+      "restoration_model_fa": "شعاعی/جهت‌دار (بالادست بی‌برق نمی‌شود)",
+      "stop_without_gain": true,
+      "min_gain_kwh_per_year": 1e-06,
+      "max_candidates_per_feeder": 0,
+      "switch_type": "disconnector",
+      "switch_type_fa": "سکسیونر (Disconnector)",
+      "fault_scope": [
+        "permanent"
+      ],
+      "transient_max_duration_min": 3.0,
+      "transient_interruption_min": 1.0,
+      "reclose_time_min": 0.25,
+      "reclose_success_probability": 0.7,
+      "manual_restoration_time_min": 30.0,
+      "effective_restoration_time_min": 30.0,
+      "failure_rate_source": "outage",
+      "failure_rates": {
+        "F10 - RADIO": 146.0
+      },
+      "method": "directional",
+      "method_fa": "دایرکشنال (Directional) — λ و r واقعی خاموشی؛ فقط بار پایین‌دست قطعهٔ معیوب بی‌برق می‌شود",
+      "repair_time_by_feeder": {
+        "F10 - RADIO": 43.54
+      },
+      "transient_rates": {},
+      "study_scope": "single",
+      "studied_feeders": [
+        "F10 - RADIO"
+      ],
+      "all_feeders": [
+        "F1 - AJIRLOO",
+        "F10 - PARSABAD",
+        "F10 - RADIO",
+        "F2 - AJIRLOO",
+        "F2 - BORAN",
+        "F2 - JAFARABAD",
+        "F2 - SHAHRAK",
+        "F3 - AJIRLOO",
+        "F3 - ASLANDOOZ",
+        "F4 - AJIRLOO",
+        "F4 - BAGH - DANESH",
+        "F4 - IRANABAD",
+        "F4 - TAHIYE",
+        "F5 - AJIRLOO",
+        "F5 - JAFARABAD",
+        "F5 - KEYHAN",
+        "F6 - AJIRLOO",
+        "F6 - JAFARABAD",
+        "F6 - PARS GHADIM",
+        "F7 - AJIRLOO",
+        "F7 - GOLKHANE",
+        "F8 - AJIRLOO",
+        "F9 - AJIRLOO"
+      ],
+      "load_model_level": "scaled",
+      "load_model_total_kw": 7800.001
+    },
+    "assumptions": [
+      "نوع کلید مورد جایابی: سکسیونر (Disconnector) — قطع/وصل دستی؛ جداسازی محدودهٔ معیوب و انتقال بار با زمان بازیابی دستی انجام می‌شود.",
+      "دستهٔ خطای ارزیابی‌شده: فقط دائمی (دامنهٔ سکسیونر (Disconnector)).",
+      "λ هر فیدر = 30 خرابی/سال (یا λ واقعی خاموشی همان فیدر، هرگاه موجود باشد) و بین قطعات متناسب با طول خط توزیع می‌شود — قاعدهٔ کد مرجع PowerFactory.",
+      "زمان تعمیر قطعهٔ معیوب = 50 دقیقه (یا r واقعی همان فیدر در روش خودکار) و زمان بازیابی بار سالم = 30 دقیقه (سکسیونر: بازیابی دستی).",
+      "مدل بازیابی: شعاعی/جهت‌دار (بالادست بی‌برق نمی‌شود).",
+      "ظرفیت پشتیبان نامحدود فرض شد (همان فرض کد مرجع)؛ برای نتیجهٔ محافظه‌کارانه، ظرفیت پشتیبان را وارد کنید.",
+      "کلیدهای موجود (مرزهای زون) در حالت پایه قطعه‌بندی می‌کنند؛ EENS پایه، وضعیت فعلی شبکه است."
+    ],
+    "notes": [],
+    "total_baseline_eens_kwh_per_year": 562166.735505,
+    "total_best_eens_kwh_per_year": 367855.462464,
+    "total_improvement_percent": 34.564705,
+    "total_selected_switches": 1,
+    "total_selected_sectionalizers": 1,
+    "feeders": [
+      {
+        "feeder_key": "F10 - RADIO",
+        "root": "e0baf1ab-d9cc-5786-9d08-881d1f3e4bb6",
+        "node_count": 965,
+        "edge_count": 964,
+        "line_length_km": 37.919576,
+        "total_load_kw": 7094.756901,
+        "failure_rate_per_year": 146.0,
+        "failure_rate_source": "outage-lambda",
+        "switch_type": "disconnector",
+        "switch_type_fa": "سکسیونر (Disconnector)",
+        "repair_time_min": 43.54,
+        "transient_rate_per_year": 0.0,
+        "transient_eens_kwh_per_year": 0.0,
+        "restoration_model": "directional",
+        "backup_kw": null,
+        "radial": true,
+        "extra_edges": 0,
+        "unreachable_edges": 0,
+        "existing_cut_nodes": [
+          "08110e18-3173-5ad2-965b-97edd018fd05",
+          "0de0f97e-3399-533f-bfe1-d3565cb90bdd",
+          "5c08a348-0f3a-559c-84f9-77eb83dd0e32",
+          "64c0e33c-a3a1-5f73-b4fb-ab64ff6186ad",
+          "6e55a284-1b16-55f5-bb31-488aa80345d7",
+          "84547b36-6c37-5e8f-a1ce-3ea981ad8af4",
+          "8ba7c886-809c-5c7c-bf96-2415058cf2e1",
+          "8db633bd-010f-56f2-a5c2-442e72397049",
+          "959a91ce-36c5-58da-8c15-f8811bc85752",
+          "9733ce26-020d-51bc-a937-61f668c9da70",
+          "988921d0-46a7-5d78-925c-599b397ae7fb",
+          "a17eaa48-542b-5585-8d39-95209c18a420",
+          "b0a6a8db-e88e-5e1e-b10c-bb5104758e74",
+          "c6a49baf-fc28-5f63-aabc-28f71e98f7c7",
+          "cb0bd406-71ce-568b-baca-d1b656615da1",
+          "de7e5a29-b031-57e0-9398-55bf4b0fb5d6",
+          "fc0ae487-9cc4-58a0-8220-303aa0081d90"
+        ],
+        "existing_section_count": 18,
+        "baseline_eens_kwh_per_year": 562166.735505,
+        "baseline_eens_mwh_per_year": 562.166735505,
+        "theoretical_eens_kwh_per_year": 751670.574323,
+        "baseline_sections": [
+          {
+            "index": 0,
+            "cut_node": null,
+            "parent_index": null,
+            "load_kw": 0.0,
+            "length_m": 2583.64219,
+            "length_km": 2.583642,
+            "lambda_per_year": 9.947678691,
+            "load_ratio": 0.0,
+            "length_ratio": 0.068134786,
+            "eens_kwh_per_year": 35288.181021
+          },
+          {
+            "index": 1,
+            "cut_node": "8db633bd-010f-56f2-a5c2-442e72397049",
+            "parent_index": 0,
+            "load_kw": 0.0,
+            "length_m": 8717.914542,
+            "length_km": 8.717915,
+            "lambda_per_year": 33.566185378,
+            "load_ratio": 0.0,
+            "length_ratio": 0.229905379,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 2,
+            "cut_node": "84547b36-6c37-5e8f-a1ce-3ea981ad8af4",
+            "parent_index": 0,
+            "load_kw": 0.0,
+            "length_m": 6.444037,
+            "length_km": 0.006444,
+            "lambda_per_year": 0.024811179,
+            "load_ratio": 0.0,
+            "length_ratio": 0.00016994,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 3,
+            "cut_node": "64c0e33c-a3a1-5f73-b4fb-ab64ff6186ad",
+            "parent_index": 2,
+            "load_kw": 0.0,
+            "length_m": 2.217268,
+            "length_km": 0.002217,
+            "lambda_per_year": 0.008537043,
+            "load_ratio": 0.0,
+            "length_ratio": 5.8473e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 4,
+            "cut_node": "5c08a348-0f3a-559c-84f9-77eb83dd0e32",
+            "parent_index": 3,
+            "load_kw": 0.0,
+            "length_m": 4.605557,
+            "length_km": 0.004606,
+            "lambda_per_year": 0.017732564,
+            "load_ratio": 0.0,
+            "length_ratio": 0.000121456,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 5,
+            "cut_node": "fc0ae487-9cc4-58a0-8220-303aa0081d90",
+            "parent_index": 0,
+            "load_kw": 7094.756901,
+            "length_m": 26579.477979,
+            "length_km": 26.579478,
+            "lambda_per_year": 102.337741535,
+            "load_ratio": 0.0,
+            "length_ratio": 0.700943435,
+            "eens_kwh_per_year": 526878.554484
+          },
+          {
+            "index": 6,
+            "cut_node": "b0a6a8db-e88e-5e1e-b10c-bb5104758e74",
+            "parent_index": 1,
+            "load_kw": 0.0,
+            "length_m": 1.817012,
+            "length_km": 0.001817,
+            "lambda_per_year": 0.006995957,
+            "load_ratio": 0.0,
+            "length_ratio": 4.7918e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 7,
+            "cut_node": "cb0bd406-71ce-568b-baca-d1b656615da1",
+            "parent_index": 1,
+            "load_kw": 0.0,
+            "length_m": 4.234067,
+            "length_km": 0.004234,
+            "lambda_per_year": 0.016302233,
+            "load_ratio": 0.0,
+            "length_ratio": 0.000111659,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 8,
+            "cut_node": "de7e5a29-b031-57e0-9398-55bf4b0fb5d6",
+            "parent_index": 7,
+            "load_kw": 0.0,
+            "length_m": 1.593485,
+            "length_km": 0.001593,
+            "lambda_per_year": 0.006135322,
+            "load_ratio": 0.0,
+            "length_ratio": 4.2023e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 9,
+            "cut_node": "c6a49baf-fc28-5f63-aabc-28f71e98f7c7",
+            "parent_index": 1,
+            "load_kw": 0.0,
+            "length_m": 2.930108,
+            "length_km": 0.00293,
+            "lambda_per_year": 0.011281661,
+            "load_ratio": 0.0,
+            "length_ratio": 7.7272e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 10,
+            "cut_node": "8ba7c886-809c-5c7c-bf96-2415058cf2e1",
+            "parent_index": 9,
+            "load_kw": 0.0,
+            "length_m": 0.804111,
+            "length_km": 0.000804,
+            "lambda_per_year": 0.003096032,
+            "load_ratio": 0.0,
+            "length_ratio": 2.1206e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 11,
+            "cut_node": "959a91ce-36c5-58da-8c15-f8811bc85752",
+            "parent_index": 10,
+            "load_kw": 0.0,
+            "length_m": 2.70762,
+            "length_km": 0.002708,
+            "lambda_per_year": 0.010425025,
+            "load_ratio": 0.0,
+            "length_ratio": 7.1404e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 12,
+            "cut_node": "08110e18-3173-5ad2-965b-97edd018fd05",
+            "parent_index": 5,
+            "load_kw": 0.0,
+            "length_m": 2.574398,
+            "length_km": 0.002574,
+            "lambda_per_year": 0.009912086,
+            "load_ratio": 0.0,
+            "length_ratio": 6.7891e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 13,
+            "cut_node": "0de0f97e-3399-533f-bfe1-d3565cb90bdd",
+            "parent_index": 12,
+            "load_kw": 0.0,
+            "length_m": 1.375801,
+            "length_km": 0.001376,
+            "lambda_per_year": 0.005297184,
+            "load_ratio": 0.0,
+            "length_ratio": 3.6282e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 14,
+            "cut_node": "988921d0-46a7-5d78-925c-599b397ae7fb",
+            "parent_index": 13,
+            "load_kw": 0.0,
+            "length_m": 3.549415,
+            "length_km": 0.003549,
+            "lambda_per_year": 0.013666149,
+            "load_ratio": 0.0,
+            "length_ratio": 9.3604e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 15,
+            "cut_node": "6e55a284-1b16-55f5-bb31-488aa80345d7",
+            "parent_index": 5,
+            "load_kw": 0.0,
+            "length_m": 1.75688,
+            "length_km": 0.001757,
+            "lambda_per_year": 0.006764432,
+            "load_ratio": 0.0,
+            "length_ratio": 4.6332e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 16,
+            "cut_node": "a17eaa48-542b-5585-8d39-95209c18a420",
+            "parent_index": 15,
+            "load_kw": 0.0,
+            "length_m": 0.76854,
+            "length_km": 0.000769,
+            "lambda_per_year": 0.002959075,
+            "load_ratio": 0.0,
+            "length_ratio": 2.0268e-05,
+            "eens_kwh_per_year": 0.0
+          },
+          {
+            "index": 17,
+            "cut_node": "9733ce26-020d-51bc-a937-61f668c9da70",
+            "parent_index": 16,
+            "load_kw": 0.0,
+            "length_m": 1.163158,
+            "length_km": 0.001163,
+            "lambda_per_year": 0.004478454,
+            "load_ratio": 0.0,
+            "length_ratio": 3.0674e-05,
+            "eens_kwh_per_year": 0.0
+          }
+        ],
+        "candidate_count": 173,
+        "candidates": [
+          {
+            "node": "74956485-f72b-5827-9c16-5c4130e72440",
+            "feeder_key": "F10 - RADIO",
+            "depth": 155,
+            "edge_id": "1ec99abf-90ec-5b8b-a182-59fe728038d9#0",
+            "branch_id": "1ec99abf-90ec-5b8b-a182-59fe728038d9",
+            "label": "F10 - RADIO · خط هوایی · @ 747778, 4378433 m",
+            "downstream_load_kw": 5472.695184,
+            "downstream_ratio": 0.771371769,
+            "downstream_length_km": 17.428944,
+            "coord": [
+              747778.0,
+              4378433.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 1,
+            "existing_device": ""
+          },
+          {
+            "node": "5a86648d-852a-5d65-bf04-4291f5b20048",
+            "feeder_key": "F10 - RADIO",
+            "depth": 156,
+            "edge_id": "3ed84b02-d5f7-57c7-9cff-99a5799fc31e#0",
+            "branch_id": "3ed84b02-d5f7-57c7-9cff-99a5799fc31e",
+            "label": "F10 - RADIO · خط هوایی · @ 747855, 4378468 m",
+            "downstream_load_kw": 5472.695184,
+            "downstream_ratio": 0.771371769,
+            "downstream_length_km": 17.369136,
+            "coord": [
+              747855.0,
+              4378468.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 2,
+            "existing_device": ""
+          },
+          {
+            "node": "3299dcfd-8607-578f-a89b-ae500e5d4a29",
+            "feeder_key": "F10 - RADIO",
+            "depth": 157,
+            "edge_id": "0520fb27-575b-573a-98b3-017871eb40de#0",
+            "branch_id": "0520fb27-575b-573a-98b3-017871eb40de",
+            "label": "F10 - RADIO · خط هوایی · @ 747922, 4378488 m",
+            "downstream_load_kw": 5472.695184,
+            "downstream_ratio": 0.771371769,
+            "downstream_length_km": 17.284554,
+            "coord": [
+              747922.0,
+              4378488.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 3,
+            "existing_device": ""
+          },
+          {
+            "node": "20197981-5b3e-59eb-a880-a09d293dc3cc",
+            "feeder_key": "F10 - RADIO",
+            "depth": 158,
+            "edge_id": "3fcca5e5-dbff-5740-a608-8d5bc08990e6#0",
+            "branch_id": "3fcca5e5-dbff-5740-a608-8d5bc08990e6",
+            "label": "F10 - RADIO · خط هوایی · @ 747979, 4378507 m",
+            "downstream_load_kw": 5472.695184,
+            "downstream_ratio": 0.771371769,
+            "downstream_length_km": 17.209794,
+            "coord": [
+              747979.0,
+              4378507.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 4,
+            "existing_device": ""
+          },
+          {
+            "node": "6d01dbfd-4de7-56a6-a2aa-56c1e28ffd6d",
+            "feeder_key": "F10 - RADIO",
+            "depth": 159,
+            "edge_id": "26cec841-5feb-5b54-bfcf-5ee13665adc3#0",
+            "branch_id": "26cec841-5feb-5b54-bfcf-5ee13665adc3",
+            "label": "F10 - RADIO · خط هوایی · @ 748036, 4378530 m",
+            "downstream_load_kw": 5472.695184,
+            "downstream_ratio": 0.771371769,
+            "downstream_length_km": 17.14971,
+            "coord": [
+              748036.0,
+              4378530.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 5,
+            "existing_device": ""
+          },
+          {
+            "node": "0591e835-1f2a-5221-a96c-915b2ccd6e2e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 160,
+            "edge_id": "db68dbca-49e5-59d2-ad3f-60630c375fde#0",
+            "branch_id": "db68dbca-49e5-59d2-ad3f-60630c375fde",
+            "label": "F10 - RADIO · خط هوایی · @ 748103, 4378549 m",
+            "downstream_load_kw": 5472.695184,
+            "downstream_ratio": 0.771371769,
+            "downstream_length_km": 17.088245,
+            "coord": [
+              748103.0,
+              4378549.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 6,
+            "existing_device": ""
+          },
+          {
+            "node": "0a4c70df-e0c4-5561-8706-e48bdc8efb62",
+            "feeder_key": "F10 - RADIO",
+            "depth": 161,
+            "edge_id": "4d03fb58-f072-56b6-b532-aaae476e7a1d#0",
+            "branch_id": "4d03fb58-f072-56b6-b532-aaae476e7a1d",
+            "label": "F10 - RADIO · خط هوایی · @ 748173, 4378576 m",
+            "downstream_load_kw": 5472.695184,
+            "downstream_ratio": 0.771371769,
+            "downstream_length_km": 17.018603,
+            "coord": [
+              748173.0,
+              4378576.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 7,
+            "existing_device": ""
+          },
+          {
+            "node": "a9277c87-2dcf-5d79-a26c-911a19a1ffb7",
+            "feeder_key": "F10 - RADIO",
+            "depth": 162,
+            "edge_id": "63576d19-af40-54ab-b1c9-3ea6c9328cf8#0",
+            "branch_id": "63576d19-af40-54ab-b1c9-3ea6c9328cf8",
+            "label": "F10 - RADIO · خط هوایی · @ 748238, 4378614 m",
+            "downstream_load_kw": 5261.121917,
+            "downstream_ratio": 0.741550696,
+            "downstream_length_km": 16.920701,
+            "coord": [
+              748238.0,
+              4378614.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 8,
+            "existing_device": ""
+          },
+          {
+            "node": "36a4a69b-ab0d-5a48-b48d-08c7298ca863",
+            "feeder_key": "F10 - RADIO",
+            "depth": 163,
+            "edge_id": "8cafd35c-0854-51ec-8991-38c6e4ce5cb9#0",
+            "branch_id": "8cafd35c-0854-51ec-8991-38c6e4ce5cb9",
+            "label": "F10 - RADIO · خط هوایی · @ 748288, 4378650 m",
+            "downstream_load_kw": 5261.121917,
+            "downstream_ratio": 0.741550696,
+            "downstream_length_km": 16.845408,
+            "coord": [
+              748288.0,
+              4378650.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 9,
+            "existing_device": ""
+          },
+          {
+            "node": "6bfd208a-4917-58d9-885a-a1e4b1332d8f",
+            "feeder_key": "F10 - RADIO",
+            "depth": 164,
+            "edge_id": "8a36bc64-3887-5503-8c59-40e11214a47a#0",
+            "branch_id": "8a36bc64-3887-5503-8c59-40e11214a47a",
+            "label": "F10 - RADIO · خط هوایی · @ 748342, 4378685 m",
+            "downstream_load_kw": 5261.121917,
+            "downstream_ratio": 0.741550696,
+            "downstream_length_km": 16.783797,
+            "coord": [
+              748342.0,
+              4378685.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 10,
+            "existing_device": ""
+          },
+          {
+            "node": "68e414b4-abaf-595e-80c3-ba862529e9b7",
+            "feeder_key": "F10 - RADIO",
+            "depth": 165,
+            "edge_id": "82b001fe-cc29-5a9e-b454-732c13195415#0",
+            "branch_id": "82b001fe-cc29-5a9e-b454-732c13195415",
+            "label": "F10 - RADIO · خط هوایی · @ 748401, 4378722 m",
+            "downstream_load_kw": 5261.121917,
+            "downstream_ratio": 0.741550696,
+            "downstream_length_km": 16.719446,
+            "coord": [
+              748401.0,
+              4378722.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 11,
+            "existing_device": ""
+          },
+          {
+            "node": "e9437bcf-fa3c-5e00-a6e2-4654ae205a97",
+            "feeder_key": "F10 - RADIO",
+            "depth": 166,
+            "edge_id": "c3ef43df-2766-5c53-a822-cd4b4040d5eb#0",
+            "branch_id": "c3ef43df-2766-5c53-a822-cd4b4040d5eb",
+            "label": "F10 - RADIO · خط هوایی · @ 748461, 4378756 m",
+            "downstream_load_kw": 5261.121917,
+            "downstream_ratio": 0.741550696,
+            "downstream_length_km": 16.649804,
+            "coord": [
+              748461.0,
+              4378756.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 12,
+            "existing_device": ""
+          },
+          {
+            "node": "f073ead7-c6ed-58d7-a208-acf52292f91e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 167,
+            "edge_id": "2d292f02-0f36-5817-86c8-6e04a4907f58#0",
+            "branch_id": "2d292f02-0f36-5817-86c8-6e04a4907f58",
+            "label": "F10 - RADIO · خط هوایی · @ 748522, 4378797 m",
+            "downstream_load_kw": 5261.121917,
+            "downstream_ratio": 0.741550696,
+            "downstream_length_km": 16.58084,
+            "coord": [
+              748522.0,
+              4378797.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 13,
+            "existing_device": ""
+          },
+          {
+            "node": "88ae74b3-1bb1-5540-a944-a266f1e26947",
+            "feeder_key": "F10 - RADIO",
+            "depth": 168,
+            "edge_id": "9e2fa109-cf84-5bdc-b392-e6033507cb55#0",
+            "branch_id": "9e2fa109-cf84-5bdc-b392-e6033507cb55",
+            "label": "F10 - RADIO · خط هوایی · @ 748557, 4378822 m",
+            "downstream_load_kw": 5261.121917,
+            "downstream_ratio": 0.741550696,
+            "downstream_length_km": 16.507342,
+            "coord": [
+              748557.0,
+              4378822.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 14,
+            "existing_device": ""
+          },
+          {
+            "node": "02a30f65-a37d-5a99-8ec3-cbf722d7933d",
+            "feeder_key": "F10 - RADIO",
+            "depth": 169,
+            "edge_id": "0d57215e-dc06-53c8-8ed9-519361d787b7#0",
+            "branch_id": "0d57215e-dc06-53c8-8ed9-519361d787b7",
+            "label": "F10 - RADIO · خط هوایی · @ 748605, 4378849 m",
+            "downstream_load_kw": 5261.121917,
+            "downstream_ratio": 0.741550696,
+            "downstream_length_km": 16.46433,
+            "coord": [
+              748605.0,
+              4378849.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 15,
+            "existing_device": ""
+          },
+          {
+            "node": "e1afbf14-8cd1-5365-b60e-fa2b676ba1c8",
+            "feeder_key": "F10 - RADIO",
+            "depth": 170,
+            "edge_id": "40523d1c-0ed5-57bf-9ceb-ebce2856ca0f#0",
+            "branch_id": "40523d1c-0ed5-57bf-9ceb-ebce2856ca0f",
+            "label": "F10 - RADIO · خط هوایی · @ 748660, 4378879 m",
+            "downstream_load_kw": 5049.548649,
+            "downstream_ratio": 0.711729622,
+            "downstream_length_km": 16.400133,
+            "coord": [
+              748660.0,
+              4378879.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 16,
+            "existing_device": ""
+          },
+          {
+            "node": "1eb5ee46-b046-51e0-a1b1-08fbdf6f8d97",
+            "feeder_key": "F10 - RADIO",
+            "depth": 171,
+            "edge_id": "fd906af1-c7bc-53af-ba9d-bbf96c0bf0d0#0",
+            "branch_id": "fd906af1-c7bc-53af-ba9d-bbf96c0bf0d0",
+            "label": "F10 - RADIO · خط هوایی · @ 748719, 4378917 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 16.331187,
+            "coord": [
+              748719.0,
+              4378917.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 17,
+            "existing_device": ""
+          },
+          {
+            "node": "a07e71e5-bf61-5260-8184-66e2774c59b4",
+            "feeder_key": "F10 - RADIO",
+            "depth": 172,
+            "edge_id": "1a9eae96-5be9-57f8-b7ad-5438cdcda8f1#0",
+            "branch_id": "1a9eae96-5be9-57f8-b7ad-5438cdcda8f1",
+            "label": "F10 - RADIO · خط هوایی · @ 748782, 4378953 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 16.261009,
+            "coord": [
+              748782.0,
+              4378953.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 18,
+            "existing_device": ""
+          },
+          {
+            "node": "db65bbb0-0e9c-5a59-82b9-ca50ab0c869e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 173,
+            "edge_id": "296b50be-80ba-5212-81e9-77d15ebb8bf9#0",
+            "branch_id": "296b50be-80ba-5212-81e9-77d15ebb8bf9",
+            "label": "F10 - RADIO · خط هوایی · @ 748829, 4378983 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 16.176471,
+            "coord": [
+              748829.0,
+              4378983.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 19,
+            "existing_device": ""
+          },
+          {
+            "node": "e14d13c7-f832-53e8-a7ad-4f4cd132056c",
+            "feeder_key": "F10 - RADIO",
+            "depth": 174,
+            "edge_id": "e29b6e13-6863-5e72-99e7-d1b33310b15d#0",
+            "branch_id": "e29b6e13-6863-5e72-99e7-d1b33310b15d",
+            "label": "F10 - RADIO · خط هوایی · @ 748819, 4379050 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 16.120713,
+            "coord": [
+              748819.0,
+              4379050.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 20,
+            "existing_device": ""
+          },
+          {
+            "node": "729cf214-cb44-5139-aff1-f3e15c805db2",
+            "feeder_key": "F10 - RADIO",
+            "depth": 175,
+            "edge_id": "7b9d8108-b1d6-56ef-9772-540ef84ec41f#0",
+            "branch_id": "7b9d8108-b1d6-56ef-9772-540ef84ec41f",
+            "label": "F10 - RADIO · خط هوایی · @ 748809, 4379118 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 16.052971,
+            "coord": [
+              748809.0,
+              4379118.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 21,
+            "existing_device": ""
+          },
+          {
+            "node": "714f8f7a-1725-50aa-a52a-1f2454580d6a",
+            "feeder_key": "F10 - RADIO",
+            "depth": 176,
+            "edge_id": "eb48ace8-ab5d-5ec1-85b5-9113382c203a#0",
+            "branch_id": "eb48ace8-ab5d-5ec1-85b5-9113382c203a",
+            "label": "F10 - RADIO · خط هوایی · @ 748801, 4379180 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 15.978271,
+            "coord": [
+              748801.0,
+              4379180.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 22,
+            "existing_device": ""
+          },
+          {
+            "node": "bba8ad44-c169-587a-a5b9-585099c3cd9c",
+            "feeder_key": "F10 - RADIO",
+            "depth": 177,
+            "edge_id": "849a4851-dc79-5cab-97fb-417f9ec6fc7f#0",
+            "branch_id": "849a4851-dc79-5cab-97fb-417f9ec6fc7f",
+            "label": "F10 - RADIO · خط هوایی · @ 748796, 4379246 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 15.915757,
+            "coord": [
+              748796.0,
+              4379246.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 23,
+            "existing_device": ""
+          },
+          {
+            "node": "d6e837c5-df08-57e1-b78d-f171367b217c",
+            "feeder_key": "F10 - RADIO",
+            "depth": 178,
+            "edge_id": "0525ae9f-08f6-5fef-a065-fd2d14a01675#0",
+            "branch_id": "0525ae9f-08f6-5fef-a065-fd2d14a01675",
+            "label": "F10 - RADIO · خط هوایی · @ 748789, 4379308 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 15.849567,
+            "coord": [
+              748789.0,
+              4379308.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 24,
+            "existing_device": ""
+          },
+          {
+            "node": "d1b79539-44e6-5bc9-b789-5593a8bf88b7",
+            "feeder_key": "F10 - RADIO",
+            "depth": 179,
+            "edge_id": "c1ffc3ba-6407-5f85-92fc-a60feafa1ef9#0",
+            "branch_id": "c1ffc3ba-6407-5f85-92fc-a60feafa1ef9",
+            "label": "F10 - RADIO · خط هوایی · @ 748781, 4379365 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 15.787174,
+            "coord": [
+              748781.0,
+              4379365.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 25,
+            "existing_device": ""
+          },
+          {
+            "node": "05fbcd84-62b8-5f4d-8af3-ecf3117a1b3a",
+            "feeder_key": "F10 - RADIO",
+            "depth": 180,
+            "edge_id": "09f29f1e-dd04-5d76-9ee7-26f0e7161987#0",
+            "branch_id": "09f29f1e-dd04-5d76-9ee7-26f0e7161987",
+            "label": "F10 - RADIO · خط هوایی · @ 748774, 4379429 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 15.729615,
+            "coord": [
+              748774.0,
+              4379429.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 26,
+            "existing_device": ""
+          },
+          {
+            "node": "0b0274e8-7d05-54c7-94fd-95d0a2011b52",
+            "feeder_key": "F10 - RADIO",
+            "depth": 181,
+            "edge_id": "c315aed1-189d-589a-b60e-ff0f8bec8db9#0",
+            "branch_id": "c315aed1-189d-589a-b60e-ff0f8bec8db9",
+            "label": "F10 - RADIO · خط هوایی · @ 748766, 4379489 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 15.665233,
+            "coord": [
+              748766.0,
+              4379489.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 27,
+            "existing_device": ""
+          },
+          {
+            "node": "fde407e1-5f4b-5219-a5d6-d15aa546642c",
+            "feeder_key": "F10 - RADIO",
+            "depth": 182,
+            "edge_id": "1a554777-05b4-5a98-9973-0b196346374e#0",
+            "branch_id": "1a554777-05b4-5a98-9973-0b196346374e",
+            "label": "F10 - RADIO · خط هوایی · @ 748755, 4379557 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 15.604702,
+            "coord": [
+              748755.0,
+              4379557.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 28,
+            "existing_device": ""
+          },
+          {
+            "node": "fdbce19c-fca2-580c-8f24-f99fdd80c103",
+            "feeder_key": "F10 - RADIO",
+            "depth": 183,
+            "edge_id": "fe42c0fe-a40f-5e67-9449-2809c14231de#0",
+            "branch_id": "fe42c0fe-a40f-5e67-9449-2809c14231de",
+            "label": "F10 - RADIO · خط هوایی · @ 748751, 4379609 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 15.535818,
+            "coord": [
+              748751.0,
+              4379609.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 29,
+            "existing_device": ""
+          },
+          {
+            "node": "5d242608-f3dd-548f-8089-0ec2086cb3ec",
+            "feeder_key": "F10 - RADIO",
+            "depth": 184,
+            "edge_id": "a052a2f6-ae2b-54a5-86d9-4644a0f6a849#0",
+            "branch_id": "a052a2f6-ae2b-54a5-86d9-4644a0f6a849",
+            "label": "F10 - RADIO · خط هوایی · @ 748767, 4379668 m",
+            "downstream_load_kw": 4598.192345,
+            "downstream_ratio": 0.648111332,
+            "downstream_length_km": 15.483665,
+            "coord": [
+              748767.0,
+              4379668.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 30,
+            "existing_device": ""
+          },
+          {
+            "node": "1a4b999e-2639-5ba2-9efb-fa0d0f0db246",
+            "feeder_key": "F10 - RADIO",
+            "depth": 185,
+            "edge_id": "45475a36-c3c8-5c06-ac6d-b646d37af441#0",
+            "branch_id": "45475a36-c3c8-5c06-ac6d-b646d37af441",
+            "label": "F10 - RADIO · خط هوایی · @ 748783, 4379718 m",
+            "downstream_load_kw": 4316.094656,
+            "downstream_ratio": 0.608349901,
+            "downstream_length_km": 15.415661,
+            "coord": [
+              748783.0,
+              4379718.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 31,
+            "existing_device": ""
+          },
+          {
+            "node": "2250c6d1-2cf3-50e1-bbd3-e60d5deb8181",
+            "feeder_key": "F10 - RADIO",
+            "depth": 186,
+            "edge_id": "e78ed490-463a-58cb-9e42-c26d6489ff04#0",
+            "branch_id": "e78ed490-463a-58cb-9e42-c26d6489ff04",
+            "label": "F10 - RADIO · خط هوایی · @ 748788, 4379745 m",
+            "downstream_load_kw": 4104.521388,
+            "downstream_ratio": 0.578528827,
+            "downstream_length_km": 15.35072,
+            "coord": [
+              748788.0,
+              4379745.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 32,
+            "existing_device": ""
+          },
+          {
+            "node": "de1d5f55-e413-5f4f-b28c-a168f663fa9e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 187,
+            "edge_id": "d6c3d559-b1ba-5cf7-bcbb-53cd3f5e6f29#0",
+            "branch_id": "d6c3d559-b1ba-5cf7-bcbb-53cd3f5e6f29",
+            "label": "F10 - RADIO · خط هوایی · @ 748831, 4379820 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.808223,
+            "coord": [
+              748831.0,
+              4379820.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 33,
+            "existing_device": ""
+          },
+          {
+            "node": "3beabf40-d7c9-5cc0-ac44-f9aa61b70467",
+            "feeder_key": "F10 - RADIO",
+            "depth": 188,
+            "edge_id": "9dce7c24-48fa-5020-9a8e-88b8cb5daab7#0",
+            "branch_id": "9dce7c24-48fa-5020-9a8e-88b8cb5daab7",
+            "label": "F10 - RADIO · خط هوایی · @ 748840, 4379882 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.721771,
+            "coord": [
+              748840.0,
+              4379882.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 34,
+            "existing_device": ""
+          },
+          {
+            "node": "c0617c5c-db5b-5269-88b1-95532f95aedf",
+            "feeder_key": "F10 - RADIO",
+            "depth": 189,
+            "edge_id": "8efbe500-689d-5875-834b-fa88c14538b8#0",
+            "branch_id": "8efbe500-689d-5875-834b-fa88c14538b8",
+            "label": "F10 - RADIO · خط هوایی · @ 748871, 4379948 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.659121,
+            "coord": [
+              748871.0,
+              4379948.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 35,
+            "existing_device": ""
+          },
+          {
+            "node": "8d87d361-cd34-59fa-a9d8-a22d564e3c79",
+            "feeder_key": "F10 - RADIO",
+            "depth": 190,
+            "edge_id": "4f39c713-0690-59c3-b88e-bfcff7093c98#0",
+            "branch_id": "4f39c713-0690-59c3-b88e-bfcff7093c98",
+            "label": "F10 - RADIO · خط هوایی · @ 748919, 4379982 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.586204,
+            "coord": [
+              748919.0,
+              4379982.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 36,
+            "existing_device": ""
+          },
+          {
+            "node": "15477d6a-359d-5461-a46b-531b10187e2e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 191,
+            "edge_id": "2560c786-7727-55a1-a610-893f6e5db055#0",
+            "branch_id": "2560c786-7727-55a1-a610-893f6e5db055",
+            "label": "F10 - RADIO · خط هوایی · @ 748971, 4380020 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.527382,
+            "coord": [
+              748971.0,
+              4380020.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 37,
+            "existing_device": ""
+          },
+          {
+            "node": "c96ff913-f72b-5944-8fb5-fd7fa7eb07c2",
+            "feeder_key": "F10 - RADIO",
+            "depth": 192,
+            "edge_id": "0da7ba03-33f0-5f09-8153-7545d8822cfd#0",
+            "branch_id": "0da7ba03-33f0-5f09-8153-7545d8822cfd",
+            "label": "F10 - RADIO · خط هوایی · @ 749027, 4380042 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.462977,
+            "coord": [
+              749027.0,
+              4380042.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 38,
+            "existing_device": ""
+          },
+          {
+            "node": "cdbd46e6-a93b-5fd5-b35d-5c826ff7f905",
+            "feeder_key": "F10 - RADIO",
+            "depth": 193,
+            "edge_id": "e2594c4b-30f4-55f4-9b38-a08c06081fe0#0",
+            "branch_id": "e2594c4b-30f4-55f4-9b38-a08c06081fe0",
+            "label": "F10 - RADIO · خط هوایی · @ 749100, 4380037 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.40281,
+            "coord": [
+              749100.0,
+              4380037.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 39,
+            "existing_device": ""
+          },
+          {
+            "node": "aa4a8ef9-dde4-5897-83af-43e131dce064",
+            "feeder_key": "F10 - RADIO",
+            "depth": 194,
+            "edge_id": "4aa0f093-ec73-59e6-8d58-437b01595587#0",
+            "branch_id": "4aa0f093-ec73-59e6-8d58-437b01595587",
+            "label": "F10 - RADIO · خط هوایی · @ 749160, 4380034 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.329639,
+            "coord": [
+              749160.0,
+              4380034.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 40,
+            "existing_device": ""
+          },
+          {
+            "node": "1dc87e2d-a60b-5941-bd88-98f781bf5943",
+            "feeder_key": "F10 - RADIO",
+            "depth": 195,
+            "edge_id": "3e4be0b3-dcc8-574b-bf42-aafb3903bcd2#0",
+            "branch_id": "3e4be0b3-dcc8-574b-bf42-aafb3903bcd2",
+            "label": "F10 - RADIO · خط هوایی · @ 749215, 4380030 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.269564,
+            "coord": [
+              749215.0,
+              4380030.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 41,
+            "existing_device": ""
+          },
+          {
+            "node": "8b9ce315-ab81-5d58-8872-fd3fd58a0b1e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 196,
+            "edge_id": "ac590305-9b6f-51d1-acee-67f71e84f87f#0",
+            "branch_id": "ac590305-9b6f-51d1-acee-67f71e84f87f",
+            "label": "F10 - RADIO · خط هوایی · @ 749273, 4380025 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.214419,
+            "coord": [
+              749273.0,
+              4380025.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 42,
+            "existing_device": ""
+          },
+          {
+            "node": "ca2d38c8-6666-532a-9d77-5462364f580c",
+            "feeder_key": "F10 - RADIO",
+            "depth": 197,
+            "edge_id": "1f32f571-8689-51ae-ab76-7c5cb0f7a369#0",
+            "branch_id": "1f32f571-8689-51ae-ab76-7c5cb0f7a369",
+            "label": "F10 - RADIO · خط هوایی · @ 749335, 4380021 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.156204,
+            "coord": [
+              749335.0,
+              4380021.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 43,
+            "existing_device": ""
+          },
+          {
+            "node": "1253e38b-3713-5458-a13a-5973d3677974",
+            "feeder_key": "F10 - RADIO",
+            "depth": 198,
+            "edge_id": "7689ea75-db40-5128-9bef-eea17e5341e9#0",
+            "branch_id": "7689ea75-db40-5128-9bef-eea17e5341e9",
+            "label": "F10 - RADIO · خط هوایی · @ 749400, 4380015 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.094075,
+            "coord": [
+              749400.0,
+              4380015.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 44,
+            "existing_device": ""
+          },
+          {
+            "node": "bcdeff1f-8a65-587c-81df-d7b11e6f5e16",
+            "feeder_key": "F10 - RADIO",
+            "depth": 199,
+            "edge_id": "6ededa48-d908-5dbb-ad02-78391f525587#0",
+            "branch_id": "6ededa48-d908-5dbb-ad02-78391f525587",
+            "label": "F10 - RADIO · خط هوایی · @ 749473, 4380013 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 14.028799,
+            "coord": [
+              749473.0,
+              4380013.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 45,
+            "existing_device": ""
+          },
+          {
+            "node": "dabd3a1d-fd69-5bff-afa0-e2c85f3c9646",
+            "feeder_key": "F10 - RADIO",
+            "depth": 200,
+            "edge_id": "47cbba11-d201-5277-a3d1-e2e844e21abc#0",
+            "branch_id": "47cbba11-d201-5277-a3d1-e2e844e21abc",
+            "label": "F10 - RADIO · خط هوایی · @ 749536, 4380010 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.955771,
+            "coord": [
+              749536.0,
+              4380010.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 46,
+            "existing_device": ""
+          },
+          {
+            "node": "907036ec-d8f4-558f-959d-c870f9c39d2e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 201,
+            "edge_id": "83854d65-1e9c-54eb-9022-d35c90bd5af4#0",
+            "branch_id": "83854d65-1e9c-54eb-9022-d35c90bd5af4",
+            "label": "F10 - RADIO · خط هوایی · @ 749597, 4380005 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.8927,
+            "coord": [
+              749597.0,
+              4380005.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 47,
+            "existing_device": ""
+          },
+          {
+            "node": "991520b2-b23c-5831-a9d6-ac2fb4f8311d",
+            "feeder_key": "F10 - RADIO",
+            "depth": 202,
+            "edge_id": "63070f9f-1f4f-5bdf-8d2f-ea7bc7b07c51#0",
+            "branch_id": "63070f9f-1f4f-5bdf-8d2f-ea7bc7b07c51",
+            "label": "F10 - RADIO · خط هوایی · @ 749651, 4380002 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.831495,
+            "coord": [
+              749651.0,
+              4380002.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 48,
+            "existing_device": ""
+          },
+          {
+            "node": "9a0eb9f8-6f94-5080-8969-ba2545f3e7fe",
+            "feeder_key": "F10 - RADIO",
+            "depth": 203,
+            "edge_id": "e2336f5a-0c3a-57c2-91dc-888d769604e0#0",
+            "branch_id": "e2336f5a-0c3a-57c2-91dc-888d769604e0",
+            "label": "F10 - RADIO · خط هوایی · @ 749709, 4379996 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.777412,
+            "coord": [
+              749709.0,
+              4379996.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 49,
+            "existing_device": ""
+          },
+          {
+            "node": "49e340f2-1e5a-5130-bb23-bbe2c9ca538e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 204,
+            "edge_id": "37824de3-5021-547e-9cf9-486e0f0c6a71#0",
+            "branch_id": "37824de3-5021-547e-9cf9-486e0f0c6a71",
+            "label": "F10 - RADIO · خط هوایی · @ 749768, 4379988 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.719103,
+            "coord": [
+              749768.0,
+              4379988.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 50,
+            "existing_device": ""
+          },
+          {
+            "node": "71c277d3-44ce-5dd4-8358-15e4a892557e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 205,
+            "edge_id": "4b0816fd-c303-51c0-892c-f5f4634c3b2a#0",
+            "branch_id": "4b0816fd-c303-51c0-892c-f5f4634c3b2a",
+            "label": "F10 - RADIO · خط هوایی · @ 749807, 4379952 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.659563,
+            "coord": [
+              749807.0,
+              4379952.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 51,
+            "existing_device": ""
+          },
+          {
+            "node": "12ea20c6-83d5-58ff-b87f-7ce8e4eb82bd",
+            "feeder_key": "F10 - RADIO",
+            "depth": 206,
+            "edge_id": "e8a65b46-b391-5720-861a-e94501fa7ea0#0",
+            "branch_id": "e8a65b46-b391-5720-861a-e94501fa7ea0",
+            "label": "F10 - RADIO · خط هوایی · @ 749853, 4379903 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.606487,
+            "coord": [
+              749853.0,
+              4379903.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 52,
+            "existing_device": ""
+          },
+          {
+            "node": "cae4964f-14d1-5180-b0b9-225a81d22b21",
+            "feeder_key": "F10 - RADIO",
+            "depth": 207,
+            "edge_id": "a53a862b-8661-5424-b6da-26fb0c004ad0#0",
+            "branch_id": "a53a862b-8661-5424-b6da-26fb0c004ad0",
+            "label": "F10 - RADIO · خط هوایی · @ 749892, 4379862 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.539279,
+            "coord": [
+              749892.0,
+              4379862.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 53,
+            "existing_device": ""
+          },
+          {
+            "node": "d7f2443f-3947-5eef-9881-43d703cd3fe9",
+            "feeder_key": "F10 - RADIO",
+            "depth": 208,
+            "edge_id": "3e4623de-4f38-5351-9911-ee5933ecbfb3#0",
+            "branch_id": "3e4623de-4f38-5351-9911-ee5933ecbfb3",
+            "label": "F10 - RADIO · خط هوایی · @ 749932, 4379818 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.482692,
+            "coord": [
+              749932.0,
+              4379818.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 54,
+            "existing_device": ""
+          },
+          {
+            "node": "19ec31e0-7194-59ea-871e-5b0394e8db91",
+            "feeder_key": "F10 - RADIO",
+            "depth": 209,
+            "edge_id": "f29ff038-a7ef-52a6-af04-8eafef58c5d5#0",
+            "branch_id": "f29ff038-a7ef-52a6-af04-8eafef58c5d5",
+            "label": "F10 - RADIO · خط هوایی · @ 749973, 4379775 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.423228,
+            "coord": [
+              749973.0,
+              4379775.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 55,
+            "existing_device": ""
+          },
+          {
+            "node": "be49ed46-fab5-50ef-8020-4c68304239fc",
+            "feeder_key": "F10 - RADIO",
+            "depth": 210,
+            "edge_id": "d5d8345a-be0b-5c25-a6fe-b7e613c1f19f#0",
+            "branch_id": "d5d8345a-be0b-5c25-a6fe-b7e613c1f19f",
+            "label": "F10 - RADIO · خط هوایی · @ 750013, 4379732 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.363814,
+            "coord": [
+              750013.0,
+              4379732.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 56,
+            "existing_device": ""
+          },
+          {
+            "node": "45ba1b6b-09f5-5afe-ba3f-14b8bb533c2c",
+            "feeder_key": "F10 - RADIO",
+            "depth": 211,
+            "edge_id": "adc1329d-277a-539b-98d6-fca6db28248d#0",
+            "branch_id": "adc1329d-277a-539b-98d6-fca6db28248d",
+            "label": "F10 - RADIO · خط هوایی · @ 750055, 4379686 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.305086,
+            "coord": [
+              750055.0,
+              4379686.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 57,
+            "existing_device": ""
+          },
+          {
+            "node": "fb178c9f-f3de-5983-b704-e3d18111f0cd",
+            "feeder_key": "F10 - RADIO",
+            "depth": 212,
+            "edge_id": "9b326a04-c888-57c7-ae8b-65daa35bd00b#0",
+            "branch_id": "9b326a04-c888-57c7-ae8b-65daa35bd00b",
+            "label": "F10 - RADIO · خط هوایی · @ 750094, 4379645 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.242797,
+            "coord": [
+              750094.0,
+              4379645.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 58,
+            "existing_device": ""
+          },
+          {
+            "node": "c454cc8c-49a9-5819-a921-83135e2ef211",
+            "feeder_key": "F10 - RADIO",
+            "depth": 213,
+            "edge_id": "c7c5a18b-e8be-5e98-9516-b40447cef918#0",
+            "branch_id": "c7c5a18b-e8be-5e98-9516-b40447cef918",
+            "label": "F10 - RADIO · خط هوایی · @ 750136, 4379603 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.18621,
+            "coord": [
+              750136.0,
+              4379603.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 59,
+            "existing_device": ""
+          },
+          {
+            "node": "872e2c7b-6860-586c-b402-f8c4b432d49f",
+            "feeder_key": "F10 - RADIO",
+            "depth": 214,
+            "edge_id": "4318dd85-703a-5bd0-a4b3-2f307aa3fc50#0",
+            "branch_id": "4318dd85-703a-5bd0-a4b3-2f307aa3fc50",
+            "label": "F10 - RADIO · خط هوایی · @ 750171, 4379563 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.126813,
+            "coord": [
+              750171.0,
+              4379563.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 60,
+            "existing_device": ""
+          },
+          {
+            "node": "ffa961e9-3bad-5435-8cde-792d34b2dbcf",
+            "feeder_key": "F10 - RADIO",
+            "depth": 215,
+            "edge_id": "8dca0d80-04c8-5e22-8aeb-d51b56ba12c7#0",
+            "branch_id": "8dca0d80-04c8-5e22-8aeb-d51b56ba12c7",
+            "label": "F10 - RADIO · خط هوایی · @ 750209, 4379517 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.073663,
+            "coord": [
+              750209.0,
+              4379517.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 61,
+            "existing_device": ""
+          },
+          {
+            "node": "abe75116-dc50-5067-ba19-494507842a23",
+            "feeder_key": "F10 - RADIO",
+            "depth": 216,
+            "edge_id": "ba7c2f47-42c0-5afe-84fb-eaaea956b283#0",
+            "branch_id": "ba7c2f47-42c0-5afe-84fb-eaaea956b283",
+            "label": "F10 - RADIO · خط هوایی · @ 750258, 4379470 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 13.013997,
+            "coord": [
+              750258.0,
+              4379470.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 62,
+            "existing_device": ""
+          },
+          {
+            "node": "6e2238e8-dcbf-571d-bc6f-7bd89604ba93",
+            "feeder_key": "F10 - RADIO",
+            "depth": 217,
+            "edge_id": "4e53d885-9d67-5cd7-8d26-b30051cc904d#0",
+            "branch_id": "4e53d885-9d67-5cd7-8d26-b30051cc904d",
+            "label": "F10 - RADIO · خط هوایی · @ 750302, 4379425 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 12.9461,
+            "coord": [
+              750302.0,
+              4379425.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 63,
+            "existing_device": ""
+          },
+          {
+            "node": "7cbbafee-4e37-5b3b-94f9-cb8db8849b4b",
+            "feeder_key": "F10 - RADIO",
+            "depth": 218,
+            "edge_id": "d512fc3f-da86-5f84-aa5d-440dd927ac1c#0",
+            "branch_id": "d512fc3f-da86-5f84-aa5d-440dd927ac1c",
+            "label": "F10 - RADIO · خط هوایی · @ 750321, 4379404 m",
+            "downstream_load_kw": 3751.899276,
+            "downstream_ratio": 0.528827038,
+            "downstream_length_km": 12.883163,
+            "coord": [
+              750321.2373000002,
+              4379404.3199000005
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 64,
+            "existing_device": ""
+          },
+          {
+            "node": "4024c2ab-8782-5373-97ff-1c3ccddd362c",
+            "feeder_key": "F10 - RADIO",
+            "depth": 219,
+            "edge_id": "54eecb0a-eb51-59a8-b857-74224c932bb4#0",
+            "branch_id": "54eecb0a-eb51-59a8-b857-74224c932bb4",
+            "label": "F10 - RADIO · خط هوایی · @ 750342, 4379382 m",
+            "downstream_load_kw": 3399.277163,
+            "downstream_ratio": 0.479125249,
+            "downstream_length_km": 12.852642,
+            "coord": [
+              750342.0,
+              4379382.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 65,
+            "existing_device": ""
+          },
+          {
+            "node": "91069175-831c-57f8-a1ee-278e32623490",
+            "feeder_key": "F10 - RADIO",
+            "depth": 220,
+            "edge_id": "5fafae4a-9893-54f8-a955-a508d719409a#0",
+            "branch_id": "5fafae4a-9893-54f8-a955-a508d719409a",
+            "label": "F10 - RADIO · خط هوایی · @ 750390, 4379331 m",
+            "downstream_load_kw": 3399.277163,
+            "downstream_ratio": 0.479125249,
+            "downstream_length_km": 12.822158,
+            "coord": [
+              750390.0,
+              4379331.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 66,
+            "existing_device": ""
+          },
+          {
+            "node": "e560279e-813f-5c85-b93b-4f2a6a9adef6",
+            "feeder_key": "F10 - RADIO",
+            "depth": 221,
+            "edge_id": "9b0547c1-9288-5124-add0-e98a8f799fe1#0",
+            "branch_id": "9b0547c1-9288-5124-add0-e98a8f799fe1",
+            "label": "F10 - RADIO · خط هوایی · @ 750427, 4379291 m",
+            "downstream_load_kw": 2835.081784,
+            "downstream_ratio": 0.399602386,
+            "downstream_length_km": 12.742068,
+            "coord": [
+              750427.0,
+              4379291.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 67,
+            "existing_device": ""
+          },
+          {
+            "node": "2dd44cde-6a72-53f3-9f1a-04cf8b7fd731",
+            "feeder_key": "F10 - RADIO",
+            "depth": 222,
+            "edge_id": "745d71b3-310e-509f-9ac6-1d1f7b568335#0",
+            "branch_id": "745d71b3-310e-509f-9ac6-1d1f7b568335",
+            "label": "F10 - RADIO · خط هوایی · @ 750488, 4379264 m",
+            "downstream_load_kw": 2835.081784,
+            "downstream_ratio": 0.399602386,
+            "downstream_length_km": 12.68758,
+            "coord": [
+              750488.0,
+              4379264.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 68,
+            "existing_device": ""
+          },
+          {
+            "node": "f318fe1a-9b05-50c2-83f8-0403d3d47ee9",
+            "feeder_key": "F10 - RADIO",
+            "depth": 223,
+            "edge_id": "e76629c7-54e1-539b-a58d-5c49d6fbcb91#0",
+            "branch_id": "e76629c7-54e1-539b-a58d-5c49d6fbcb91",
+            "label": "F10 - RADIO · خط هوایی · @ 750536, 4379267 m",
+            "downstream_load_kw": 2835.081784,
+            "downstream_ratio": 0.399602386,
+            "downstream_length_km": 12.620871,
+            "coord": [
+              750535.5686999997,
+              4379266.972999999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 69,
+            "existing_device": ""
+          },
+          {
+            "node": "fa7483f0-0501-5af4-ab57-8f59623fee3d",
+            "feeder_key": "F10 - RADIO",
+            "depth": 224,
+            "edge_id": "be52bd34-4af9-5cb1-a40e-f94fb3ba14b4#0",
+            "branch_id": "be52bd34-4af9-5cb1-a40e-f94fb3ba14b4",
+            "label": "F10 - RADIO · خط هوایی · @ 750552, 4379268 m",
+            "downstream_load_kw": 2383.72548,
+            "downstream_ratio": 0.335984095,
+            "downstream_length_km": 12.566874,
+            "coord": [
+              750552.0,
+              4379268.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 70,
+            "existing_device": ""
+          },
+          {
+            "node": "fdb56187-f56e-56d9-b2ae-7502c2381398",
+            "feeder_key": "F10 - RADIO",
+            "depth": 225,
+            "edge_id": "789c0382-6600-5f40-9b45-4ab7189cbc66#0",
+            "branch_id": "789c0382-6600-5f40-9b45-4ab7189cbc66",
+            "label": "F10 - RADIO · خط هوایی · @ 750624, 4379262 m",
+            "downstream_load_kw": 2383.72548,
+            "downstream_ratio": 0.335984095,
+            "downstream_length_km": 10.861908,
+            "coord": [
+              750624.0,
+              4379262.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 71,
+            "existing_device": ""
+          },
+          {
+            "node": "a7bb216e-6111-57eb-a739-49045445e73d",
+            "feeder_key": "F10 - RADIO",
+            "depth": 227,
+            "edge_id": "f74f6faf-3f80-5a7c-9523-d9763fdbc7ee#0",
+            "branch_id": "f74f6faf-3f80-5a7c-9523-d9763fdbc7ee",
+            "label": "F10 - RADIO · خط هوایی · @ 750770, 4379258 m",
+            "downstream_load_kw": 1932.369176,
+            "downstream_ratio": 0.272365805,
+            "downstream_length_km": 10.720651,
+            "coord": [
+              750770.0,
+              4379258.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 72,
+            "existing_device": ""
+          },
+          {
+            "node": "f879c5b1-3b84-5bbe-87e9-dfce1a0dd8e2",
+            "feeder_key": "F10 - RADIO",
+            "depth": 228,
+            "edge_id": "5cdd05db-d26f-59bf-a1aa-f2add73478a3#0",
+            "branch_id": "5cdd05db-d26f-59bf-a1aa-f2add73478a3",
+            "label": "F10 - RADIO · خط هوایی · @ 750836, 4379257 m",
+            "downstream_load_kw": 1932.369176,
+            "downstream_ratio": 0.272365805,
+            "downstream_length_km": 10.643592,
+            "coord": [
+              750836.0,
+              4379257.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 73,
+            "existing_device": ""
+          },
+          {
+            "node": "3d7bea5a-6de4-56f3-848a-9244a49a2dc6",
+            "feeder_key": "F10 - RADIO",
+            "depth": 229,
+            "edge_id": "f2f69552-d8cb-534e-9bce-7286b241a7b8#0",
+            "branch_id": "f2f69552-d8cb-534e-9bce-7286b241a7b8",
+            "label": "F10 - RADIO · خط هوایی · @ 750888, 4379252 m",
+            "downstream_load_kw": 1932.369176,
+            "downstream_ratio": 0.272365805,
+            "downstream_length_km": 10.577585,
+            "coord": [
+              750888.0,
+              4379252.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 74,
+            "existing_device": ""
+          },
+          {
+            "node": "4465ce86-6dbb-5eb8-b323-e05dfae3956d",
+            "feeder_key": "F10 - RADIO",
+            "depth": 231,
+            "edge_id": "273a1e7d-73ef-54fd-a3cc-fb77dad3bd23#0",
+            "branch_id": "273a1e7d-73ef-54fd-a3cc-fb77dad3bd23",
+            "label": "F10 - RADIO · خط هوایی · @ 750890, 4379252 m",
+            "downstream_load_kw": 1932.369176,
+            "downstream_ratio": 0.272365805,
+            "downstream_length_km": 10.524144,
+            "coord": [
+              750889.6374000004,
+              4379251.8562
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 75,
+            "existing_device": ""
+          },
+          {
+            "node": "0111aec7-7929-52a8-a8a2-78a3265ce5f2",
+            "feeder_key": "F10 - RADIO",
+            "depth": 232,
+            "edge_id": "4e6eb5ab-24e7-5664-971c-2123a32b218c#0",
+            "branch_id": "4e6eb5ab-24e7-5664-971c-2123a32b218c",
+            "label": "F10 - RADIO · خط هوایی · @ 750944, 4379257 m",
+            "downstream_load_kw": 1932.369176,
+            "downstream_ratio": 0.272365805,
+            "downstream_length_km": 10.522984,
+            "coord": [
+              750944.00156,
+              4379257.000159999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 76,
+            "existing_device": ""
+          },
+          {
+            "node": "4d7de12d-b141-59af-b685-7f255d66f7a7",
+            "feeder_key": "F10 - RADIO",
+            "depth": 233,
+            "edge_id": "4c1fed59-6a34-5aa3-b6dd-434dadbd0ed3#0",
+            "branch_id": "4c1fed59-6a34-5aa3-b6dd-434dadbd0ed3",
+            "label": "F10 - RADIO · خط هوایی · @ 751007, 4379264 m",
+            "downstream_load_kw": 1932.369176,
+            "downstream_ratio": 0.272365805,
+            "downstream_length_km": 10.464661,
+            "coord": [
+              751007.0,
+              4379264.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 77,
+            "existing_device": ""
+          },
+          {
+            "node": "6c01e862-7dcc-565b-a935-457b5614ff31",
+            "feeder_key": "F10 - RADIO",
+            "depth": 234,
+            "edge_id": "3272fab1-57ea-50cc-a8cf-27c53d25be0d#0",
+            "branch_id": "3272fab1-57ea-50cc-a8cf-27c53d25be0d",
+            "label": "F10 - RADIO · خط هوایی · @ 751071, 4379271 m",
+            "downstream_load_kw": 1932.369176,
+            "downstream_ratio": 0.272365805,
+            "downstream_length_km": 10.401277,
+            "coord": [
+              751071.0,
+              4379271.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 78,
+            "existing_device": ""
+          },
+          {
+            "node": "b28ea4c4-5f21-5df5-9d6e-75c6244f2d1e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 235,
+            "edge_id": "07983b07-7405-5d21-ba31-52edbef37e72#0",
+            "branch_id": "07983b07-7405-5d21-ba31-52edbef37e72",
+            "label": "F10 - RADIO · خط هوایی · @ 751146, 4379305 m",
+            "downstream_load_kw": 1932.369176,
+            "downstream_ratio": 0.272365805,
+            "downstream_length_km": 10.336896,
+            "coord": [
+              751146.0,
+              4379305.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 79,
+            "existing_device": ""
+          },
+          {
+            "node": "11ca46b2-e8e7-5c16-b75c-5d4cc9402b66",
+            "feeder_key": "F10 - RADIO",
+            "depth": 236,
+            "edge_id": "11ebcd2b-d3de-5869-bb23-218563d264b0#0",
+            "branch_id": "11ebcd2b-d3de-5869-bb23-218563d264b0",
+            "label": "F10 - RADIO · خط هوایی · @ 751205, 4379351 m",
+            "downstream_load_kw": 1932.369176,
+            "downstream_ratio": 0.272365805,
+            "downstream_length_km": 10.254549,
+            "coord": [
+              751205.4646000002,
+              4379351.250233333
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 80,
+            "existing_device": ""
+          },
+          {
+            "node": "52e4b0be-b924-5167-bb16-384b2214dada",
+            "feeder_key": "F10 - RADIO",
+            "depth": 237,
+            "edge_id": "413cf114-fb47-5679-aba7-2aed864a7f91#0",
+            "branch_id": "413cf114-fb47-5679-aba7-2aed864a7f91",
+            "label": "F10 - RADIO · خط هوایی · @ 751209, 4379354 m",
+            "downstream_load_kw": 1650.271486,
+            "downstream_ratio": 0.232604374,
+            "downstream_length_km": 10.171508,
+            "coord": [
+              751209.0,
+              4379354.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 81,
+            "existing_device": ""
+          },
+          {
+            "node": "1558f91f-6f3f-5376-a05c-96d245d1e36d",
+            "feeder_key": "F10 - RADIO",
+            "depth": 239,
+            "edge_id": "ba7d7551-1a93-5b3b-a792-8195dfe8f306#0",
+            "branch_id": "ba7d7551-1a93-5b3b-a792-8195dfe8f306",
+            "label": "F10 - RADIO · خط هوایی · @ 751334, 4379438 m",
+            "downstream_load_kw": 1650.271486,
+            "downstream_ratio": 0.232604374,
+            "downstream_length_km": 10.087449,
+            "coord": [
+              751334.0,
+              4379438.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 82,
+            "existing_device": ""
+          },
+          {
+            "node": "e60e6dc1-82d4-5dce-aa91-cf357ca2ca8b",
+            "feeder_key": "F10 - RADIO",
+            "depth": 240,
+            "edge_id": "2f134688-3ee8-5d72-a017-d21aa672df3b#0",
+            "branch_id": "2f134688-3ee8-5d72-a017-d21aa672df3b",
+            "label": "F10 - RADIO · خط هوایی · @ 751382, 4379471 m",
+            "downstream_load_kw": 1650.271486,
+            "downstream_ratio": 0.232604374,
+            "downstream_length_km": 9.837766,
+            "coord": [
+              751382.0,
+              4379471.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 83,
+            "existing_device": ""
+          },
+          {
+            "node": "6d318b5d-faf6-5b94-ae99-74b272fd869f",
+            "feeder_key": "F10 - RADIO",
+            "depth": 241,
+            "edge_id": "bca77454-5850-545a-8696-602cd1820228#0",
+            "branch_id": "bca77454-5850-545a-8696-602cd1820228",
+            "label": "F10 - RADIO · خط هوایی · @ 751434, 4379507 m",
+            "downstream_load_kw": 1650.271486,
+            "downstream_ratio": 0.232604374,
+            "downstream_length_km": 9.779516,
+            "coord": [
+              751434.0,
+              4379507.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 84,
+            "existing_device": ""
+          },
+          {
+            "node": "f1bb119f-90ef-595c-9b31-5c77011efc68",
+            "feeder_key": "F10 - RADIO",
+            "depth": 242,
+            "edge_id": "ae6410c3-65f6-52ba-95f9-7511f1e8ace2#0",
+            "branch_id": "ae6410c3-65f6-52ba-95f9-7511f1e8ace2",
+            "label": "F10 - RADIO · خط هوایی · @ 751499, 4379555 m",
+            "downstream_load_kw": 1650.271486,
+            "downstream_ratio": 0.232604374,
+            "downstream_length_km": 9.716271,
+            "coord": [
+              751499.0,
+              4379555.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 85,
+            "existing_device": ""
+          },
+          {
+            "node": "9f1a2a3c-f55e-599f-a3d6-43d443ce146a",
+            "feeder_key": "F10 - RADIO",
+            "depth": 243,
+            "edge_id": "780c5d46-43a8-5238-bae3-3c553c5c5d49#0",
+            "branch_id": "780c5d46-43a8-5238-bae3-3c553c5c5d49",
+            "label": "F10 - RADIO · خط هوایی · @ 751537, 4379584 m",
+            "downstream_load_kw": 1650.271486,
+            "downstream_ratio": 0.232604374,
+            "downstream_length_km": 9.635469,
+            "coord": [
+              751536.9214000003,
+              4379583.619999999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 86,
+            "existing_device": ""
+          },
+          {
+            "node": "3f080910-67fa-5944-b2c3-842245edb312",
+            "feeder_key": "F10 - RADIO",
+            "depth": 244,
+            "edge_id": "efd89972-fe13-5c6f-ab11-aa72c8569804#0",
+            "branch_id": "efd89972-fe13-5c6f-ab11-aa72c8569804",
+            "label": "F10 - RADIO · خط هوایی · @ 751552, 4379595 m",
+            "downstream_load_kw": 1198.915182,
+            "downstream_ratio": 0.168986083,
+            "downstream_length_km": 9.578526,
+            "coord": [
+              751552.0,
+              4379595.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 87,
+            "existing_device": ""
+          },
+          {
+            "node": "b9350a35-a4c1-519b-be23-741d2f414156",
+            "feeder_key": "F10 - RADIO",
+            "depth": 245,
+            "edge_id": "08ac6245-8c00-58d2-8ddc-d78e6ec822bb#0",
+            "branch_id": "08ac6245-8c00-58d2-8ddc-d78e6ec822bb",
+            "label": "F10 - RADIO · خط هوایی · @ 751610, 4379618 m",
+            "downstream_load_kw": 1198.915182,
+            "downstream_ratio": 0.168986083,
+            "downstream_length_km": 9.559635,
+            "coord": [
+              751610.0,
+              4379618.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 88,
+            "existing_device": ""
+          },
+          {
+            "node": "a690750b-a5ee-554f-b951-a36523aff0aa",
+            "feeder_key": "F10 - RADIO",
+            "depth": 246,
+            "edge_id": "7241e893-2a40-5e87-9024-7a4f64a6b9dc#0",
+            "branch_id": "7241e893-2a40-5e87-9024-7a4f64a6b9dc",
+            "label": "F10 - RADIO · خط هوایی · @ 751667, 4379625 m",
+            "downstream_load_kw": 1198.915182,
+            "downstream_ratio": 0.168986083,
+            "downstream_length_km": 9.497241,
+            "coord": [
+              751667.0,
+              4379625.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 89,
+            "existing_device": ""
+          },
+          {
+            "node": "60aa2370-5362-5a81-8aa1-7f28f1743faf",
+            "feeder_key": "F10 - RADIO",
+            "depth": 247,
+            "edge_id": "dbe60d28-2d78-5515-aac7-252f1b56942d#0",
+            "branch_id": "dbe60d28-2d78-5515-aac7-252f1b56942d",
+            "label": "F10 - RADIO · خط هوایی · @ 751740, 4379633 m",
+            "downstream_load_kw": 1198.915182,
+            "downstream_ratio": 0.168986083,
+            "downstream_length_km": 9.439813,
+            "coord": [
+              751740.0,
+              4379633.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 90,
+            "existing_device": ""
+          },
+          {
+            "node": "e8472370-4674-5f55-8982-6f30f40e469a",
+            "feeder_key": "F10 - RADIO",
+            "depth": 248,
+            "edge_id": "dd770ce1-8315-5848-9820-1482ac235713#0",
+            "branch_id": "dd770ce1-8315-5848-9820-1482ac235713",
+            "label": "F10 - RADIO · خط هوایی · @ 751802, 4379639 m",
+            "downstream_load_kw": 1198.915182,
+            "downstream_ratio": 0.168986083,
+            "downstream_length_km": 9.366376,
+            "coord": [
+              751802.0,
+              4379639.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 91,
+            "existing_device": ""
+          },
+          {
+            "node": "cff0bdc0-856e-5450-b6d4-5bf586af6857",
+            "feeder_key": "F10 - RADIO",
+            "depth": 249,
+            "edge_id": "535cdfa5-bce7-58c7-abd1-9bcc874bcace#0",
+            "branch_id": "535cdfa5-bce7-58c7-abd1-9bcc874bcace",
+            "label": "F10 - RADIO · خط هوایی · @ 751861, 4379645 m",
+            "downstream_load_kw": 1198.915182,
+            "downstream_ratio": 0.168986083,
+            "downstream_length_km": 9.304086,
+            "coord": [
+              751861.0,
+              4379645.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 92,
+            "existing_device": ""
+          },
+          {
+            "node": "5aad59b2-173e-5160-bf88-c547e3a9d45c",
+            "feeder_key": "F10 - RADIO",
+            "depth": 250,
+            "edge_id": "cd243303-d8fb-5835-8961-aa54896b1720#0",
+            "branch_id": "cd243303-d8fb-5835-8961-aa54896b1720",
+            "label": "F10 - RADIO · خط هوایی · @ 751922, 4379652 m",
+            "downstream_load_kw": 1198.915182,
+            "downstream_ratio": 0.168986083,
+            "downstream_length_km": 9.244782,
+            "coord": [
+              751922.0,
+              4379652.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 93,
+            "existing_device": ""
+          },
+          {
+            "node": "00a9fee3-64f4-5283-a551-8694eecefd61",
+            "feeder_key": "F10 - RADIO",
+            "depth": 251,
+            "edge_id": "f8644eb8-a34b-510d-bf63-30cfcc486ca9#0",
+            "branch_id": "f8644eb8-a34b-510d-bf63-30cfcc486ca9",
+            "label": "F10 - RADIO · خط هوایی · @ 751986, 4379660 m",
+            "downstream_load_kw": 1198.915182,
+            "downstream_ratio": 0.168986083,
+            "downstream_length_km": 9.183382,
+            "coord": [
+              751986.0,
+              4379660.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 94,
+            "existing_device": ""
+          },
+          {
+            "node": "a540aec3-7ea1-543d-b6da-94beb9b5f5c7",
+            "feeder_key": "F10 - RADIO",
+            "depth": 252,
+            "edge_id": "e1ea204b-26c2-5e64-bc2e-432c7660ebf5#0",
+            "branch_id": "e1ea204b-26c2-5e64-bc2e-432c7660ebf5",
+            "label": "F10 - RADIO · خط هوایی · @ 752015, 4379663 m",
+            "downstream_load_kw": 1198.915182,
+            "downstream_ratio": 0.168986083,
+            "downstream_length_km": 9.118884,
+            "coord": [
+              752014.7103000004,
+              4379662.823999999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 95,
+            "existing_device": ""
+          },
+          {
+            "node": "0e023d52-737d-5652-9fc5-e5d36082d6a2",
+            "feeder_key": "F10 - RADIO",
+            "depth": 253,
+            "edge_id": "846d97cb-dcde-5c7c-b7aa-cce55f264057#0",
+            "branch_id": "846d97cb-dcde-5c7c-b7aa-cce55f264057",
+            "label": "F10 - RADIO · خط هوایی · @ 752047, 4379666 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 9.081188,
+            "coord": [
+              752047.0,
+              4379666.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 96,
+            "existing_device": ""
+          },
+          {
+            "node": "f3f64cdb-dba6-5608-907c-8c5873535438",
+            "feeder_key": "F10 - RADIO",
+            "depth": 254,
+            "edge_id": "4375e24d-9f7a-5bef-9d35-1f032fa44fd5#0",
+            "branch_id": "4375e24d-9f7a-5bef-9d35-1f032fa44fd5",
+            "label": "F10 - RADIO · خط هوایی · @ 752109, 4379669 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 9.048742,
+            "coord": [
+              752109.0,
+              4379669.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 97,
+            "existing_device": ""
+          },
+          {
+            "node": "09b350dd-98da-533c-b77e-389a1e0e1b08",
+            "feeder_key": "F10 - RADIO",
+            "depth": 255,
+            "edge_id": "82190e99-6496-57cc-81a1-b563d92a9baf#0",
+            "branch_id": "82190e99-6496-57cc-81a1-b563d92a9baf",
+            "label": "F10 - RADIO · خط هوایی · @ 752163, 4379659 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.98667,
+            "coord": [
+              752163.0,
+              4379659.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 98,
+            "existing_device": ""
+          },
+          {
+            "node": "80eddaef-f490-5c99-89c3-5b795b376be0",
+            "feeder_key": "F10 - RADIO",
+            "depth": 256,
+            "edge_id": "d376136e-7f58-5569-b064-73883f742477#0",
+            "branch_id": "d376136e-7f58-5569-b064-73883f742477",
+            "label": "F10 - RADIO · خط هوایی · @ 752215, 4379634 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.931752,
+            "coord": [
+              752215.0,
+              4379634.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 99,
+            "existing_device": ""
+          },
+          {
+            "node": "f8cee740-a840-56f9-955e-fb95f75fc4f9",
+            "feeder_key": "F10 - RADIO",
+            "depth": 257,
+            "edge_id": "6243fc4c-a074-5d7f-b864-9f5ff51c26e9#0",
+            "branch_id": "6243fc4c-a074-5d7f-b864-9f5ff51c26e9",
+            "label": "F10 - RADIO · خط هوایی · @ 752259, 4379610 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.874054,
+            "coord": [
+              752259.0,
+              4379610.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 100,
+            "existing_device": ""
+          },
+          {
+            "node": "30a28923-97e8-5420-8075-5fa998258f3e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 258,
+            "edge_id": "53dd0da1-0d03-584c-afee-d9af55e0b943#0",
+            "branch_id": "53dd0da1-0d03-584c-afee-d9af55e0b943",
+            "label": "F10 - RADIO · خط هوایی · @ 752316, 4379582 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.823934,
+            "coord": [
+              752316.0,
+              4379582.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 101,
+            "existing_device": ""
+          },
+          {
+            "node": "61c72858-f058-585e-9944-99fdcf0ae594",
+            "feeder_key": "F10 - RADIO",
+            "depth": 259,
+            "edge_id": "87d78075-068d-5511-8166-b47e2d06f18d#0",
+            "branch_id": "87d78075-068d-5511-8166-b47e2d06f18d",
+            "label": "F10 - RADIO · خط هوایی · @ 752371, 4379553 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.760428,
+            "coord": [
+              752371.0,
+              4379553.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 102,
+            "existing_device": ""
+          },
+          {
+            "node": "ba5aa9fc-a939-54be-b95b-ca24d95bd4dc",
+            "feeder_key": "F10 - RADIO",
+            "depth": 260,
+            "edge_id": "c5e480d4-43c9-5762-b99e-0de7cd2e6865#0",
+            "branch_id": "c5e480d4-43c9-5762-b99e-0de7cd2e6865",
+            "label": "F10 - RADIO · خط هوایی · @ 752424, 4379527 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.698251,
+            "coord": [
+              752424.0,
+              4379527.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 103,
+            "existing_device": ""
+          },
+          {
+            "node": "139b52db-8911-5d82-a359-8f6fdfe27564",
+            "feeder_key": "F10 - RADIO",
+            "depth": 261,
+            "edge_id": "64619861-7aae-5e73-97af-766ae9b97805#0",
+            "branch_id": "64619861-7aae-5e73-97af-766ae9b97805",
+            "label": "F10 - RADIO · خط هوایی · @ 752479, 4379502 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.639217,
+            "coord": [
+              752479.0,
+              4379502.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 104,
+            "existing_device": ""
+          },
+          {
+            "node": "f60d9963-c23c-5ae1-b81e-d9790d2f36b0",
+            "feeder_key": "F10 - RADIO",
+            "depth": 262,
+            "edge_id": "1648b20b-1184-5a39-914e-d933e5930306#0",
+            "branch_id": "1648b20b-1184-5a39-914e-d933e5930306",
+            "label": "F10 - RADIO · خط هوایی · @ 752484, 4379500 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.578802,
+            "coord": [
+              752483.9722999996,
+              4379499.9462
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 105,
+            "existing_device": ""
+          },
+          {
+            "node": "f6e2c5cf-0b02-58d1-8a74-e7b53fcfddd5",
+            "feeder_key": "F10 - RADIO",
+            "depth": 263,
+            "edge_id": "aa76c5be-13ba-5ff7-b9a7-599ad76aa538#0",
+            "branch_id": "aa76c5be-13ba-5ff7-b9a7-599ad76aa538",
+            "label": "F10 - RADIO · خط هوایی · @ 752525, 4379483 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.569954,
+            "coord": [
+              752525.0,
+              4379483.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 106,
+            "existing_device": ""
+          },
+          {
+            "node": "5b8cd294-0df4-56da-9895-e88bbfb494cd",
+            "feeder_key": "F10 - RADIO",
+            "depth": 264,
+            "edge_id": "c570eac7-478f-5cbe-b9c6-7de08bb32a1e#0",
+            "branch_id": "c570eac7-478f-5cbe-b9c6-7de08bb32a1e",
+            "label": "F10 - RADIO · خط هوایی · @ 752587, 4379448 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.525565,
+            "coord": [
+              752587.0,
+              4379448.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 107,
+            "existing_device": ""
+          },
+          {
+            "node": "9d59db58-f1aa-5284-a661-d199b6949b86",
+            "feeder_key": "F10 - RADIO",
+            "depth": 265,
+            "edge_id": "54e30aa2-54df-586d-9cf7-c6b0d2dc0cfb#0",
+            "branch_id": "54e30aa2-54df-586d-9cf7-c6b0d2dc0cfb",
+            "label": "F10 - RADIO · خط هوایی · @ 752614, 4379390 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.454368,
+            "coord": [
+              752614.0,
+              4379390.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 108,
+            "existing_device": ""
+          },
+          {
+            "node": "7cccba09-7c7e-5b0c-8c0d-adc100722c30",
+            "feeder_key": "F10 - RADIO",
+            "depth": 266,
+            "edge_id": "7b79ed1d-0f09-500b-bc4b-e901a37dbf48#0",
+            "branch_id": "7b79ed1d-0f09-500b-bc4b-e901a37dbf48",
+            "label": "F10 - RADIO · خط هوایی · @ 752649, 4379335 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.390391,
+            "coord": [
+              752649.0,
+              4379335.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 109,
+            "existing_device": ""
+          },
+          {
+            "node": "08653511-a56d-582b-8786-d99cb855cc6f",
+            "feeder_key": "F10 - RADIO",
+            "depth": 267,
+            "edge_id": "0e389f6d-044c-59a9-af07-3a97e1d0caef#0",
+            "branch_id": "0e389f6d-044c-59a9-af07-3a97e1d0caef",
+            "label": "F10 - RADIO · خط هوایی · @ 752676, 4379281 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.325199,
+            "coord": [
+              752676.0,
+              4379281.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 110,
+            "existing_device": ""
+          },
+          {
+            "node": "a197a535-ca8b-5169-9f22-080436da58ad",
+            "feeder_key": "F10 - RADIO",
+            "depth": 268,
+            "edge_id": "b0722bf7-7a82-50ab-abb3-175bed43a5e8#0",
+            "branch_id": "b0722bf7-7a82-50ab-abb3-175bed43a5e8",
+            "label": "F10 - RADIO · خط هوایی · @ 752704, 4379225 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.264825,
+            "coord": [
+              752704.0,
+              4379225.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 111,
+            "existing_device": ""
+          },
+          {
+            "node": "c6fa0f2d-f0dc-56da-8f1f-234c11a5410a",
+            "feeder_key": "F10 - RADIO",
+            "depth": 269,
+            "edge_id": "58d6a4e2-37e4-5088-bce9-0f6a5137960c#0",
+            "branch_id": "58d6a4e2-37e4-5088-bce9-0f6a5137960c",
+            "label": "F10 - RADIO · خط هوایی · @ 752735, 4379168 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.202215,
+            "coord": [
+              752735.0,
+              4379168.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 112,
+            "existing_device": ""
+          },
+          {
+            "node": "c4d9d6dd-8eea-51ad-88e9-e79a5eb85742",
+            "feeder_key": "F10 - RADIO",
+            "depth": 270,
+            "edge_id": "dd7d1ca9-0896-5947-9410-a79e11dc90dd#0",
+            "branch_id": "dd7d1ca9-0896-5947-9410-a79e11dc90dd",
+            "label": "F10 - RADIO · خط هوایی · @ 752761, 4379116 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.137331,
+            "coord": [
+              752761.0,
+              4379116.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 113,
+            "existing_device": ""
+          },
+          {
+            "node": "1109b498-9ab2-5783-a523-7848dbf287f6",
+            "feeder_key": "F10 - RADIO",
+            "depth": 271,
+            "edge_id": "58f4e3ae-35e1-55a3-a5b5-e102452e7f25#0",
+            "branch_id": "58f4e3ae-35e1-55a3-a5b5-e102452e7f25",
+            "label": "F10 - RADIO · خط هوایی · @ 752795, 4379055 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.079193,
+            "coord": [
+              752795.0,
+              4379055.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 114,
+            "existing_device": ""
+          },
+          {
+            "node": "20a8e306-8dd4-5e42-869c-902e52f5f9a2",
+            "feeder_key": "F10 - RADIO",
+            "depth": 272,
+            "edge_id": "0616ffbd-4f38-50fd-8072-37c2433c7ea5#0",
+            "branch_id": "0616ffbd-4f38-50fd-8072-37c2433c7ea5",
+            "label": "F10 - RADIO · خط هوایی · @ 752829, 4378992 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 8.009358,
+            "coord": [
+              752829.0,
+              4378992.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 115,
+            "existing_device": ""
+          },
+          {
+            "node": "8ddeee99-6546-5c48-9f5d-3de2667dd680",
+            "feeder_key": "F10 - RADIO",
+            "depth": 273,
+            "edge_id": "3df962ea-00ca-54a8-8506-ac4fe3ffa070#0",
+            "branch_id": "3df962ea-00ca-54a8-8506-ac4fe3ffa070",
+            "label": "F10 - RADIO · خط هوایی · @ 752858, 4378938 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.937768,
+            "coord": [
+              752858.0,
+              4378938.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 116,
+            "existing_device": ""
+          },
+          {
+            "node": "9405bc29-e60d-5aa9-a0fc-15ed791db5e4",
+            "feeder_key": "F10 - RADIO",
+            "depth": 274,
+            "edge_id": "2bc16d63-162f-56cd-bc61-659784eefc3a#0",
+            "branch_id": "2bc16d63-162f-56cd-bc61-659784eefc3a",
+            "label": "F10 - RADIO · خط هوایی · @ 752889, 4378884 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.876474,
+            "coord": [
+              752889.0,
+              4378884.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 117,
+            "existing_device": ""
+          },
+          {
+            "node": "8bbf828f-4383-5d58-ae35-3fefa167ab3f",
+            "feeder_key": "F10 - RADIO",
+            "depth": 275,
+            "edge_id": "edee5455-2cf8-527f-85db-457e5d0fe95b#0",
+            "branch_id": "edee5455-2cf8-527f-85db-457e5d0fe95b",
+            "label": "F10 - RADIO · خط هوایی · @ 752916, 4378828 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.814209,
+            "coord": [
+              752916.0,
+              4378828.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 118,
+            "existing_device": ""
+          },
+          {
+            "node": "134e3b49-806e-5844-919c-82db85773e49",
+            "feeder_key": "F10 - RADIO",
+            "depth": 276,
+            "edge_id": "95f4ff66-56bf-5fff-b5c7-f246436ca41e#0",
+            "branch_id": "95f4ff66-56bf-5fff-b5c7-f246436ca41e",
+            "label": "F10 - RADIO · خط هوایی · @ 752950, 4378763 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.752039,
+            "coord": [
+              752950.0,
+              4378763.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 119,
+            "existing_device": ""
+          },
+          {
+            "node": "f2181aa5-6084-5129-b9da-a65cd6e48f16",
+            "feeder_key": "F10 - RADIO",
+            "depth": 277,
+            "edge_id": "a520b44c-e1f6-533a-b2fe-ef9a357bd84d#0",
+            "branch_id": "a520b44c-e1f6-533a-b2fe-ef9a357bd84d",
+            "label": "F10 - RADIO · خط هوایی · @ 752994, 4378685 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.678684,
+            "coord": [
+              752994.0,
+              4378685.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 120,
+            "existing_device": ""
+          },
+          {
+            "node": "d31744f1-ccd0-5bc7-b6ba-066b2c57da15",
+            "feeder_key": "F10 - RADIO",
+            "depth": 278,
+            "edge_id": "f7b6f577-e5a4-5128-8e79-cabdfca116d9#0",
+            "branch_id": "f7b6f577-e5a4-5128-8e79-cabdfca116d9",
+            "label": "F10 - RADIO · خط هوایی · @ 753000, 4378625 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.58913,
+            "coord": [
+              753000.0,
+              4378625.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 121,
+            "existing_device": ""
+          },
+          {
+            "node": "43896525-7b0e-58a3-a82c-e7859bd125fd",
+            "feeder_key": "F10 - RADIO",
+            "depth": 279,
+            "edge_id": "8186acad-2c9a-5b26-8d84-9d9831a1bf98#0",
+            "branch_id": "8186acad-2c9a-5b26-8d84-9d9831a1bf98",
+            "label": "F10 - RADIO · خط هوایی · @ 752998, 4378564 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.523462,
+            "coord": [
+              752998.0,
+              4378564.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 122,
+            "existing_device": ""
+          },
+          {
+            "node": "cf374dca-5c24-5c10-9e48-d8a92426bdbf",
+            "feeder_key": "F10 - RADIO",
+            "depth": 280,
+            "edge_id": "027e22ee-a8ad-528d-99ea-565ad7609210#0",
+            "branch_id": "027e22ee-a8ad-528d-99ea-565ad7609210",
+            "label": "F10 - RADIO · خط هوایی · @ 753002, 4378483 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.456555,
+            "coord": [
+              753002.0,
+              4378483.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 123,
+            "existing_device": ""
+          },
+          {
+            "node": "86bb4fee-2074-5a1b-94d7-3f05d899553d",
+            "feeder_key": "F10 - RADIO",
+            "depth": 281,
+            "edge_id": "e18e98d0-aabe-5efe-b4a1-4f03a77622e0#0",
+            "branch_id": "e18e98d0-aabe-5efe-b4a1-4f03a77622e0",
+            "label": "F10 - RADIO · خط هوایی · @ 753010, 4378411 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.375457,
+            "coord": [
+              753010.0,
+              4378411.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 124,
+            "existing_device": ""
+          },
+          {
+            "node": "481c1f35-41f8-589d-9c85-b31d7bb33f62",
+            "feeder_key": "F10 - RADIO",
+            "depth": 282,
+            "edge_id": "19fb9782-0663-5017-8753-2ee901a19f5d#0",
+            "branch_id": "19fb9782-0663-5017-8753-2ee901a19f5d",
+            "label": "F10 - RADIO · خط هوایی · @ 753010, 4378363 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.303014,
+            "coord": [
+              753010.0,
+              4378363.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 125,
+            "existing_device": ""
+          },
+          {
+            "node": "f1d288d5-b876-578f-8a8c-e1f961618325",
+            "feeder_key": "F10 - RADIO",
+            "depth": 283,
+            "edge_id": "307358ff-ccdd-5db7-8135-bcd1718dfcec#0",
+            "branch_id": "307358ff-ccdd-5db7-8135-bcd1718dfcec",
+            "label": "F10 - RADIO · خط هوایی · @ 753014, 4378307 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.255014,
+            "coord": [
+              753014.0,
+              4378307.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 126,
+            "existing_device": ""
+          },
+          {
+            "node": "01c17921-c25f-58c0-8185-4d1cc4d44407",
+            "feeder_key": "F10 - RADIO",
+            "depth": 284,
+            "edge_id": "bddf3362-19bc-57f1-a2e0-4ee1e20b89ac#0",
+            "branch_id": "bddf3362-19bc-57f1-a2e0-4ee1e20b89ac",
+            "label": "F10 - RADIO · خط هوایی · @ 753017, 4378240 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 7.198871,
+            "coord": [
+              753017.0,
+              4378240.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 127,
+            "existing_device": ""
+          },
+          {
+            "node": "611e1754-5568-5b52-9776-b68a6b006230",
+            "feeder_key": "F10 - RADIO",
+            "depth": 285,
+            "edge_id": "98f1f64f-4749-5eaa-9d7b-9d39cb90a200#0",
+            "branch_id": "98f1f64f-4749-5eaa-9d7b-9d39cb90a200",
+            "label": "F10 - RADIO · خط هوایی · @ 753023, 4378184 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 6.270971,
+            "coord": [
+              753023.0,
+              4378184.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 128,
+            "existing_device": ""
+          },
+          {
+            "node": "fec3ce0c-1b80-5c5d-9153-675d1f8458ab",
+            "feeder_key": "F10 - RADIO",
+            "depth": 286,
+            "edge_id": "755aea2a-42b2-503c-889e-8768b3138bf3#0",
+            "branch_id": "755aea2a-42b2-503c-889e-8768b3138bf3",
+            "label": "F10 - RADIO · خط هوایی · @ 753026, 4378131 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 6.21465,
+            "coord": [
+              753026.0,
+              4378131.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 129,
+            "existing_device": ""
+          },
+          {
+            "node": "75351c55-dc0b-5631-ad01-35a777d7cddc",
+            "feeder_key": "F10 - RADIO",
+            "depth": 287,
+            "edge_id": "df3a1b1a-0f45-5775-a7cf-998bd7b6c2b5#0",
+            "branch_id": "df3a1b1a-0f45-5775-a7cf-998bd7b6c2b5",
+            "label": "F10 - RADIO · خط هوایی · @ 753056, 4378080 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 6.161566,
+            "coord": [
+              753056.0,
+              4378080.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 130,
+            "existing_device": ""
+          },
+          {
+            "node": "37c2eff9-8255-5dc1-84b7-d61419534332",
+            "feeder_key": "F10 - RADIO",
+            "depth": 288,
+            "edge_id": "b0f1fc7a-dc9d-562f-a34e-bc9682503783#0",
+            "branch_id": "b0f1fc7a-dc9d-562f-a34e-bc9682503783",
+            "label": "F10 - RADIO · خط هوایی · @ 753089, 4378032 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 6.097836,
+            "coord": [
+              753088.5460000001,
+              4378032.4328000005
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 131,
+            "existing_device": ""
+          },
+          {
+            "node": "e31380bd-f6fe-5c4f-8477-1bcadbae7a33",
+            "feeder_key": "F10 - RADIO",
+            "depth": 289,
+            "edge_id": "7264a364-5f8a-5acc-8b9d-da99dd74ce6c#0",
+            "branch_id": "7264a364-5f8a-5acc-8b9d-da99dd74ce6c",
+            "label": "F10 - RADIO · خط هوایی · @ 753121, 4377976 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 6.031408,
+            "coord": [
+              753121.0,
+              4377976.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 132,
+            "existing_device": ""
+          },
+          {
+            "node": "eb3d76e5-e9b4-562f-b594-e3b65e8001aa",
+            "feeder_key": "F10 - RADIO",
+            "depth": 290,
+            "edge_id": "fc9cb0a3-6fa2-5996-80db-a0f8e179535d#0",
+            "branch_id": "fc9cb0a3-6fa2-5996-80db-a0f8e179535d",
+            "label": "F10 - RADIO · خط هوایی · @ 753153, 4377926 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 5.966309,
+            "coord": [
+              753153.0,
+              4377926.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 133,
+            "existing_device": ""
+          },
+          {
+            "node": "33c41d30-8cfa-5ff7-a280-6af3dd5a93c5",
+            "feeder_key": "F10 - RADIO",
+            "depth": 291,
+            "edge_id": "b1a50ee0-a12b-5d70-ab83-36d44849d3f5#0",
+            "branch_id": "b1a50ee0-a12b-5d70-ab83-36d44849d3f5",
+            "label": "F10 - RADIO · خط هوایی · @ 753208, 4377921 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 5.906946,
+            "coord": [
+              753208.0,
+              4377921.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 134,
+            "existing_device": ""
+          },
+          {
+            "node": "cef8d2ca-7c13-5447-ad72-305653ae4d7a",
+            "feeder_key": "F10 - RADIO",
+            "depth": 292,
+            "edge_id": "e8e665ce-eb8f-5f9a-a4d5-79edfe59322a#0",
+            "branch_id": "e8e665ce-eb8f-5f9a-a4d5-79edfe59322a",
+            "label": "F10 - RADIO · خط هوایی · @ 753261, 4377911 m",
+            "downstream_load_kw": 846.29307,
+            "downstream_ratio": 0.119284294,
+            "downstream_length_km": 5.851719,
+            "coord": [
+              753260.9682999998,
+              4377911.3694
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 135,
+            "existing_device": ""
+          },
+          {
+            "node": "28ad6849-3fbd-518d-817f-d114e5aa4a5e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 222,
+            "edge_id": "0adfe0b4-ba7d-5a58-a4d7-ca2bbe3f7d05#0",
+            "branch_id": "0adfe0b4-ba7d-5a58-a4d7-ca2bbe3f7d05",
+            "label": "F10 - RADIO · خط هوایی · @ 750385, 4379327 m",
+            "downstream_load_kw": 564.19538,
+            "downstream_ratio": 0.079522863,
+            "downstream_length_km": 0.00372,
+            "coord": [
+              750384.9890000001,
+              4379326.501499999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 136,
+            "existing_device": ""
+          },
+          {
+            "node": "42be5765-5ec8-517c-8c6f-4f6e26483c42",
+            "feeder_key": "F10 - RADIO",
+            "depth": 293,
+            "edge_id": "2c6dde0f-f923-5b71-b639-a64238503a65#0",
+            "branch_id": "2c6dde0f-f923-5b71-b639-a64238503a65",
+            "label": "F10 - RADIO · خط هوایی · @ 753262, 4377911 m",
+            "downstream_load_kw": 493.670957,
+            "downstream_ratio": 0.069582505,
+            "downstream_length_km": 5.782909,
+            "coord": [
+              753261.9249,
+              4377911.195499999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 137,
+            "existing_device": ""
+          },
+          {
+            "node": "45735771-86f4-511e-b513-2b156f98ce5f",
+            "feeder_key": "F10 - RADIO",
+            "depth": 294,
+            "edge_id": "23413832-327b-547f-b898-7fde7a12aa82#0",
+            "branch_id": "23413832-327b-547f-b898-7fde7a12aa82",
+            "label": "F10 - RADIO · خط هوایی · @ 753263, 4377911 m",
+            "downstream_load_kw": 493.670957,
+            "downstream_ratio": 0.069582505,
+            "downstream_length_km": 5.781936,
+            "coord": [
+              753263.0,
+              4377911.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 138,
+            "existing_device": ""
+          },
+          {
+            "node": "76f1e0ee-8762-5417-bb6a-f4ac03927745",
+            "feeder_key": "F10 - RADIO",
+            "depth": 295,
+            "edge_id": "675c883e-4e42-52bd-aa85-50ef94562cf6#0",
+            "branch_id": "675c883e-4e42-52bd-aa85-50ef94562cf6",
+            "label": "F10 - RADIO · خط هوایی · @ 753319, 4377908 m",
+            "downstream_load_kw": 493.670957,
+            "downstream_ratio": 0.069582505,
+            "downstream_length_km": 5.780844,
+            "coord": [
+              753319.0,
+              4377908.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 139,
+            "existing_device": ""
+          },
+          {
+            "node": "55b245e6-9495-5697-930e-e10f86e300b8",
+            "feeder_key": "F10 - RADIO",
+            "depth": 296,
+            "edge_id": "0c43f02e-255c-5525-9c0a-7bf5c693cc46#0",
+            "branch_id": "0c43f02e-255c-5525-9c0a-7bf5c693cc46",
+            "label": "F10 - RADIO · خط هوایی · @ 753377, 4377899 m",
+            "downstream_load_kw": 493.670957,
+            "downstream_ratio": 0.069582505,
+            "downstream_length_km": 5.724763,
+            "coord": [
+              753377.0,
+              4377899.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 140,
+            "existing_device": ""
+          },
+          {
+            "node": "9457ed93-3d13-5ea1-9981-f344410314e1",
+            "feeder_key": "F10 - RADIO",
+            "depth": 297,
+            "edge_id": "d1402424-fca5-56be-99aa-4b66f74c569d#0",
+            "branch_id": "d1402424-fca5-56be-99aa-4b66f74c569d",
+            "label": "F10 - RADIO · خط هوایی · @ 753431, 4377892 m",
+            "downstream_load_kw": 493.670957,
+            "downstream_ratio": 0.069582505,
+            "downstream_length_km": 5.666069,
+            "coord": [
+              753431.0,
+              4377892.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 141,
+            "existing_device": ""
+          },
+          {
+            "node": "7fea0b58-18c5-5d3f-842a-ac3983683324",
+            "feeder_key": "F10 - RADIO",
+            "depth": 298,
+            "edge_id": "3af79de8-efbe-5987-9f9f-122d7f60483f#0",
+            "branch_id": "3af79de8-efbe-5987-9f9f-122d7f60483f",
+            "label": "F10 - RADIO · خط هوایی · @ 753480, 4377886 m",
+            "downstream_load_kw": 493.670957,
+            "downstream_ratio": 0.069582505,
+            "downstream_length_km": 5.611617,
+            "coord": [
+              753480.0,
+              4377886.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 142,
+            "existing_device": ""
+          },
+          {
+            "node": "26dd75e7-0585-5f97-b7fd-67f5e93cba7b",
+            "feeder_key": "F10 - RADIO",
+            "depth": 299,
+            "edge_id": "b37c209b-4285-5496-8438-58df94650698#0",
+            "branch_id": "b37c209b-4285-5496-8438-58df94650698",
+            "label": "F10 - RADIO · خط هوایی · @ 753495, 4377884 m",
+            "downstream_load_kw": 493.670957,
+            "downstream_ratio": 0.069582505,
+            "downstream_length_km": 5.562251,
+            "coord": [
+              753495.2852999996,
+              4377883.668299999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 143,
+            "existing_device": ""
+          },
+          {
+            "node": "9ebe7f00-9f54-5170-becd-c4d9129307ab",
+            "feeder_key": "F10 - RADIO",
+            "depth": 172,
+            "edge_id": "1e6090f5-1a0d-5d2f-86d2-288de5110e0a#0",
+            "branch_id": "1e6090f5-1a0d-5d2f-86d2-288de5110e0a",
+            "label": "F10 - RADIO · خط هوایی · @ 748662, 4378876 m",
+            "downstream_load_kw": 451.356304,
+            "downstream_ratio": 0.06361829,
+            "downstream_length_km": 0.001943,
+            "coord": [
+              748661.9325000001,
+              4378875.685699999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 144,
+            "existing_device": ""
+          },
+          {
+            "node": "ab479310-969c-5d69-b0e0-d9caf6ee87bb",
+            "feeder_key": "F10 - RADIO",
+            "depth": 225,
+            "edge_id": "8cb06c6f-c74d-521e-bd10-4a7b9d7b6cdb#0",
+            "branch_id": "8cb06c6f-c74d-521e-bd10-4a7b9d7b6cdb",
+            "label": "F10 - RADIO · خط هوایی · @ 750535, 4379263 m",
+            "downstream_load_kw": 451.356304,
+            "downstream_ratio": 0.06361829,
+            "downstream_length_km": 0.002317,
+            "coord": [
+              750535.1924,
+              4379263.035800001
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 145,
+            "existing_device": ""
+          },
+          {
+            "node": "c84b69d4-6e2a-5af2-803e-e2689594faf6",
+            "feeder_key": "F10 - RADIO",
+            "depth": 245,
+            "edge_id": "cf16e5e9-4f5c-53c6-b0e2-fac222a705c1#0",
+            "branch_id": "cf16e5e9-4f5c-53c6-b0e2-fac222a705c1",
+            "label": "F10 - RADIO · خط هوایی · @ 751540, 4379580 m",
+            "downstream_load_kw": 451.356304,
+            "downstream_ratio": 0.06361829,
+            "downstream_length_km": 0.002659,
+            "coord": [
+              751539.8590000002,
+              4379579.9946
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 146,
+            "existing_device": ""
+          },
+          {
+            "node": "50ea264f-5c79-5e07-987b-3485a1dffdf9",
+            "feeder_key": "F10 - RADIO",
+            "depth": 57,
+            "edge_id": "5ccca418-c565-54f2-bcb9-3fa8d2d16eed#0",
+            "branch_id": "5ccca418-c565-54f2-bcb9-3fa8d2d16eed",
+            "label": "F10 - RADIO · خط هوایی · @ 743353, 4378587 m",
+            "downstream_load_kw": 352.622112,
+            "downstream_ratio": 0.049701789,
+            "downstream_length_km": 0.002039,
+            "coord": [
+              743353.3474000003,
+              4378586.945699999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 147,
+            "existing_device": ""
+          },
+          {
+            "node": "4345b683-5884-5013-9e8f-c9e3c2885911",
+            "feeder_key": "F10 - RADIO",
+            "depth": 124,
+            "edge_id": "48621236-6048-535c-88f8-628b3c495d48#0",
+            "branch_id": "48621236-6048-535c-88f8-628b3c495d48",
+            "label": "F10 - RADIO · خط هوایی · @ 746536, 4377515 m",
+            "downstream_load_kw": 352.622112,
+            "downstream_ratio": 0.049701789,
+            "downstream_length_km": 0.001961,
+            "coord": [
+              746535.5173000004,
+              4377515.003699999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 148,
+            "existing_device": ""
+          },
+          {
+            "node": "76b0e1cc-6727-528b-88ea-135b73af9456",
+            "feeder_key": "F10 - RADIO",
+            "depth": 187,
+            "edge_id": "cb0aecd8-cedb-5122-84cc-04009c7cac51#0",
+            "branch_id": "cb0aecd8-cedb-5122-84cc-04009c7cac51",
+            "label": "F10 - RADIO · خط هوایی · @ 748736, 4379747 m",
+            "downstream_load_kw": 352.622112,
+            "downstream_ratio": 0.049701789,
+            "downstream_length_km": 0.105061,
+            "coord": [
+              748735.9062000001,
+              4379746.9176
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 149,
+            "existing_device": ""
+          },
+          {
+            "node": "f88a5dc1-9e4b-5e45-9410-58bab4d4c6bd",
+            "feeder_key": "F10 - RADIO",
+            "depth": 188,
+            "edge_id": "efa0d11f-3e92-5dde-aa4d-5b0359dbaaf6#0",
+            "branch_id": "efa0d11f-3e92-5dde-aa4d-5b0359dbaaf6",
+            "label": "F10 - RADIO · خط هوایی · @ 748701, 4379773 m",
+            "downstream_load_kw": 352.622112,
+            "downstream_ratio": 0.049701789,
+            "downstream_length_km": 0.052932,
+            "coord": [
+              748701.3753000004,
+              4379772.6907
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 150,
+            "existing_device": ""
+          },
+          {
+            "node": "d3594971-b678-5733-9a5d-0834f1905ac9",
+            "feeder_key": "F10 - RADIO",
+            "depth": 190,
+            "edge_id": "fce4992f-1c96-5cfe-aedc-249d3a0dd078#0",
+            "branch_id": "fce4992f-1c96-5cfe-aedc-249d3a0dd078",
+            "label": "F10 - RADIO · خط هوایی · @ 748698, 4379770 m",
+            "downstream_load_kw": 352.622112,
+            "downstream_ratio": 0.049701789,
+            "downstream_length_km": 0.002383,
+            "coord": [
+              748697.7646000003,
+              4379769.922900001
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 151,
+            "existing_device": ""
+          },
+          {
+            "node": "a94947c1-2f8c-5bd0-b649-410601551180",
+            "feeder_key": "F10 - RADIO",
+            "depth": 220,
+            "edge_id": "8b8a8dfe-e1cb-52bf-b07c-bbafe381582a#0",
+            "branch_id": "8b8a8dfe-e1cb-52bf-b07c-bbafe381582a",
+            "label": "F10 - RADIO · خط هوایی · @ 750322, 4379405 m",
+            "downstream_load_kw": 352.622112,
+            "downstream_ratio": 0.049701789,
+            "downstream_length_km": 0.000905,
+            "coord": [
+              750322.4834000003,
+              4379405.454500001
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 152,
+            "existing_device": ""
+          },
+          {
+            "node": "52544690-18f1-5f30-bea7-3c662847facf",
+            "feeder_key": "F10 - RADIO",
+            "depth": 254,
+            "edge_id": "3b56b59d-c7b7-5a66-bd12-68a03ee0a0fc#0",
+            "branch_id": "3b56b59d-c7b7-5a66-bd12-68a03ee0a0fc",
+            "label": "F10 - RADIO · خط هوایی · @ 752017, 4379658 m",
+            "downstream_load_kw": 352.622112,
+            "downstream_ratio": 0.049701789,
+            "downstream_length_km": 0.002387,
+            "coord": [
+              752016.6073000003,
+              4379658.0627
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 153,
+            "existing_device": ""
+          },
+          {
+            "node": "5abd4e17-3380-58c4-8f7a-3558152bd18e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 294,
+            "edge_id": "ca60c4bb-fd14-5b6c-b347-377c239a1a7d#0",
+            "branch_id": "ca60c4bb-fd14-5b6c-b347-377c239a1a7d",
+            "label": "F10 - RADIO · خط هوایی · @ 753260, 4377901 m",
+            "downstream_load_kw": 352.622112,
+            "downstream_ratio": 0.049701789,
+            "downstream_length_km": 0.005429,
+            "coord": [
+              753259.8503,
+              4377901.4257
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 154,
+            "existing_device": ""
+          },
+          {
+            "node": "b987841e-09ed-5250-9a2d-4d26c4ade5f3",
+            "feeder_key": "F10 - RADIO",
+            "depth": 301,
+            "edge_id": "7a7ed0cd-ee6b-54d8-9220-afae0a2271a2#0",
+            "branch_id": "7a7ed0cd-ee6b-54d8-9220-afae0a2271a2",
+            "label": "F10 - RADIO · خط هوایی · @ 753495, 4377883 m",
+            "downstream_load_kw": 352.622112,
+            "downstream_ratio": 0.049701789,
+            "downstream_length_km": 0.000545,
+            "coord": [
+              753495.1536999997,
+              4377882.6269000005
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 155,
+            "existing_device": ""
+          },
+          {
+            "node": "117db3df-4562-5de9-afae-fc460dbb5567",
+            "feeder_key": "F10 - RADIO",
+            "depth": 186,
+            "edge_id": "3c2e5bc7-a833-5d34-8215-319947bed2a7#0",
+            "branch_id": "3c2e5bc7-a833-5d34-8215-319947bed2a7",
+            "label": "F10 - RADIO · خط هوایی · @ 748769, 4379666 m",
+            "downstream_load_kw": 282.09769,
+            "downstream_ratio": 0.039761431,
+            "downstream_length_km": 0.002031,
+            "coord": [
+              748769.4940999998,
+              4379665.641100001
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 156,
+            "existing_device": ""
+          },
+          {
+            "node": "ee171127-d940-5249-b8a7-d6ad16974d8d",
+            "feeder_key": "F10 - RADIO",
+            "depth": 238,
+            "edge_id": "d2c539be-225f-573e-a0d0-a4575cefb7a3#0",
+            "branch_id": "d2c539be-225f-573e-a0d0-a4575cefb7a3",
+            "label": "F10 - RADIO · خط هوایی · @ 751202, 4379354 m",
+            "downstream_load_kw": 282.09769,
+            "downstream_ratio": 0.039761431,
+            "downstream_length_km": 0.001936,
+            "coord": [
+              751202.4924999997,
+              4379354.3572
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 157,
+            "existing_device": ""
+          },
+          {
+            "node": "71c92294-9b2d-5f5d-86c6-3ed544ed30a9",
+            "feeder_key": "F10 - RADIO",
+            "depth": 134,
+            "edge_id": "ca5096de-256c-5134-b06b-4fc5c389a68c#0",
+            "branch_id": "ca5096de-256c-5134-b06b-4fc5c389a68c",
+            "label": "F10 - RADIO · خط هوایی · @ 746860, 4377556 m",
+            "downstream_load_kw": 211.573267,
+            "downstream_ratio": 0.029821074,
+            "downstream_length_km": 0.001557,
+            "coord": [
+              746860.1645999998,
+              4377555.770199999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 158,
+            "existing_device": ""
+          },
+          {
+            "node": "9ffe3056-4eb7-55ca-94db-dd7c76ff67bb",
+            "feeder_key": "F10 - RADIO",
+            "depth": 155,
+            "edge_id": "dcc2d3a3-426d-5c65-88b0-529bf51ab6cb#0",
+            "branch_id": "dcc2d3a3-426d-5c65-88b0-529bf51ab6cb",
+            "label": "F10 - RADIO · خط هوایی · @ 747692, 4378442 m",
+            "downstream_load_kw": 211.573267,
+            "downstream_ratio": 0.029821074,
+            "downstream_length_km": 0.098535,
+            "coord": [
+              747691.9948000005,
+              4378441.9737
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 159,
+            "existing_device": ""
+          },
+          {
+            "node": "5832981d-4e28-5fcd-aa9a-0e05483e2769",
+            "feeder_key": "F10 - RADIO",
+            "depth": 156,
+            "edge_id": "44dd7c02-6b2f-5912-9ecd-3c007878a644#0",
+            "branch_id": "44dd7c02-6b2f-5912-9ecd-3c007878a644",
+            "label": "F10 - RADIO · خط هوایی · @ 747660, 4378479 m",
+            "downstream_load_kw": 211.573267,
+            "downstream_ratio": 0.029821074,
+            "downstream_length_km": 0.056123,
+            "coord": [
+              747659.9735000003,
+              4378478.9471
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 160,
+            "existing_device": ""
+          },
+          {
+            "node": "555840f1-6674-55cd-868d-9685d2e92c24",
+            "feeder_key": "F10 - RADIO",
+            "depth": 158,
+            "edge_id": "3d2aeda9-a085-5986-a7f6-27e158d8edc6#0",
+            "branch_id": "3d2aeda9-a085-5986-a7f6-27e158d8edc6",
+            "label": "F10 - RADIO · خط هوایی · @ 747658, 4378475 m",
+            "downstream_load_kw": 211.573267,
+            "downstream_ratio": 0.029821074,
+            "downstream_length_km": 0.002533,
+            "coord": [
+              747658.3711999999,
+              4378474.9033
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 161,
+            "existing_device": ""
+          },
+          {
+            "node": "4b10293d-6f26-580d-810e-abb0100ee4b0",
+            "feeder_key": "F10 - RADIO",
+            "depth": 163,
+            "edge_id": "7c2d9b2b-16f2-5f45-9c3a-b27a462425d5#0",
+            "branch_id": "7c2d9b2b-16f2-5f45-9c3a-b27a462425d5",
+            "label": "F10 - RADIO · خط هوایی · @ 748154, 4378581 m",
+            "downstream_load_kw": 211.573267,
+            "downstream_ratio": 0.029821074,
+            "downstream_length_km": 0.013476,
+            "coord": [
+              748154.4408999998,
+              4378580.739600001
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 162,
+            "existing_device": ""
+          },
+          {
+            "node": "06eb96ef-376a-5104-aca8-0f4672f6af54",
+            "feeder_key": "F10 - RADIO",
+            "depth": 171,
+            "edge_id": "8d4c3f10-ac7f-54a7-85ea-aa58f35b05f3#0",
+            "branch_id": "8d4c3f10-ac7f-54a7-85ea-aa58f35b05f3",
+            "label": "F10 - RADIO · خط هوایی · @ 748600, 4378850 m",
+            "downstream_load_kw": 211.573267,
+            "downstream_ratio": 0.029821074,
+            "downstream_length_km": 0.002314,
+            "coord": [
+              748599.8542,
+              4378849.5803
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 163,
+            "existing_device": ""
+          },
+          {
+            "node": "4e924840-68a7-547c-bab3-a1f850097ae7",
+            "feeder_key": "F10 - RADIO",
+            "depth": 187,
+            "edge_id": "4b2a78a3-c464-52a9-a6d9-a291dc17af50#0",
+            "branch_id": "4b2a78a3-c464-52a9-a6d9-a291dc17af50",
+            "label": "F10 - RADIO · خط هوایی · @ 748787, 4379714 m",
+            "downstream_load_kw": 211.573267,
+            "downstream_ratio": 0.029821074,
+            "downstream_length_km": 0.003663,
+            "coord": [
+              748787.1445000004,
+              4379713.873199999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 164,
+            "existing_device": ""
+          },
+          {
+            "node": "c2620a6f-bed8-5664-bdb3-4cf0914ed178",
+            "feeder_key": "F10 - RADIO",
+            "depth": 145,
+            "edge_id": "b8c41171-d020-537b-a883-95ca13da2c3d#0",
+            "branch_id": "b8c41171-d020-537b-a883-95ca13da2c3d",
+            "label": "F10 - RADIO · خط هوایی · @ 747300, 4377963 m",
+            "downstream_load_kw": 141.048845,
+            "downstream_ratio": 0.019880716,
+            "downstream_length_km": 0.003387,
+            "coord": [
+              747299.5442000004,
+              4377962.520099999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 165,
+            "existing_device": ""
+          },
+          {
+            "node": "468b9cc9-74fa-5a13-947f-e9025cf279c2",
+            "feeder_key": "F10 - RADIO",
+            "depth": 300,
+            "edge_id": "b80f489c-214d-5ef5-beee-52508407c728#0",
+            "branch_id": "b80f489c-214d-5ef5-beee-52508407c728",
+            "label": "F10 - RADIO · خط هوایی · @ 753539, 4377877 m",
+            "downstream_load_kw": 141.048845,
+            "downstream_ratio": 0.019880716,
+            "downstream_length_km": 5.544965,
+            "coord": [
+              753539.0,
+              4377877.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 166,
+            "existing_device": ""
+          },
+          {
+            "node": "20faf80f-6b13-52f1-b09e-5ab53850fd66",
+            "feeder_key": "F10 - RADIO",
+            "depth": 301,
+            "edge_id": "1e30f2cf-b10d-5138-9f2d-41b59d4f3118#0",
+            "branch_id": "1e30f2cf-b10d-5138-9f2d-41b59d4f3118",
+            "label": "F10 - RADIO · خط هوایی · @ 753594, 4377867 m",
+            "downstream_load_kw": 141.048845,
+            "downstream_ratio": 0.019880716,
+            "downstream_length_km": 5.500744,
+            "coord": [
+              753594.0,
+              4377867.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 167,
+            "existing_device": ""
+          },
+          {
+            "node": "712a36e0-563b-551d-835b-1652bae48db0",
+            "feeder_key": "F10 - RADIO",
+            "depth": 302,
+            "edge_id": "7e9d9e8d-7bc2-58a4-ba02-d92fcf8c879b#0",
+            "branch_id": "7e9d9e8d-7bc2-58a4-ba02-d92fcf8c879b",
+            "label": "F10 - RADIO · خط هوایی · @ 753637, 4377862 m",
+            "downstream_load_kw": 141.048845,
+            "downstream_ratio": 0.019880716,
+            "downstream_length_km": 5.444843,
+            "coord": [
+              753637.0,
+              4377862.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 168,
+            "existing_device": ""
+          },
+          {
+            "node": "def107be-5353-5548-8446-cb0b9fccae8e",
+            "feeder_key": "F10 - RADIO",
+            "depth": 303,
+            "edge_id": "7b8fb466-4cbb-51cc-9a4a-4ea60bd2d9a1#0",
+            "branch_id": "7b8fb466-4cbb-51cc-9a4a-4ea60bd2d9a1",
+            "label": "F10 - RADIO · خط هوایی · @ 753683, 4377854 m",
+            "downstream_load_kw": 141.048845,
+            "downstream_ratio": 0.019880716,
+            "downstream_length_km": 5.401553,
+            "coord": [
+              753682.6080999998,
+              4377854.266899999
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 169,
+            "existing_device": ""
+          },
+          {
+            "node": "ed8a7280-2ce5-5b9c-9d04-90b051844e44",
+            "feeder_key": "F10 - RADIO",
+            "depth": 304,
+            "edge_id": "1160f2e5-f5d1-5ecd-b35d-7e9cd4a15df9#0",
+            "branch_id": "1160f2e5-f5d1-5ecd-b35d-7e9cd4a15df9",
+            "label": "F10 - RADIO · جامپر · @ 753684, 4377855 m",
+            "downstream_load_kw": 141.048845,
+            "downstream_ratio": 0.019880716,
+            "downstream_length_km": 5.355294,
+            "coord": [
+              753683.5010000002,
+              4377855.1599
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 170,
+            "existing_device": ""
+          },
+          {
+            "node": "5a360977-65bb-5574-aab1-8475c064cd07",
+            "feeder_key": "F10 - RADIO",
+            "depth": 305,
+            "edge_id": "1160f2e5-f5d1-5ecd-b35d-7e9cd4a15df9#1",
+            "branch_id": "1160f2e5-f5d1-5ecd-b35d-7e9cd4a15df9",
+            "label": "F10 - RADIO · جامپر · @ 753684, 4377854 m",
+            "downstream_load_kw": 141.048845,
+            "downstream_ratio": 0.019880716,
+            "downstream_length_km": 5.354031,
+            "coord": [
+              753684.0,
+              4377854.0
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 171,
+            "existing_device": ""
+          },
+          {
+            "node": "c9898be0-adfb-58f8-aca7-1b2d876ff638",
+            "feeder_key": "F10 - RADIO",
+            "depth": 306,
+            "edge_id": "d30a37df-2fe9-519e-a07a-59d589675065#0",
+            "branch_id": "d30a37df-2fe9-519e-a07a-59d589675065",
+            "label": "F10 - RADIO · خط هوایی · @ 753729, 4377850 m",
+            "downstream_load_kw": 141.048845,
+            "downstream_ratio": 0.019880716,
+            "downstream_length_km": 5.349821,
+            "coord": [
+              753729.0758999996,
+              4377849.578600001
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 172,
+            "existing_device": ""
+          },
+          {
+            "node": "afbe09ae-8b9f-5e40-bfd6-8e4399209b80",
+            "feeder_key": "F10 - RADIO",
+            "depth": 308,
+            "edge_id": "fb7b7110-ae48-507d-bbae-f183bc05e3db#0",
+            "branch_id": "fb7b7110-ae48-507d-bbae-f183bc05e3db",
+            "label": "F10 - RADIO · خط هوایی · @ 753729, 4377846 m",
+            "downstream_load_kw": 141.048845,
+            "downstream_ratio": 0.019880716,
+            "downstream_length_km": 0.001593,
+            "coord": [
+              753728.9864999996,
+              4377846.4986000005
+            ],
+            "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+            "rank": 173,
+            "existing_device": ""
+          }
+        ],
+        "rejected": {
+          "no_downstream_load": 541,
+          "over_load_ratio": 149,
+          "too_shallow": 1,
+          "already_has_device": 99,
+          "head_edge": 1,
+          "zero_length": 0
+        },
+        "steps": [
+          {
+            "count": 1,
+            "selected": [
+              {
+                "node": "fa7483f0-0501-5af4-ab57-8f59623fee3d",
+                "feeder_key": "F10 - RADIO",
+                "depth": 224,
+                "edge_id": "be52bd34-4af9-5cb1-a40e-f94fb3ba14b4#0",
+                "branch_id": "be52bd34-4af9-5cb1-a40e-f94fb3ba14b4",
+                "label": "F10 - RADIO · خط هوایی · @ 750552, 4379268 m",
+                "downstream_load_kw": 2383.72548,
+                "downstream_ratio": 0.335984095,
+                "downstream_length_km": 12.566874,
+                "coord": [
+                  750552.0,
+                  4379268.0
+                ],
+                "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+                "rank": 70,
+                "existing_device": ""
+              }
+            ],
+            "eens_kwh_per_year": 367855.462464,
+            "eens_mwh_per_year": 367.855462464,
+            "gain_kwh_per_year": 194311.27304,
+            "improvement_percent": 34.564705,
+            "sections": [
+              {
+                "index": 0,
+                "cut_node": null,
+                "parent_index": null,
+                "load_kw": 0.0,
+                "length_m": 2583.64219,
+                "length_km": 2.583642,
+                "lambda_per_year": 9.947678691,
+                "load_ratio": 0.0,
+                "length_ratio": 0.068134786,
+                "eens_kwh_per_year": 35288.181021
+              },
+              {
+                "index": 1,
+                "cut_node": "8db633bd-010f-56f2-a5c2-442e72397049",
+                "parent_index": 0,
+                "load_kw": 0.0,
+                "length_m": 8717.914542,
+                "length_km": 8.717915,
+                "lambda_per_year": 33.566185378,
+                "load_ratio": 0.0,
+                "length_ratio": 0.229905379,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 2,
+                "cut_node": "84547b36-6c37-5e8f-a1ce-3ea981ad8af4",
+                "parent_index": 0,
+                "load_kw": 0.0,
+                "length_m": 6.444037,
+                "length_km": 0.006444,
+                "lambda_per_year": 0.024811179,
+                "load_ratio": 0.0,
+                "length_ratio": 0.00016994,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 3,
+                "cut_node": "64c0e33c-a3a1-5f73-b4fb-ab64ff6186ad",
+                "parent_index": 2,
+                "load_kw": 0.0,
+                "length_m": 2.217268,
+                "length_km": 0.002217,
+                "lambda_per_year": 0.008537043,
+                "load_ratio": 0.0,
+                "length_ratio": 5.8473e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 4,
+                "cut_node": "5c08a348-0f3a-559c-84f9-77eb83dd0e32",
+                "parent_index": 3,
+                "load_kw": 0.0,
+                "length_m": 4.605557,
+                "length_km": 0.004606,
+                "lambda_per_year": 0.017732564,
+                "load_ratio": 0.0,
+                "length_ratio": 0.000121456,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 5,
+                "cut_node": "fc0ae487-9cc4-58a0-8220-303aa0081d90",
+                "parent_index": 0,
+                "load_kw": 4711.031421,
+                "length_m": 14023.792649,
+                "length_km": 14.023793,
+                "lambda_per_year": 53.995163809,
+                "load_ratio": 0.0,
+                "length_ratio": 0.369829889,
+                "eens_kwh_per_year": 248944.767967
+              },
+              {
+                "index": 6,
+                "cut_node": "b0a6a8db-e88e-5e1e-b10c-bb5104758e74",
+                "parent_index": 1,
+                "load_kw": 0.0,
+                "length_m": 1.817012,
+                "length_km": 0.001817,
+                "lambda_per_year": 0.006995957,
+                "load_ratio": 0.0,
+                "length_ratio": 4.7918e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 7,
+                "cut_node": "cb0bd406-71ce-568b-baca-d1b656615da1",
+                "parent_index": 1,
+                "load_kw": 0.0,
+                "length_m": 4.234067,
+                "length_km": 0.004234,
+                "lambda_per_year": 0.016302233,
+                "load_ratio": 0.0,
+                "length_ratio": 0.000111659,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 8,
+                "cut_node": "de7e5a29-b031-57e0-9398-55bf4b0fb5d6",
+                "parent_index": 7,
+                "load_kw": 0.0,
+                "length_m": 1.593485,
+                "length_km": 0.001593,
+                "lambda_per_year": 0.006135322,
+                "load_ratio": 0.0,
+                "length_ratio": 4.2023e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 9,
+                "cut_node": "c6a49baf-fc28-5f63-aabc-28f71e98f7c7",
+                "parent_index": 1,
+                "load_kw": 0.0,
+                "length_m": 2.930108,
+                "length_km": 0.00293,
+                "lambda_per_year": 0.011281661,
+                "load_ratio": 0.0,
+                "length_ratio": 7.7272e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 10,
+                "cut_node": "8ba7c886-809c-5c7c-bf96-2415058cf2e1",
+                "parent_index": 9,
+                "load_kw": 0.0,
+                "length_m": 0.804111,
+                "length_km": 0.000804,
+                "lambda_per_year": 0.003096032,
+                "load_ratio": 0.0,
+                "length_ratio": 2.1206e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 11,
+                "cut_node": "959a91ce-36c5-58da-8c15-f8811bc85752",
+                "parent_index": 10,
+                "load_kw": 0.0,
+                "length_m": 2.70762,
+                "length_km": 0.002708,
+                "lambda_per_year": 0.010425025,
+                "load_ratio": 0.0,
+                "length_ratio": 7.1404e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 12,
+                "cut_node": "fa7483f0-0501-5af4-ab57-8f59623fee3d",
+                "parent_index": 5,
+                "load_kw": 2383.72548,
+                "length_m": 12555.68533,
+                "length_km": 12.555685,
+                "lambda_per_year": 48.342577726,
+                "load_ratio": 0.0,
+                "length_ratio": 0.331113546,
+                "eens_kwh_per_year": 83622.513476
+              },
+              {
+                "index": 13,
+                "cut_node": "08110e18-3173-5ad2-965b-97edd018fd05",
+                "parent_index": 12,
+                "load_kw": 0.0,
+                "length_m": 2.574398,
+                "length_km": 0.002574,
+                "lambda_per_year": 0.009912086,
+                "load_ratio": 0.0,
+                "length_ratio": 6.7891e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 14,
+                "cut_node": "0de0f97e-3399-533f-bfe1-d3565cb90bdd",
+                "parent_index": 13,
+                "load_kw": 0.0,
+                "length_m": 1.375801,
+                "length_km": 0.001376,
+                "lambda_per_year": 0.005297184,
+                "load_ratio": 0.0,
+                "length_ratio": 3.6282e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 15,
+                "cut_node": "988921d0-46a7-5d78-925c-599b397ae7fb",
+                "parent_index": 14,
+                "load_kw": 0.0,
+                "length_m": 3.549415,
+                "length_km": 0.003549,
+                "lambda_per_year": 0.013666149,
+                "load_ratio": 0.0,
+                "length_ratio": 9.3604e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 16,
+                "cut_node": "6e55a284-1b16-55f5-bb31-488aa80345d7",
+                "parent_index": 12,
+                "load_kw": 0.0,
+                "length_m": 1.75688,
+                "length_km": 0.001757,
+                "lambda_per_year": 0.006764432,
+                "load_ratio": 0.0,
+                "length_ratio": 4.6332e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 17,
+                "cut_node": "a17eaa48-542b-5585-8d39-95209c18a420",
+                "parent_index": 16,
+                "load_kw": 0.0,
+                "length_m": 0.76854,
+                "length_km": 0.000769,
+                "lambda_per_year": 0.002959075,
+                "load_ratio": 0.0,
+                "length_ratio": 2.0268e-05,
+                "eens_kwh_per_year": 0.0
+              },
+              {
+                "index": 18,
+                "cut_node": "9733ce26-020d-51bc-a937-61f668c9da70",
+                "parent_index": 17,
+                "load_kw": 0.0,
+                "length_m": 1.163158,
+                "length_km": 0.001163,
+                "lambda_per_year": 0.004478454,
+                "load_ratio": 0.0,
+                "length_ratio": 3.0674e-05,
+                "eens_kwh_per_year": 0.0
+              }
+            ]
+          }
+        ],
+        "best": {
+          "count": 1,
+          "selected": [
+            {
+              "node": "fa7483f0-0501-5af4-ab57-8f59623fee3d",
+              "feeder_key": "F10 - RADIO",
+              "depth": 224,
+              "edge_id": "be52bd34-4af9-5cb1-a40e-f94fb3ba14b4#0",
+              "branch_id": "be52bd34-4af9-5cb1-a40e-f94fb3ba14b4",
+              "label": "F10 - RADIO · خط هوایی · @ 750552, 4379268 m",
+              "downstream_load_kw": 2383.72548,
+              "downstream_ratio": 0.335984095,
+              "downstream_length_km": 12.566874,
+              "coord": [
+                750552.0,
+                4379268.0
+              ],
+              "zone_id": "c6dc0bba-3600-5c22-b6f2-13f3e39bf060",
+              "rank": 70,
+              "existing_device": ""
+            }
+          ],
+          "eens_kwh_per_year": 367855.462464,
+          "eens_mwh_per_year": 367.855462464,
+          "gain_kwh_per_year": 194311.27304,
+          "improvement_percent": 34.564705,
+          "sections": [
+            {
+              "index": 0,
+              "cut_node": null,
+              "parent_index": null,
+              "load_kw": 0.0,
+              "length_m": 2583.64219,
+              "length_km": 2.583642,
+              "lambda_per_year": 9.947678691,
+              "load_ratio": 0.0,
+              "length_ratio": 0.068134786,
+              "eens_kwh_per_year": 35288.181021
+            },
+            {
+              "index": 1,
+              "cut_node": "8db633bd-010f-56f2-a5c2-442e72397049",
+              "parent_index": 0,
+              "load_kw": 0.0,
+              "length_m": 8717.914542,
+              "length_km": 8.717915,
+              "lambda_per_year": 33.566185378,
+              "load_ratio": 0.0,
+              "length_ratio": 0.229905379,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 2,
+              "cut_node": "84547b36-6c37-5e8f-a1ce-3ea981ad8af4",
+              "parent_index": 0,
+              "load_kw": 0.0,
+              "length_m": 6.444037,
+              "length_km": 0.006444,
+              "lambda_per_year": 0.024811179,
+              "load_ratio": 0.0,
+              "length_ratio": 0.00016994,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 3,
+              "cut_node": "64c0e33c-a3a1-5f73-b4fb-ab64ff6186ad",
+              "parent_index": 2,
+              "load_kw": 0.0,
+              "length_m": 2.217268,
+              "length_km": 0.002217,
+              "lambda_per_year": 0.008537043,
+              "load_ratio": 0.0,
+              "length_ratio": 5.8473e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 4,
+              "cut_node": "5c08a348-0f3a-559c-84f9-77eb83dd0e32",
+              "parent_index": 3,
+              "load_kw": 0.0,
+              "length_m": 4.605557,
+              "length_km": 0.004606,
+              "lambda_per_year": 0.017732564,
+              "load_ratio": 0.0,
+              "length_ratio": 0.000121456,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 5,
+              "cut_node": "fc0ae487-9cc4-58a0-8220-303aa0081d90",
+              "parent_index": 0,
+              "load_kw": 4711.031421,
+              "length_m": 14023.792649,
+              "length_km": 14.023793,
+              "lambda_per_year": 53.995163809,
+              "load_ratio": 0.0,
+              "length_ratio": 0.369829889,
+              "eens_kwh_per_year": 248944.767967
+            },
+            {
+              "index": 6,
+              "cut_node": "b0a6a8db-e88e-5e1e-b10c-bb5104758e74",
+              "parent_index": 1,
+              "load_kw": 0.0,
+              "length_m": 1.817012,
+              "length_km": 0.001817,
+              "lambda_per_year": 0.006995957,
+              "load_ratio": 0.0,
+              "length_ratio": 4.7918e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 7,
+              "cut_node": "cb0bd406-71ce-568b-baca-d1b656615da1",
+              "parent_index": 1,
+              "load_kw": 0.0,
+              "length_m": 4.234067,
+              "length_km": 0.004234,
+              "lambda_per_year": 0.016302233,
+              "load_ratio": 0.0,
+              "length_ratio": 0.000111659,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 8,
+              "cut_node": "de7e5a29-b031-57e0-9398-55bf4b0fb5d6",
+              "parent_index": 7,
+              "load_kw": 0.0,
+              "length_m": 1.593485,
+              "length_km": 0.001593,
+              "lambda_per_year": 0.006135322,
+              "load_ratio": 0.0,
+              "length_ratio": 4.2023e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 9,
+              "cut_node": "c6a49baf-fc28-5f63-aabc-28f71e98f7c7",
+              "parent_index": 1,
+              "load_kw": 0.0,
+              "length_m": 2.930108,
+              "length_km": 0.00293,
+              "lambda_per_year": 0.011281661,
+              "load_ratio": 0.0,
+              "length_ratio": 7.7272e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 10,
+              "cut_node": "8ba7c886-809c-5c7c-bf96-2415058cf2e1",
+              "parent_index": 9,
+              "load_kw": 0.0,
+              "length_m": 0.804111,
+              "length_km": 0.000804,
+              "lambda_per_year": 0.003096032,
+              "load_ratio": 0.0,
+              "length_ratio": 2.1206e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 11,
+              "cut_node": "959a91ce-36c5-58da-8c15-f8811bc85752",
+              "parent_index": 10,
+              "load_kw": 0.0,
+              "length_m": 2.70762,
+              "length_km": 0.002708,
+              "lambda_per_year": 0.010425025,
+              "load_ratio": 0.0,
+              "length_ratio": 7.1404e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 12,
+              "cut_node": "fa7483f0-0501-5af4-ab57-8f59623fee3d",
+              "parent_index": 5,
+              "load_kw": 2383.72548,
+              "length_m": 12555.68533,
+              "length_km": 12.555685,
+              "lambda_per_year": 48.342577726,
+              "load_ratio": 0.0,
+              "length_ratio": 0.331113546,
+              "eens_kwh_per_year": 83622.513476
+            },
+            {
+              "index": 13,
+              "cut_node": "08110e18-3173-5ad2-965b-97edd018fd05",
+              "parent_index": 12,
+              "load_kw": 0.0,
+              "length_m": 2.574398,
+              "length_km": 0.002574,
+              "lambda_per_year": 0.009912086,
+              "load_ratio": 0.0,
+              "length_ratio": 6.7891e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 14,
+              "cut_node": "0de0f97e-3399-533f-bfe1-d3565cb90bdd",
+              "parent_index": 13,
+              "load_kw": 0.0,
+              "length_m": 1.375801,
+              "length_km": 0.001376,
+              "lambda_per_year": 0.005297184,
+              "load_ratio": 0.0,
+              "length_ratio": 3.6282e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 15,
+              "cut_node": "988921d0-46a7-5d78-925c-599b397ae7fb",
+              "parent_index": 14,
+              "load_kw": 0.0,
+              "length_m": 3.549415,
+              "length_km": 0.003549,
+              "lambda_per_year": 0.013666149,
+              "load_ratio": 0.0,
+              "length_ratio": 9.3604e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 16,
+              "cut_node": "6e55a284-1b16-55f5-bb31-488aa80345d7",
+              "parent_index": 12,
+              "load_kw": 0.0,
+              "length_m": 1.75688,
+              "length_km": 0.001757,
+              "lambda_per_year": 0.006764432,
+              "load_ratio": 0.0,
+              "length_ratio": 4.6332e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 17,
+              "cut_node": "a17eaa48-542b-5585-8d39-95209c18a420",
+              "parent_index": 16,
+              "load_kw": 0.0,
+              "length_m": 0.76854,
+              "length_km": 0.000769,
+              "lambda_per_year": 0.002959075,
+              "load_ratio": 0.0,
+              "length_ratio": 2.0268e-05,
+              "eens_kwh_per_year": 0.0
+            },
+            {
+              "index": 18,
+              "cut_node": "9733ce26-020d-51bc-a937-61f668c9da70",
+              "parent_index": 17,
+              "load_kw": 0.0,
+              "length_m": 1.163158,
+              "length_km": 0.001163,
+              "lambda_per_year": 0.004478454,
+              "load_ratio": 0.0,
+              "length_ratio": 3.0674e-05,
+              "eens_kwh_per_year": 0.0
+            }
+          ]
+        },
+        "best_eens_kwh_per_year": 367855.462464,
+        "improvement_percent": 34.564705,
+        "notes": [],
+        "status": "ok"
+      }
+    ],
+    "summary_rows": [
+      {
+        "feeder_key": "F10 - RADIO",
+        "status": "ok",
+        "radial": true,
+        "line_length_km": 37.92,
+        "total_load_kw": 7094.8,
+        "failure_rate_per_year": 146.0,
+        "failure_rate_source": "outage-lambda",
+        "switch_type": "disconnector",
+        "switch_type_fa": "سکسیونر (Disconnector)",
+        "repair_time_min": 43.54,
+        "existing_sections": 18,
+        "candidate_count": 173,
+        "baseline_eens_mwh": 562.1667,
+        "selected_count": 1,
+        "best_eens_mwh": 367.8555,
+        "gain_mwh": 194.3113,
+        "improvement_percent": 34.565,
+        "selected_labels": [
+          "F10 - RADIO · خط هوایی · @ 750552, 4379268 m"
+        ],
+        "selected_nodes": [
+          "fa7483f0-0501-5af4-ab57-8f59623fee3d"
+        ]
+      }
+    ]
+  }
+}
