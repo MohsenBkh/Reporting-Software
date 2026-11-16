@@ -69,6 +69,13 @@ REPORT_SECTIONS: list[tuple[str, str]] = [
     ("fd_plan", "توسعه فیدر — راه‌حل پیشنهادی (شرح طرح)"),
     ("fd_after", "توسعه فیدر — پخش بار بعد از اصلاح"),
     ("fd_conclusion", "توسعه فیدر — نتیجه‌گیری"),
+    # v2.6.0 — مطالعه «جایابی سکسیونر» (Disconnector Format.json):
+    # مقدمه ← مشخصات شبکه ← الزامات کلیدگذاری ← جایابی سکسیونر (EENS) ← پوشش اینترنت
+    ("dx_intro", "جایابی سکسیونر — مقدمه"),
+    ("dx_network", "جایابی سکسیونر — مشخصات شبکه مورد مطالعه"),
+    ("dx_switching", "جایابی سکسیونر — الزامات کلیدگذاری در شبکه توزیع"),
+    ("dx_placement", "جایابی سکسیونر — جایابی بر اساس روش EENS"),
+    ("dx_coverage", "جایابی سکسیونر — پوشش اینترنت ایرانسل و همراه اول"),
 ]
 
 # شکل بدون محل صریح در گزارش‌های حفاظتی: نوع شکل ← بخش پیش‌فرض
@@ -83,6 +90,13 @@ FEEDER_DEV_DEFAULT_SECTION_BY_KIND: dict[str, str] = {
     "network": "fd_network", "single_line": "fd_network", "location": "fd_network",
     "profile": "fd_network", "before": "fd_before", "after": "fd_after",
     "other": "fd_after",
+}
+
+# v2.6.0 — شکل بدون محل صریح در گزارش «جایابی سکسیونر»: نوع شکل ← بخش پیش‌فرض
+# شکل ۱ (موقعیت جغرافیایی) ← مقدمه؛ شکل ۲ (جانمایی) ← جایابی؛ شکل‌های ۳ و ۴ (پوشش) ← اینترنت
+DISCONNECTOR_DEFAULT_SECTION_BY_KIND: dict[str, str] = {
+    "location": "dx_intro", "network": "dx_network", "single_line": "dx_network",
+    "placement": "dx_placement", "other": "dx_coverage",
 }
 
 SECTION_LABELS: dict[str, str] = dict(REPORT_SECTIONS)
@@ -127,7 +141,7 @@ def kind_options() -> list[tuple[str, str]]:
 # v2.0.0 — بخش‌ها و انواع شکل متناسب با مطالعات انتخاب‌شده
 # ---------------------------------------------------------------------------
 def _is_heavy_key(key: str) -> bool:
-    return not key.startswith(("secz_", "prot_", "fd_"))
+    return not key.startswith(("secz_", "prot_", "fd_", "dx_"))
 
 
 def sections_for_selection(selection) -> list[tuple[str, str]]:
@@ -143,6 +157,7 @@ def sections_for_selection(selection) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     prot = selection.recloser or selection.sectionalizer
     fd = bool(getattr(selection, "feeder_dev", False))
+    dx = bool(getattr(selection, "disconnector", False))
     for key, label in REPORT_SECTIONS:
         if key.startswith("secz_") or key == "prot_trace":
             continue
@@ -156,6 +171,9 @@ def sections_for_selection(selection) -> list[tuple[str, str]]:
             out.append((key, label))
         elif key.startswith("fd_"):
             if fd:                                  # v2.4.0 — توسعه و اصلاح فیدر
+                out.append((key, label))
+        elif key.startswith("dx_"):
+            if dx:                                  # v2.6.0 — جایابی سکسیونر
                 out.append((key, label))
         elif selection.heavy:
             out.append((key, label))
@@ -172,7 +190,8 @@ def image_kinds_for_selection(selection, all_kinds: dict[str, str]) -> dict[str,
     """
     if selection is None:
         return dict(all_kinds)
-    prot = selection.recloser or selection.sectionalizer
+    prot = (selection.recloser or selection.sectionalizer
+            or bool(getattr(selection, "disconnector", False)))   # v2.6.0
     heavy_like = selection.heavy or bool(getattr(selection, "feeder_dev", False))
     out = {}
     for k, label in all_kinds.items():

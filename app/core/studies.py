@@ -18,6 +18,7 @@ class StudyKind(str, Enum):
     RECLOSER = "recloser"
     SECTIONALIZER = "sectionalizer"
     FEEDER_DEV = "feeder_dev"            # v2.4.0 — توسعه و اصلاح فیدر
+    DISCONNECTOR = "disconnector"        # v2.6.0 — جایابی سکسیونر
 
 
 STUDY_LABELS_FA = {
@@ -25,6 +26,7 @@ STUDY_LABELS_FA = {
     StudyKind.RECLOSER: "ریکلوزر",
     StudyKind.SECTIONALIZER: "سکشنالایزر",
     StudyKind.FEEDER_DEV: "توسعه و اصلاح فیدر",
+    StudyKind.DISCONNECTOR: "جایابی سکسیونر",
 }
 PROTECTION_KINDS = (StudyKind.RECLOSER, StudyKind.SECTIONALIZER)
 PROTECTION_WORKSPACE_TITLE_FA = "مطالعات حفاظت و اتوماسیون شبکه"
@@ -38,6 +40,7 @@ class StudySelection:
     recloser: bool = False
     sectionalizer: bool = False
     feeder_dev: bool = False             # v2.4.0 — توسعه و اصلاح فیدر
+    disconnector: bool = False           # v2.6.0 — جایابی سکسیونر
 
     def kinds(self) -> list[StudyKind]:
         return [k for k in StudyKind if getattr(self, k.value)]
@@ -68,6 +71,8 @@ def selection_from_legacy(report_type: Optional[str]) -> StudySelection:
         return StudySelection(recloser=True)
     if report_type == StudyKind.FEEDER_DEV.value:
         return StudySelection(feeder_dev=True)
+    if report_type == StudyKind.DISCONNECTOR.value:
+        return StudySelection(disconnector=True)
     return StudySelection(heavy=True)
 
 
@@ -98,4 +103,6 @@ def report_type_for_selection(selection: "StudySelection") -> str:
         return StudyKind.SECTIONALIZER.value
     if selection.feeder_dev:
         return StudyKind.FEEDER_DEV.value
+    if selection.disconnector:
+        return StudyKind.DISCONNECTOR.value
     return StudyKind.HEAVY.value

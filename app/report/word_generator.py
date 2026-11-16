@@ -18,7 +18,8 @@ from docx.shared import Cm, Pt, RGBColor
 
 from app.core.models import Project, REQUEST_INCREASE
 from app import APP_VERSION
-from app.core.report_types import (REPORT_TYPE_FEEDER_DEV, booklet_title,
+from app.core.report_types import (REPORT_TYPE_DISCONNECTOR,
+                                   REPORT_TYPE_FEEDER_DEV, booklet_title,
                                    header_title, is_protection_report)
 from app.core.settings import AppSettings
 from app.report.sections import FigureBlock, GeneratedReport, Paragraph, ReportSection, TableSpec
@@ -239,7 +240,8 @@ class WordGenerator:
         # v2.4.0 — دفترچه «توسعه و اصلاح فیدر» هم از همین قالب دفترچه (جلد با
         # عنوان سری + شماره گزارش و سربرگ سه‌ستونه با شماره/تاریخ) استفاده می‌کند.
         rt = getattr(project, "report_type", "")
-        self.protection = is_protection_report(rt) or rt == REPORT_TYPE_FEEDER_DEV
+        self.protection = (is_protection_report(rt) or rt == REPORT_TYPE_FEEDER_DEV
+                           or rt == REPORT_TYPE_DISCONNECTOR)   # v2.6.0 — جایابی سکسیونر
 
     @property
     def _caption_size(self) -> int:

@@ -33,6 +33,7 @@ REPORT_TYPE_TO_CODE: dict[str, str] = {
     "sectionalizer": "PD",
     "combined_protection": "PD",
     "feeder_dev": "FD",
+    "disconnector": "PD",       # v2.6.0 — جایابی سکسیونر از خانواده «جایابی تجهیزات حفاظتی»
 }
 
 # --- کد امور (ستون «امور/کد» فایل کدگذاری) ----------------------------------

@@ -137,6 +137,17 @@ def input_requirements(project: Any, workspace: Workspace, settings: Any) -> lis
                                      or fd.new_line_length_km is not None
                                      or (fd.conductor_type or "").strip())),
             "feeder_dev", "", StudyKind.FEEDER_DEV.value))
+    if workspace.selection.is_selected(StudyKind.DISCONNECTOR):  # v2.6.0
+        dx = getattr(project, "disconnector", None)
+        reqs.append(Requirement(
+            "جایابی سکسیونر: نام فیدر و موقعیت جغرافیایی/روستا",
+            bool(dx is not None and (dx.feeder_name or "").strip()
+                 and (dx.location or "").strip()),
+            "disconnector", "", StudyKind.DISCONNECTOR.value))
+        reqs.append(Requirement(
+            "جایابی سکسیونر: ورود نتایج جایابی از فایل eens_report.json",
+            bool(dx is not None and dx.eens_imported),
+            "disconnector", "", StudyKind.DISCONNECTOR.value))
     return reqs
 
 

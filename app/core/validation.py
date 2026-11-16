@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from app.core.models import Project, REQUEST_INCREASE
 from app.core.report_types import (REPORT_TYPE_COMBINED_PROTECTION,
+                                   REPORT_TYPE_DISCONNECTOR,
                                    REPORT_TYPE_FEEDER_DEV, REPORT_TYPE_RECLOSER,
                                    REPORT_TYPE_SECTIONALIZER, normalize)
 from app.core.settings import AppSettings
@@ -68,6 +69,8 @@ def validate_project(project: Project, settings: AppSettings) -> list[Validation
         return validate_protection(project, settings, report_type)
     if report_type == REPORT_TYPE_FEEDER_DEV:
         return validate_feeder_dev(project, settings)
+    if report_type == REPORT_TYPE_DISCONNECTOR:
+        return validate_disconnector(project, settings)
     return validate_heavy(project, settings)
 
 
@@ -345,6 +348,56 @@ def validate_feeder_dev(project: Project, settings: AppSettings) -> list[Validat
         if f.severity == "warning":
             _add(items, WARNING, f"{f.title}: {f.text}", STEP_INPUT,
                  f"منبع قاعده: {f.source}", target="feeder_dev")
+
+    items.append(ValidationItem(OK, "قالب گزارش", ""))
+    return items
+
+
+# ---------------------------------------------------------------------------
+# v2.6.0 — اعتبارسنجی گزارش «جایابی سکسیونر»
+# ---------------------------------------------------------------------------
+def validate_disconnector(project: Project, settings: AppSettings) -> list[ValidationItem]:
+    """اعتبارسنجی سبک گزارش «جایابی سکسیونر» (قالب Disconnector Format.json).
+
+    کمبود دادهٔ فنی «هشدار» است نه خطا؛ مقادیر ناموجود در گزارش با «ناموجود»
+    درج می‌شوند. نتایج جایابی (EENS) باید از فایل eens_report.json وارد شود.
+    """
+    items: list[ValidationItem] = []
+    dx = project.disconnector
+
+    _validate_general_info(items, project)
+
+    if not ((dx.feeder_name or "").strip() and (dx.location or "").strip()):
+        _add(items, WARNING,
+             "مشخصات مقدمه (نام فیدر / موقعیت سکسیونر) کامل نیست.", STEP_INPUT,
+             "در صفحه «جایابی سکسیونر» نام فیدر و موقعیت جغرافیایی/روستا را وارد کنید.",
+             target="disconnector")
+    else:
+        _add(items, OK, "مشخصات مقدمه (فیدر و موقعیت)", STEP_INPUT, target="disconnector")
+
+    if dx.voltage_kv is None or dx.load_current_a is None:
+        _add(items, WARNING, "مشخصات شبکه (سطح ولتاژ / جریان بار) ثبت نشده است.",
+             STEP_INPUT, "جدول ۱ گزارش بدون این مقادیر «ناموجود» خواهد بود.",
+             target="disconnector")
+    else:
+        _add(items, OK, "مشخصات شبکه مورد مطالعه", STEP_INPUT, target="disconnector")
+
+    if not dx.eens_imported:
+        _add(items, WARNING,
+             "نتایج جایابی (EENS) از فایل eens_report.json وارد نشده است.", STEP_INPUT,
+             "در صفحه «جایابی سکسیونر» دکمه «ورود نتایج جایابی (eens_report.json)» "
+             "را بزنید تا نتایج گزارش عیناً با خروجی نرم‌افزار جایابی منطبق شود.",
+             target="disconnector")
+    else:
+        _add(items, OK, "نتایج جایابی EENS (وارد شده از eens_report.json)",
+             STEP_INPUT, target="disconnector")
+
+    if not (dx.coverage_status or "").strip():
+        _add(items, WARNING, "وضعیت پوشش اینترنت (ایرانسل/همراه اول) ثبت نشده است.",
+             STEP_INPUT, "وضعیت پوشش و مناطق تحت پوشش را در بخش ۵ وارد کنید.",
+             target="disconnector")
+    else:
+        _add(items, OK, "وضعیت پوشش اینترنت منطقه", STEP_INPUT, target="disconnector")
 
     items.append(ValidationItem(OK, "قالب گزارش", ""))
     return items

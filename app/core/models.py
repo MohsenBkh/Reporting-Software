@@ -160,6 +160,62 @@ class CandidateBus:
     trafo_loading_pct_after: Optional[float] = None    # بارگیری ترانسفورماتور بعد (%)
 
 
+@dataclass
+class DisconnectorInfo:
+    """اطلاعات مطالعه «جایابی سکسیونر» — v2.6.0.
+
+    ساختار فصل‌ها مطابق «Disconnector Format.json»: مقدمه ← مشخصات شبکه ←
+    الزامات کلیدگذاری (متن ثابت) ← جایابی سکسیونر (روش EENS) ← پوشش اینترنت.
+    متن‌های ثابت قالب در گزارش‌ساز تعبیه شده‌اند؛ این کلاس فقط «متغیرهای داخل
+    آکولاد» را نگه می‌دارد که کاربر وارد می‌کند (یا از eens_report.json می‌آید).
+    خالی = «ناموجود» در گزارش، نه صفر.
+    """
+
+    # --- مقدمه / مشخصات سند -------------------------------------------------
+    dx_kind: str = ""                    # {نوع سکسیونر} مثلاً «قابل کنترل از راه دور (موتوردار)»
+    location: str = ""                   # {موقعیت جغرافیایی/روستا}
+    county: str = ""                     # {نام شهرستان}
+    feeder_name: str = ""                # {نام فیدر}
+    post_name: str = ""                  # {نام پست} (خالی = پست پروژه)
+    province: str = ""                   # {نام استان}
+
+    # --- مشخصات شبکه (جدول ۱) ------------------------------------------------
+    voltage_kv: Optional[float] = None   # {سطح ولتاژ}
+    load_current_a: Optional[float] = None   # {جریان بار}
+    active_power_mw: Optional[float] = None  # {توان اکتیو}
+    reactive_power_mvar: Optional[float] = None  # {توان راکتیو}
+    dg_status: str = ""                  # {وضعیت وجود/عدم وجود منبع تولید پراکنده}
+
+    # --- جایابی (بخش ۴) — معمولاً از eens_report.json وارد می‌شود -------------
+    feeder_key: str = ""                 # {شناسه فیدر}
+    failure_rate_per_year: Optional[float] = None   # {نرخ خرابی} λ
+    repair_time_min: Optional[float] = None         # {زمان تعمیر} r (دقیقه)
+    transient_rate_per_year: Optional[float] = None  # {نرخ خرابی گذرا}
+    line_length_km: Optional[float] = None          # {طول خط}
+    covered_load_kw: Optional[float] = None         # {بار تحت پوشش}
+    device_note: str = ""                # {نوع خط/تجهیز}
+    device_coords: str = ""              # {مختصات}
+    eens_base_mwh: Optional[float] = None    # {EENS پایه} (MWh/سال)
+    eens_after_mwh: Optional[float] = None   # {EENS پس از نصب} (MWh/سال)
+    improvement_pct: Optional[float] = None  # {درصد بهبود}
+    switch_count: Optional[int] = None       # {تعداد کلید}
+    optimal_location: str = ""           # {موقعیت بهینه}
+
+    # --- پوشش اینترنت (بخش ۵) ------------------------------------------------
+    requested_location: str = ""         # {موقعیت درخواستی} (خالی = location)
+    coverage_areas: str = ""             # {مناطق تحت پوشش}
+    coverage_status: str = ""            # {وضعیت پوشش} مثلاً «مطلوب»
+
+    # --- ردپای ورود eens_report.json -----------------------------------------
+    eens_imported: bool = False
+    eens_algo_version: str = ""
+    eens_assumptions: list[str] = field(default_factory=list)
+
+    # --- متن‌های جایگزین فصل‌ها (خالی = متن قالب) ------------------------------
+    intro: str = ""
+    conclusion: str = ""
+
+
 # ---------------------------------------------------------------------------
 # v2.5.0 — نیروگاه‌ها و اتوبوستر (مشترک بین همه مطالعات)
 # ---------------------------------------------------------------------------
@@ -659,6 +715,7 @@ class Project:
     sectionalizer: SectionalizerInfo = field(default_factory=SectionalizerInfo)
     recloser: RecloserInfo = field(default_factory=RecloserInfo)
     feeder_dev: FeederDevelopmentInfo = field(default_factory=FeederDevelopmentInfo)  # v2.4.0
+    disconnector: DisconnectorInfo = field(default_factory=DisconnectorInfo)  # v2.6.0
 
     # v2.5.0 — نیروگاه‌ها و اتوبوستر (ورودی مشترک همه مطالعات)
     has_power_plants: str = ""                 # "" | yes | no (سؤال وجود نیروگاه)
@@ -879,9 +936,11 @@ _NESTED: dict[type, dict[str, type]] = {
     PowerPlant: {},
     AutoBoosterInfo: {},
     FeederDevelopmentInfo: {},
+    DisconnectorInfo: {},
     Project: {"maneuver": Maneuver, "demand": DemandInfo,
               "sectionalizer": SectionalizerInfo, "recloser": RecloserInfo,
-              "feeder_dev": FeederDevelopmentInfo, "autobooster": AutoBoosterInfo},
+              "feeder_dev": FeederDevelopmentInfo, "autobooster": AutoBoosterInfo,
+              "disconnector": DisconnectorInfo},
 }
 
 # فیلدهای لیستی که عضو آن‌ها dataclass است — هنگام بازسازی از JSON

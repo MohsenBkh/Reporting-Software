@@ -29,6 +29,7 @@ REPORT_TYPE_SECTIONALIZER = "sectionalizer"  # مطالعه نصب سکشنال�
 REPORT_TYPE_RECLOSER = "recloser"          # مطالعه ریکلوزر
 REPORT_TYPE_COMBINED_PROTECTION = "combined_protection"  # گزارش ترکیبی ریکلوزر + سکشنالایزر
 REPORT_TYPE_FEEDER_DEV = "feeder_dev"      # v2.4.0 — مطالعه توسعه و اصلاح فیدر
+REPORT_TYPE_DISCONNECTOR = "disconnector"  # v2.6.0 — مطالعه جایابی سکسیونر
 
 REPORT_TYPE_LABELS: dict[str, str] = {
     REPORT_TYPE_HEAVY: "متقاضیان سنگین (یک مگاوات و بالاتر)",
@@ -36,6 +37,7 @@ REPORT_TYPE_LABELS: dict[str, str] = {
     REPORT_TYPE_RECLOSER: "مطالعه ریکلوزر",
     REPORT_TYPE_COMBINED_PROTECTION: "گزارش ترکیبی ریکلوزر و سکشنالایزر",
     REPORT_TYPE_FEEDER_DEV: "مطالعه توسعه و اصلاح فیدر",
+    REPORT_TYPE_DISCONNECTOR: "مطالعه جایابی سکسیونر",
 }
 
 # عنوان دفترچهٔ مندرج در جلد، سربرگ و مشخصات سند — برای هر قالب
@@ -45,12 +47,16 @@ PROTECTION_HEADER_TITLE = "گزارش مطالعات نصب و هماهنگی ح
 # v2.4.0 — دفترچه نمونه «توسعه و اصلاح شبکه»: جلد ≠ سربرگ (مطابق نمونه‌های واقعی)
 FEEDER_DEV_BOOKLET_TITLE = "دفترچه مطالعات توسعه و اصلاح شبکه"
 FEEDER_DEV_HEADER_TITLE = "دفترچه مطالعات توسعه و اصلاح فیدر"
+# v2.6.0 — دفترچه جایابی سکسیونر (Disconnector Format.json): جلد = سری دفترچه حفاظتی
+DISCONNECTOR_BOOKLET_TITLE = PROTECTION_BOOKLET_TITLE
+DISCONNECTOR_HEADER_TITLE = "دفترچه مطالعه جایابی سکسیونر"
 REPORT_TYPE_BOOKLETS: dict[str, str] = {
     REPORT_TYPE_HEAVY: "دفترچه مطالعات تأمین برق به متقاضیان یک مگاوات و بالاتر",
     REPORT_TYPE_SECTIONALIZER: PROTECTION_BOOKLET_TITLE,
     REPORT_TYPE_RECLOSER: PROTECTION_BOOKLET_TITLE,
     REPORT_TYPE_COMBINED_PROTECTION: PROTECTION_BOOKLET_TITLE,
     REPORT_TYPE_FEEDER_DEV: FEEDER_DEV_BOOKLET_TITLE,
+    REPORT_TYPE_DISCONNECTOR: DISCONNECTOR_BOOKLET_TITLE,
 }
 
 PROTECTION_REPORT_TYPES = (REPORT_TYPE_RECLOSER, REPORT_TYPE_SECTIONALIZER,
@@ -68,12 +74,14 @@ def header_title(report_type: str) -> str:
         return PROTECTION_HEADER_TITLE
     if (report_type or "") == REPORT_TYPE_FEEDER_DEV:
         return FEEDER_DEV_HEADER_TITLE
+    if (report_type or "") == REPORT_TYPE_DISCONNECTOR:
+        return DISCONNECTOR_HEADER_TITLE
     return booklet_title(report_type)
 
 # قالب‌هایی که پیاده‌سازی آن‌ها تکمیل شده است.
 _IMPLEMENTED = {REPORT_TYPE_HEAVY, REPORT_TYPE_SECTIONALIZER,
                 REPORT_TYPE_RECLOSER, REPORT_TYPE_COMBINED_PROTECTION,
-                REPORT_TYPE_FEEDER_DEV}
+                REPORT_TYPE_FEEDER_DEV, REPORT_TYPE_DISCONNECTOR}
 
 # قالب‌هایی که با مولد مطالعات حفاظتی (ReportComposer) تولید می‌شوند
 PROTECTION_COMPOSER_TYPES = {REPORT_TYPE_RECLOSER, REPORT_TYPE_COMBINED_PROTECTION}

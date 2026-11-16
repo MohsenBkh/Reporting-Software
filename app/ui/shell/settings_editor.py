@@ -53,7 +53,15 @@ class OptionalNumberEdit(QLineEdit):
         return parse_optional_float(self.text())
 
     def set_value(self, v: Optional[float]) -> None:
-        self.setText("" if v is None else f"{v:g}")
+        # v2.6.0 — تا ۴ رقم اعشار بدون صفر انتهایی؛ ‎%g‏ دقت مقادیر واردشده از
+        # eens_report.json (مثل 562.1667) را از بین می‌برد.
+        if v is None:
+            text = ""
+        elif v == int(v):
+            text = f"{int(v)}"
+        else:
+            text = f"{v:.4f}".rstrip("0").rstrip(".")
+        self.setText(text)
 
 
 class ProtectionSettingsEditor(QWidget):

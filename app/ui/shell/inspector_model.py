@@ -97,6 +97,21 @@ def inspector_model(project: Any, workspace: Workspace, key: str) -> InspectorMo
                   ("طول خط جدید", format_quantity(fd.new_line_length_km, "km", 2)),
                   ("نوع هادی", _txt(fd.conductor_type)),
                   ("نتایج قبل/بعد", "ثبت شده" if fd.has_results() else MISSING_TEXT)])
+    if base == StudyKind.DISCONNECTOR.value:            # v2.6.0
+        dx = getattr(project, "disconnector", None)
+        if dx is None:
+            return InspectorModel(title="جایابی سکسیونر")
+        return InspectorModel(
+            title="جایابی سکسیونر",
+            rows=[("نوع سکسیونر", _txt(dx.dx_kind)),
+                  ("فیدر", _txt(dx.feeder_name)),
+                  ("موقعیت", _txt(dx.location)),
+                  ("EENS پایه (MWh/سال)", MISSING_TEXT if dx.eens_base_mwh is None
+                   else f"{dx.eens_base_mwh:.4f}".rstrip("0").rstrip(".")),
+                  ("EENS پس از نصب (MWh/سال)", MISSING_TEXT if dx.eens_after_mwh is None
+                   else f"{dx.eens_after_mwh:.4f}".rstrip("0").rstrip(".")),
+                  ("نتایج جایابی", "وارد شده از eens_report.json"
+                   if dx.eens_imported else MISSING_TEXT)])
     if key.startswith("feeder:"):
         return _feeder_model(workspace, key.split(":")[-1])
     if key in ("project", "project.info", "step.project", "dashboard"):

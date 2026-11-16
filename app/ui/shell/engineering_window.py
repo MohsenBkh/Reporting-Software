@@ -43,6 +43,7 @@ from app.ui.shell.dashboard_model import dashboard_cards, validation_checklist
 from app.ui.shell.dashboard_page import EngineeringDashboard
 from app.ui.shell.design import shell_qss
 from app.ui.shell.explorer import ProjectExplorer
+from app.ui.shell.disconnector_page import DisconnectorPage
 from app.ui.shell.feeder_dev_page import FeederDevPage
 from app.ui.shell.guide_bar import GuideBar
 from app.ui.shell.inspector import PropertyInspector
@@ -73,6 +74,7 @@ ROUTES: dict[str, tuple[str, Optional[str]]] = {
     "sectionalizer.settings": ("sectionalizer", "settings"),
     "protection": ("protnet", None),
     "feeder_dev": ("feeder_dev", None),          # v2.4.0 — توسعه و اصلاح فیدر
+    "disconnector": ("disconnector", None),      # v2.6.0 — جایابی سکسیونر
     "images": ("images", None), "analysis": ("analysis", "metrics"),
     "validation": ("analysis", "validation"),
     "review": ("review", None), "settings": ("settings", None),
@@ -86,7 +88,7 @@ ROUTE_STEP = {"project": "project", "applicant": "input", "study": "input", "inp
               "recloser.network": "input", "recloser.device": "input", "recloser.settings": "input",
               "sectionalizer.network": "input", "sectionalizer.device": "input",
               "sectionalizer.settings": "input", "protection": "input",
-              "feeder_dev": "input", "images": "input",
+              "feeder_dev": "input", "disconnector": "input", "images": "input",
               "validation": "validation", "analysis": "analysis", "review": "review",
               "preview": "preview", "generate": "generate", "ai": "review"}
 # گرهٔ Explorer ← کلید ناوبری
@@ -100,6 +102,7 @@ NODE_ROUTE = {
     "sectionalizer.device": "sectionalizer.device",
     "sectionalizer.settings": "sectionalizer.settings",
     "input.feeder_dev": "feeder_dev", "feeder_dev": "feeder_dev",
+    "input.disconnector": "disconnector", "disconnector": "disconnector",
     "images": "images", "step.validation": "validation", "step.analysis": "analysis",
     "step.review": "review", "step.preview": "preview", "step.generate": "reportcenter",
     "report.select": "reportcenter", "report.generate": "generate", "report.ai": "ai", "settings": "settings",
@@ -109,6 +112,7 @@ TITLES = {"dashboard": "داشبورد", "home": "خانه", "project": "اطل�
           "heavy": "متقاضی سنگین", "protnet": "فیدرهای محدوده مطالعه",
           "recloser": "ریکلوزر", "sectionalizer": "سکشنالایزر",
           "feeder_dev": "توسعه و اصلاح فیدر",
+          "disconnector": "جایابی سکسیونر",
           "images": "تصاویر گزارش", "analysis": "اعتبارسنجی و تحلیل", "review": "بازبینی مهندس",
           "reportcenter": "Report Center", "settings": "تنظیمات"}
 
@@ -150,6 +154,7 @@ class EngineeringWindow(MainWindow):
         self.secz_page = ProtectionStudyPage(self.manager, self.settings, StudyKind.SECTIONALIZER,
                                              self._ws, lambda: self.settings.theme)
         self.feeder_dev_page = FeederDevPage(self.manager)      # v2.4.0
+        self.disconnector_page = DisconnectorPage(self.manager)  # v2.6.0
         self.selection_page = ReportCenterPage(self.manager, self._ws)
         self.ai_page = AIPage(self.manager, self.settings, self._ws, self._current_report,
                               lambda: self._results, on_applied=self._on_ai_applied)
@@ -161,6 +166,7 @@ class EngineeringWindow(MainWindow):
             "heavy": self.heavy_page, "protnet": self.prot_network_page,
             "recloser": self.rec_page, "sectionalizer": self.secz_page,
             "feeder_dev": self.feeder_dev_page,
+            "disconnector": self.disconnector_page,
             "images": self.images_page, "analysis": self.analysis_page, "review": self.review_page,
             "reportcenter": self.report_center, "settings": self.settings_page}
 
@@ -242,7 +248,7 @@ class EngineeringWindow(MainWindow):
         hp.open_file_requested.connect(GeneratePage._open)
         for pg in (self.project_page, self.applicant_page, self.feeder_page, self.images_page,
                    self.study_page, self.prot_network_page, self.rec_page, self.secz_page,
-                   self.feeder_dev_page, self.heavy_assets):
+                   self.feeder_dev_page, self.disconnector_page, self.heavy_assets):
             pg.changed.connect(self._data_changed)
         self.selection_page.changed.connect(self._on_selection_changed)
         self.ai_page.changed.connect(self._data_changed_keep_cache)
@@ -328,6 +334,8 @@ class EngineeringWindow(MainWindow):
         A("sectionalizer", "سکشنالایزر", self._nav("sectionalizer"))
         A("feeder_dev", "توسعه و اصلاح فیدر", self._nav("feeder_dev"),
           tip="ورود داده مطالعه توسعه و اصلاح فیدر (دفترچه مطالعات توسعه و اصلاح شبکه)")
+        A("disconnector", "جایابی سکسیونر", self._nav("disconnector"),
+          tip="ورود داده مطالعه جایابی سکسیونر و ورود نتایج EENS از فایل eens_report.json")
         A("validate", "اعتبارسنجی", self._nav("validation"), "F5")
         A("analysis", "تحلیل مهندسی", self._nav("analysis"))
         A("run", "اجرای قواعد حفاظتی", self._run_protection, "F6")
@@ -378,7 +386,7 @@ class EngineeringWindow(MainWindow):
         g = p.add_group("ورود داده مطالعات")
         g.add_action(a["study"], "study"); g.add_action(a["prot_network"], "input")
         g.add_action(a["recloser"], "protection"); g.add_action(a["sectionalizer"], "protection")
-        g.add_action(a["feeder_dev"], "input")
+        g.add_action(a["feeder_dev"], "input"); g.add_action(a["disconnector"], "input")
         g = p.add_group("هماهنگی حفاظتی (IDMT)")
         g.add_action(a["idmt_tool"], "analysis"); g.add_action(a["idmt_import"], "input")
 
@@ -408,9 +416,11 @@ class EngineeringWindow(MainWindow):
         self._project_actions = [a[k] for k in (
             "save", "import", "project", "applicant", "input", "profile", "loadflow", "images",
             "study", "prot_network", "recloser", "sectionalizer", "feeder_dev",
+            "disconnector",
             "validate", "analysis", "run", "review",
             "rc_select", "rc_preview", "rc_generate", "rc_ai", "dashboard",
             "sel_heavy", "sel_recloser", "sel_sectionalizer", "sel_feeder_dev",
+            "sel_disconnector",
             "idmt_import")]
         a["import"].setEnabled(True)
 
@@ -588,6 +598,8 @@ class EngineeringWindow(MainWindow):
             page.show_tab(sub or "device")
         elif page_key == "feeder_dev":
             self.feeder_dev_page.refresh()
+        elif page_key == "disconnector":
+            self.disconnector_page.refresh()
         elif page_key == "images":
             self.images_page.refresh()
         elif page_key == "analysis":
@@ -636,6 +648,8 @@ class EngineeringWindow(MainWindow):
                 self.pages[page].save_to_project()
             elif page == "feeder_dev":
                 self.feeder_dev_page.save_to_project()
+            elif page == "disconnector":
+                self.disconnector_page.save_to_project()
         except Exception as exc:  # noqa: BLE001
             log_exception(exc, "collect forms")
 

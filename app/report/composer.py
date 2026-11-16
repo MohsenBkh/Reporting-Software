@@ -21,7 +21,8 @@ from app.core.studies import (PROTECTION_KINDS, STUDY_LABELS_FA, StudyKind,
                               StudySelection)
 from app.core.workspace import (OUTPUT_COMBINED, OUTPUT_SEPARATE, Workspace,
                                 load_workspace_for, resolve_study_inputs)
-from app.core.report_sections import (FEEDER_DEV_DEFAULT_SECTION_BY_KIND,
+from app.core.report_sections import (DISCONNECTOR_DEFAULT_SECTION_BY_KIND,
+                                      FEEDER_DEV_DEFAULT_SECTION_BY_KIND,
                                       PROTECTION_DEFAULT_SECTION_BY_KIND)
 from app.report.protection_narrative import NarrativeEngine, RefParagraph
 from app.report.sections import (FigureBlock, GeneratedReport, Paragraph, ReportSection,
@@ -46,9 +47,10 @@ def figures_for_section(project: Any, resolver: Optional[Callable], key: str) ->
         kind = getattr(img, "kind", "")
         if explicit:
             targets = {explicit}
-        else:       # بدون محل صریح: پیش‌فرض نوع شکل در گزارش حفاظتی و/یا توسعه فیدر
+        else:       # بدون محل صریح: پیش‌فرض نوع شکل در گزارش حفاظتی/توسعه فیدر/جایابی سکسیونر
             targets = {PROTECTION_DEFAULT_SECTION_BY_KIND.get(kind, ""),
-                       FEEDER_DEV_DEFAULT_SECTION_BY_KIND.get(kind, "")}
+                       FEEDER_DEV_DEFAULT_SECTION_BY_KIND.get(kind, ""),
+                       DISCONNECTOR_DEFAULT_SECTION_BY_KIND.get(kind, "")}
         if key in targets:
             picked.append((getattr(img, "order", 0) or 0, idx, img))
     out: list[FigureBlock] = []
@@ -101,6 +103,10 @@ def plan_reports(selection: StudySelection, protection_mode: str = OUTPUT_COMBIN
         plans.append(ReportPlan(StudyKind.FEEDER_DEV.value,
                                 "گزارش مطالعه توسعه و اصلاح فیدر",
                                 [StudyKind.FEEDER_DEV], "Feeder Development Report"))
+    if getattr(selection, "disconnector", False):    # v2.6.0 — دفترچه جایابی سکسیونر
+        plans.append(ReportPlan(StudyKind.DISCONNECTOR.value,
+                                "گزارش مطالعه جایابی سکسیونر",
+                                [StudyKind.DISCONNECTOR], "Disconnector Placement Report"))
     return plans
 
 
@@ -588,6 +594,234 @@ def _fd_conclusion(ctx: ComposeContext) -> ReportSection:
     return sec
 
 
+# ---------------------------------------------------------------------------
+# v2.6.0 — بخش‌های مطالعه «جایابی سکسیونر» (قالب: Disconnector Format.json)
+# متن‌های ثابت قالب عیناً درج می‌شوند؛ مقادیر داخل آکولاد از ورودی کاربر یا
+# فایل eens_report.json (نرم‌افزار SwitchLoc) پر می‌شوند؛ خالی = «ناموجود».
+# ---------------------------------------------------------------------------
+def _dx_info(ctx: ComposeContext):
+    return getattr(ctx.project, "disconnector", None)
+
+
+def _dx(v) -> str:
+    """مقدار متنی/عددی متغیر قالب؛ خالی یا None = «ناموجود».
+
+    اعداد حداکثر با ۴ رقم اعشار و بدون صفرهای انتهایی درج می‌شوند تا مقادیر
+    واردشده از eens_report.json (مثل 562.1667) عیناً حفظ شوند.
+    """
+    if v is None:
+        return MISSING
+    if isinstance(v, float):
+        return f"{v:.4f}".rstrip("0").rstrip(".") if v != int(v) else f"{int(v)}"
+    s = str(v).strip()
+    return s or MISSING
+
+
+def _dx_feeder(ctx: ComposeContext, info) -> str:
+    return (info.feeder_name or "").strip() or MISSING
+
+
+def _dx_post(ctx: ComposeContext, info) -> str:
+    return ((info.post_name or "").strip()
+            or (getattr(ctx.project, "substation", "") or "").strip() or MISSING)
+
+
+def _dx_office(ctx: ComposeContext) -> str:
+    return (getattr(ctx.project, "office", "") or "").strip() or MISSING
+
+
+# متن ثابت مقدمه — عیناً از قالب (پاراگراف اول بدون متغیر است)
+DX_INTRO_FIXED = (
+    "مطابق «دستورالعمل جاری‌سازی مطالعات و تحلیل شبکه در شبکه‌های توزیع» شرکت توانیر "
+    "با کد TAV111-03/00 و دستورالعمل داخلی مطالعات با کد WI150900، طرح‌های توسعه و "
+    "اصلاح شبکه، تعیین محل نصب تجهیزات حفاظتی و مانوری و بررسی آثار آن‌ها بر "
+    "بهره‌برداری باید بر پایه مطالعات فنی و مستندات قابل ردیابی انجام شوند. در این "
+    "چارچوب، بررسی آرایش فیدر، مدل‌سازی شبکه و ارزیابی هماهنگی حفاظتی تجهیزات پیش از "
+    "اجرا، از مراحل اصلی تصمیم‌گیری فنی به شمار می‌رود.")
+
+# متن ثابت الزامات کلیدگذاری — عیناً از قالب (TAV122-02/00؛ بدون متغیر)
+DX_SWITCHING_INTRO = (
+    "مطابق دستورالعمل «مطالعات جایابی کلید در شبکه‌های توزیع» به شماره TAV122-02/00 "
+    "توانیر، در تعیین نقاط مانور علاوه بر رعایت کلیه ضوابط و قیود دستورالعمل‌های "
+    "مرتبط، باید موارد ذیل لحاظ گردد:")
+
+DX_SWITCHING_RULES = (
+    "در جایگذاری کلیدها، الزامات و فلسفه حفاظت شبکه توزیع برق طبق «دستورالعمل فنی "
+    "حفاظت الکتریکی شبکه توزیع» تدوین شده در دفتر مهندسی و راهبری شرکت توانیر رعایت شود.",
+    "هر فیدر شهری به فیدر پست‌های دیگر حداقل ۲ نقطه مانور داشته باشد.",
+    "هر فیدر (روستایی) حداقل به اندازه ظرفیت یک فیدر خود با پست مجاور مانور داشته باشد.",
+    "تعداد نقاط مانور کلیدهای بین دو فیدر (NO) از ۳ بیشتر نباشد. ایجاد نقاط NO باید "
+    "با بررسی پیچیدگی بهره‌برداری و هماهنگی معاونت بهره‌برداری و دیسپاچینگ صورت گیرد.",
+    "در ابتدای انشعابات طویل، یک کلید با قابلیت حفاظت قرار گیرد.",
+    "ابتدا و انتهای هر یک از قسمت‌های فیدر با تعداد وقوع خطای بیش از ۳ در سال و یا "
+    "مناطق صعب‌العبور با متوسط زمان دستیابی بیش از یک ساعت، کلید قرار گیرد.",
+    "از قرار دادن کلیدها در مکان‌های صعب‌العبور و با دسترسی زمان‌بر جلوگیری شود.")
+
+DX_SWITCHING_PARAMS = (
+    "پارامترهای تأثیرگذار در جایابی کلید عبارتند از: وضعیت فعلی شبکه شامل آرایش، "
+    "تعداد و نوع کلیدهای موجود در شبکه و توپولوژی شبکه، تأثیر پیاده‌سازی بستر "
+    "اتوماسیون و کنترل از راه دور، منافع ناشی از بهبود قابلیت اطمینان، اولویت بارها "
+    "از نظر قابلیت اطمینان، رشد بار و عدم قطعیت در بار پیش‌بینی شده، قیود بهره‌برداری "
+    "و الزامات فنی شبکه و محدودیت‌های جغرافیایی محل احداث می‌باشد.")
+
+# متدولوژی جایابی — عیناً از قالب
+DX_METHODOLOGY = (
+    "روش جایابی مورد استفاده در این مطالعه، استفاده از انرژی توزیع‌نشده فیدر می‌باشد "
+    "که داده‌های مربوط به آن از سامانه خاموشی فیدرها اقتباس شده است. مقادیر مربوط به "
+    "نرخ خرابی و زمان تعمیر نیز از داده‌های خاموشی برنامه‌ریزی‌نشده فیدر بدست آمده "
+    "است. خلاصه روابط استفاده‌شده در این مطالعه در ادامه ارائه شده است.")
+
+# روابط قالب (معادل متنی فرمول‌های LaTeX فایل فرمت)
+DX_FORMULAS = (
+    "λ = N_random / Y_covered ،   r = Σ t_restore / N_events   "
+    "(نرخ خرابی و زمان تعمیر از ماتریس خاموشی واقعی)",
+    "λ_i = λ_fid × (L_i / Σ L)   (توزیع λ بین قطعه‌ها متناسب با طول)",
+    "s = min(t_restore, r)   (زمان بازیابی بار سالم)",
+    "EENS = Σ_i (λ_i / 60) × [ r × P_i + s × min(P_down,i, C) + "
+    "r × (P_down,i − min(P_down,i, C)) ]")
+
+
+def _dx_intro_sec(ctx: ComposeContext) -> ReportSection:
+    sec = ReportSection("dx_intro", "مقدمه")
+    info = _dx_info(ctx)
+    if info is None:
+        return sec
+    if (info.intro or "").strip():
+        sec.blocks.extend(_fd_paras(info.intro))
+        return sec
+    sec.blocks.append(Paragraph(DX_INTRO_FIXED))
+    feeder = _dx_feeder(ctx, info)
+    loc = _dx(info.location)
+    sec.blocks.append(Paragraph(
+        f"موضوع این دفترچه، مطالعه احداث و نصب یک دستگاه سکسیونر {_dx(info.dx_kind)} "
+        f"در موقعیت {loc}، از توابع شهرستان {_dx(info.county)} روی فیدر {feeder} "
+        "می‌باشد. هدف از پیشنهاد این تجهیز، فراهم‌کردن امکان کنترل و مانور از راه دور، "
+        "محدودسازی محدوده متأثر از خطا و تسهیل جداسازی بخش معیوب از سایر قسمت‌های "
+        "شبکه است. میزان تحقق این اهداف به انتخاب محل مناسب، عملکرد صحیح تجهیز "
+        f"وابسته خواهد بود. شکل ۱، موقعیت {feeder}، {loc}، محل سکسیونر درخواستی "
+        "را نشان می‌دهد."))
+    return sec
+
+
+def _dx_network_sec(ctx: ComposeContext) -> ReportSection:
+    sec = ReportSection("dx_network", "مشخصات شبکه")
+    info = _dx_info(ctx)
+    if info is None:
+        return sec
+    feeder, post = _dx_feeder(ctx, info), _dx_post(ctx, info)
+    dg = (info.dg_status or "").strip() or "وضعیت منبع تولید پراکنده روی فیدر ثبت نشده است."
+    if not dg.endswith((".", "۔", "؟", "!")):
+        dg += "."
+    sec.blocks.append(Paragraph(
+        f"فیدر {feeder}، با سطح ولتاژ {_dx(info.voltage_kv)} کیلوولت از پست فوق توزیع "
+        f"{post} مورد مطالعه قرار گرفته است. جریان بار فیدر {_dx(info.load_current_a)} "
+        f"آمپر در نظر گرفته شده است. {dg}"))
+    sec.blocks.append(TableSpec(
+        caption=f"جدول {ctx.next_table()}: مشخصات فیدر مورد مطالعه",
+        header_rows=[["فیدر", "پست", "ولتاژ (kV)", "جریان بار (A)",
+                      "توان اکتیو (MW)", "توان راکتیو (MVar)"]],
+        body_rows=[[feeder, post, _dx(info.voltage_kv), _dx(info.load_current_a),
+                    _dx(info.active_power_mw), _dx(info.reactive_power_mvar)]]))
+    return sec
+
+
+def _dx_switching_sec(ctx: ComposeContext) -> ReportSection:
+    sec = ReportSection("dx_switching", "الزامات کلیدگذاری")
+    if _dx_info(ctx) is None:
+        return sec
+    sec.blocks.append(Paragraph(DX_SWITCHING_INTRO))
+    for i, rule in enumerate(DX_SWITCHING_RULES, start=1):
+        sec.blocks.append(Paragraph(f"{i}- {rule}", style="item"))
+    sec.blocks.append(Paragraph(DX_SWITCHING_PARAMS))
+    return sec
+
+
+def _dx_placement_sec(ctx: ComposeContext) -> ReportSection:
+    info = _dx_info(ctx)
+    kind = "" if info is None else (info.dx_kind or "").strip()
+    sec = ReportSection("dx_placement", f"جایابی سکسیونر {kind}".strip())
+    if info is None:
+        return sec
+    feeder = _dx_feeder(ctx, info)
+    sec.blocks.append(Paragraph(DX_METHODOLOGY))
+    for formula in DX_FORMULAS:
+        sec.blocks.append(Paragraph(formula, style="item"))
+    # پارامترهای مؤثر فیدر (نرخ خرابی و زمان تعمیر)
+    sec.blocks.append(Paragraph("پارامترهای مؤثر فیدر (نرخ خرابی و زمان تعمیر):"))
+    for label, value in (
+            ("شناسه فیدر", _dx(info.feeder_key)),
+            ("نرخ خرابی (λ)", f"{_dx(info.failure_rate_per_year)} خرابی در سال"),
+            ("زمان تعمیر (r)", f"{_dx(info.repair_time_min)} دقیقه"),
+            ("نرخ خرابی گذرا", _dx(info.transient_rate_per_year))):
+        sec.blocks.append(Paragraph(f"{label}: {value}", style="item"))
+    # مشخصات فنی و نتایج بهینه‌سازی فیدر
+    sec.blocks.append(Paragraph("مشخصات فنی و نتایج بهینه‌سازی فیدر:"))
+    for label, value in (
+            ("شناسه فیدر", _dx(info.feeder_key)),
+            ("طول خط", f"{_dx(info.line_length_km)} کیلومتر"),
+            ("بار تحت پوشش", f"{_dx(info.covered_load_kw)} کیلووات"),
+            ("موقعیت و مشخصات تجهیز پیشنهادی",
+             f"{_dx(info.device_note)} | مختصات: {_dx(info.device_coords)}")):
+        sec.blocks.append(Paragraph(f"{label}: {value}", style="item"))
+    # شاخص‌های قابلیت اطمینان
+    sec.blocks.append(Paragraph("شاخص‌های قابلیت اطمینان:"))
+    n_sw = _dx(info.switch_count)
+    for label, value in (
+            ("میزان انرژی توزیع‌نشده پایه",
+             f"{_dx(info.eens_base_mwh)} مگاوات‌ساعت در سال"),
+            ("تعداد کلید پیشنهادی", f"{n_sw} عدد"),
+            ("میزان انرژی توزیع‌نشده پس از نصب",
+             f"{_dx(info.eens_after_mwh)} مگاوات‌ساعت در سال"),
+            ("درصد بهبود",
+             f"{_dx(info.improvement_pct)}٪ کاهش در EENS "
+             f"(با نصب {n_sw} دستگاه سکسیونر)")):
+        sec.blocks.append(Paragraph(f"{label}: {value}", style="item"))
+    sec.blocks.append(TableSpec(
+        caption=(f"جدول {ctx.next_table()}: خلاصه نتیجه جایابی سکسیونر مبتنی بر "
+                 f"محاسبه انرژی توزیع‌نشده {feeder}"),
+        header_rows=[["فیدر", "طول (km)", "بار (kW)", "EENS پایه (MWh/سال)",
+                      "EENS نهایی (MWh/سال)", "کاهش (%)"]],
+        body_rows=[[feeder, _dx(info.line_length_km), _dx(info.covered_load_kw),
+                    _dx(info.eens_base_mwh), _dx(info.eens_after_mwh),
+                    _dx(info.improvement_pct)]]))
+    sec.blocks.append(Paragraph(
+        f"مطابق شکل 2، محل بهینه سکسیونر از نظر مینیمم‌کردن انرژی توزیع‌نشده، در "
+        f"{_dx(info.optimal_location)} پیشنهاد شده است. این محل با محل درخواستی امور "
+        f"{_dx_office(ctx)} نیز هم‌خوانی دارد."))
+    if info.eens_imported:      # ردپای فایل جایابی — نتایج عیناً از خروجی SwitchLoc
+        ver = (info.eens_algo_version or "").strip()
+        sec.blocks.append(Paragraph(
+            "نتایج جایابی این بخش عیناً از فایل خروجی نرم‌افزار جایابی کلید"
+            + (f" ({ver})" if ver else "") + " — eens_report.json — وارد شده است."))
+    return sec
+
+
+def _dx_coverage_sec(ctx: ComposeContext) -> ReportSection:
+    sec = ReportSection("dx_coverage",
+                        "بررسی پوشش‌دهی شبکه‌های اینترنت شرکت‌های ایرانسل و همراه اول")
+    info = _dx_info(ctx)
+    if info is None:
+        return sec
+    requested = (info.requested_location or "").strip() or _dx(info.location)
+    sec.blocks.append(Paragraph(
+        f"طی درخواست امور محترم {_dx_office(ctx)}، یک دستگاه سکسیونر "
+        f"{_dx(info.dx_kind)} در {requested} جهت افزایش قابلیت اطمینان شبکه و کاهش "
+        "انرژی توزیع‌نشده و همچنین کاهش زمان عیب‌یابی شبکه درخواست شده است. با توجه "
+        "به کنترل از راه دور بودن سکسیونر درخواستی، وضعیت پوشش‌دهی شبکه‌های ایرانسل "
+        "و همراه اول در شکل‌های 3 و 4 نمایش داده شده است. مطابق شکل‌های مذکور، وضعیت "
+        f"پوشش‌دهی اینترنت هر دو شرکت در منطقه مورد بررسی {_dx(info.coverage_status)} "
+        "می‌باشد."))
+    sec.blocks.append(TableSpec(
+        caption=f"جدول {ctx.next_table()}: وضعیت پوشش اینترنت منطقه مورد مطالعه",
+        header_rows=[["استان", "مناطق تحت پوشش: شهر / دهستان / روستا / جاده و ...",
+                      "وضعیت پوشش اینترنت 3G / 4G / 4.5G"]],
+        body_rows=[[_dx(info.province), _dx(info.coverage_areas),
+                    _dx(info.coverage_status)]]))
+    if (info.conclusion or "").strip():
+        sec.blocks.extend(_fd_paras(info.conclusion))
+    return sec
+
+
 @dataclass
 class ReportComponent:
     key: str
@@ -634,6 +868,17 @@ DEFAULT_COMPONENTS: list[ReportComponent] = [
                     {StudyKind.FEEDER_DEV}),
     ReportComponent("fd_conclusion", "توسعه فیدر — نتیجه‌گیری", _fd_conclusion,
                     {StudyKind.FEEDER_DEV}),
+    # v2.6.0 — مطالعه «جایابی سکسیونر» (قالب Disconnector Format.json)
+    ReportComponent("dx_intro", "جایابی سکسیونر — مقدمه", _dx_intro_sec,
+                    {StudyKind.DISCONNECTOR}),
+    ReportComponent("dx_network", "جایابی سکسیونر — مشخصات شبکه", _dx_network_sec,
+                    {StudyKind.DISCONNECTOR}),
+    ReportComponent("dx_switching", "جایابی سکسیونر — الزامات کلیدگذاری", _dx_switching_sec,
+                    {StudyKind.DISCONNECTOR}),
+    ReportComponent("dx_placement", "جایابی سکسیونر — جایابی بر اساس EENS", _dx_placement_sec,
+                    {StudyKind.DISCONNECTOR}),
+    ReportComponent("dx_coverage", "جایابی سکسیونر — پوشش اینترنت", _dx_coverage_sec,
+                    {StudyKind.DISCONNECTOR}),
 ]
 
 
@@ -686,7 +931,8 @@ class ReportComposer:
                 notices: Optional[list[str]] = None,
                 charts_dir: Optional[Path] = None) -> GeneratedReport:
         kinds = [k for k in kinds
-                 if k in PROTECTION_KINDS or k is StudyKind.FEEDER_DEV]
+                 if k in PROTECTION_KINDS
+                 or k in (StudyKind.FEEDER_DEV, StudyKind.DISCONNECTOR)]
         prot_kinds = [k for k in kinds if k in PROTECTION_KINDS]
         ctx = ComposeContext(project, workspace, kinds, narrative=self.narrative,
                              charts_dir=charts_dir)

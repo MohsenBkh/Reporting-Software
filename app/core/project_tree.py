@@ -99,6 +99,8 @@ def build_project_tree(project: Any, workspace: Workspace,
             inp.children.append(n)
     if sel.is_selected(StudyKind.FEEDER_DEV):            # v2.4.0
         inp.children.append(TreeNode("input.feeder_dev", "توسعه و اصلاح فیدر", "study"))
+    if sel.is_selected(StudyKind.DISCONNECTOR):          # v2.6.0
+        inp.children.append(TreeNode("input.disconnector", "جایابی سکسیونر", "study"))
     inp.children.append(TreeNode("images", "تصاویر و شکل‌های گزارش", "group"))
     root.children.append(inp)
 
@@ -130,6 +132,10 @@ def study_status(project: Any, workspace: Workspace, kind: StudyKind,
     if kind is StudyKind.FEEDER_DEV:
         # v2.4.0 — مطالعه توسعه فیدر موتور قواعد ندارد؛ داده ثبت‌شده = کامل
         return ST_COMPLETE
+    if kind is StudyKind.DISCONNECTOR:
+        # v2.6.0 — جایابی سکسیونر: کامل = نتایج EENS از فایل وارد شده باشد
+        dx = getattr(project, "disconnector", None)
+        return ST_COMPLETE if (dx is not None and dx.eens_imported) else ST_INCOMPLETE
     if results is None:
         return ST_UNEVALUATED
     if any(r.status in ("MISSING_DATA", "MISSING_RULE", "DATA_ERROR") for r in results):
